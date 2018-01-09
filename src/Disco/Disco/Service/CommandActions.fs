@@ -90,10 +90,10 @@ let listProjects (cfg: DiscoMachine): Either<DiscoError,string> =
 
 /// Create a new DiscoProject data structure with given parameters.
 let buildProject (machine: DiscoMachine)
-                  (name: string)
-                  (path: FilePath)
-                  (raftDir: FilePath)
-                  (mem: RaftMember) =
+                 (name: string)
+                 (path: FilePath)
+                 (raftDir: FilePath)
+                 (mem: ClusterMember) =
   either {
     let! project = Project.create (Project.ofFilePath path) name machine
 
@@ -141,7 +141,7 @@ let createProject (machine: DiscoMachine) (opts: CreateProjectOptions) = either 
     do! mkDir raftDir
 
     let mem =
-      { Member.create(machine.MachineId) with
+      { ClusterMember.create(machine.MachineId) with
           IpAddress = IpAddress.Parse opts.ipAddr
           GitPort   = port opts.gitPort
           WsPort    = port opts.wsPort

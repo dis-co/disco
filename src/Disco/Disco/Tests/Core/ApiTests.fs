@@ -57,7 +57,7 @@ module ApiTests =
       either {
         let mutable store = Store(mkState ())
 
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         use! server1 = ApiServer.create mem {
           new IApiServerCallbacks with
@@ -82,7 +82,7 @@ module ApiTests =
       either {
         let mutable store = Store(mkState ())
 
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         use! server = ApiServer.create mem {
           new IApiServerCallbacks with
@@ -150,7 +150,7 @@ module ApiTests =
       either {
         let store = Store(mkState ())
 
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         use! server = ApiServer.create mem {
           new IApiServerCallbacks with
@@ -238,7 +238,7 @@ module ApiTests =
 
         let store = Store(mkState ())
 
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         let srvr : DiscoServer =
           { Port = mem.ApiPort
@@ -356,7 +356,7 @@ module ApiTests =
     testCase "server should dispose properly" <| fun _ ->
       either {
         let store = Store(mkState ())
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         use! server = ApiServer.create mem {
           new IApiServerCallbacks with

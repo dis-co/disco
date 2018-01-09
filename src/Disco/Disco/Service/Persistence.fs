@@ -42,8 +42,9 @@ module Persistence =
       let! mems = Config.getMembers options
       let state =
         mem
+        |> ClusterMember.toRaftMember
         |> Raft.create
-        |> Raft.addMembers mems
+        |> Raft.addMembers (Map.map (fun _ -> ClusterMember.toRaftMember) mems)
         |> Raft.setMaxLogDepth options.Raft.MaxLogDepth
         |> Raft.setRequestTimeout options.Raft.RequestTimeout
         |> Raft.setElectionTimeout options.Raft.ElectionTimeout
@@ -75,9 +76,9 @@ module Persistence =
       let! state = Yaml.decode data
       return
         { state with
-            Member          = mem
+            Member          = ClusterMember.toRaftMember mem
             NumMembers      = count
-            Peers           = mems
+            Peers           = Map.map (fun _ -> ClusterMember.toRaftMember) mems
             MaxLogDepth     = options.Raft.MaxLogDepth
             RequestTimeout  = options.Raft.RequestTimeout
             ElectionTimeout = options.Raft.ElectionTimeout }
@@ -313,7 +314,7 @@ module Persistence =
   // ** getRemote
 
   let getRemote (project: DiscoProject) (repo: Repository) (leader: RaftMember) =
-    let uri = Uri.gitUri project.Name leader
+    let uri = Uri.gitUri project.Name leader.IpAddress leader.GitPort
     match Git.Config.tryFindRemote repo (string leader.Id) with
     | None ->
       leader.Id
@@ -335,7 +336,7 @@ module Persistence =
   // ** ensureRemote
 
   let ensureRemote (project: DiscoProject) (repo: Repository) (peer: RaftMember) =
-    let uri = Uri.gitUri project.Name peer
+    let uri = Uri.gitUri project.Name peer.IpAddress peer.GitPort
     match Git.Config.tryFindRemote repo (string peer.Id) with
     | None ->
       peer.Id

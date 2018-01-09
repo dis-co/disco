@@ -247,6 +247,41 @@ module Generators =
       }
     }
 
+  ///   ____ _           _            __  __                _
+  ///  / ___| |_   _ ___| |_ ___ _ __|  \/  | ___ _ __ ___ | |__   ___ _ __
+  /// | |   | | | | / __| __/ _ \ '__| |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+  /// | |___| | |_| \__ \ ||  __/ |  | |  | |  __/ | | | | | |_) |  __/ |
+  ///  \____|_|\__,_|___/\__\___|_|  |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+  let clusterMemberGen = gen {
+      let! id = idGen
+      let! n = nameGen
+      let! ip = ipGen
+      let! p = portGen
+      let! wp = portGen
+      let! ap = portGen
+      let! hp = portGen
+      let! gp = portGen
+      let! mcst = ipGen
+      let! mp = portGen
+      let! state = raftStateGen
+      let! status = memberStatusGen
+      return {
+        Id               = id
+        HostName         = n
+        IpAddress        = ip
+        MulticastAddress = mcst
+        MulticastPort    = mp
+        RaftPort         = p
+        HttpPort         = hp
+        WsPort           = wp
+        GitPort          = gp
+        ApiPort          = ap
+        State            = state
+        Status           = status
+      }
+    }
+
   let raftMemArr = Gen.arrayOfLength 2 raftMemberGen
 
   //  _                _                   _
@@ -338,7 +373,7 @@ module Generators =
   let clusterGen = gen {
       let! id = idGen
       let! nm = nameGen
-      let! mems = mapGen raftMemberGen
+      let! mems = mapGen clusterMemberGen
       let! groups = Gen.arrayOf hostgroupGen
       return
         { Id = id

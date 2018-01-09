@@ -480,7 +480,7 @@ module ApiServer =
 
   // ** start
 
-  let private start (mem: RaftMember)
+  let private start (mem: ClusterMember)
                     (store: IAgentStore<ServerState>)
                     (agent: ApiAgent) =
     either {
@@ -521,7 +521,7 @@ module ApiServer =
 
   // ** create
 
-  let create (mem: RaftMember) callbacks =
+  let create (mem: ClusterMember) callbacks =
     either {
       let cts = new CancellationTokenSource()
       let store = AgentStore.create ()

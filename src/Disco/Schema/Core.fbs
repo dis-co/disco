@@ -675,10 +675,25 @@ table HostGroupFB {
       Members: [ string ];
 }
 
+table ClusterMemberFB {
+      Id:               [ubyte];             
+      HostName:         string;        
+      IpAddress:        string;       
+      MulticastAddress: string;
+      MulticastPort:    ushort;   
+      HttpPort:         ushort;        
+      RaftPort:         ushort;        
+      WsPort:           ushort;          
+      GitPort:          ushort;         
+      ApiPort:          ushort;         
+      State:            MemberStateFB;
+      Status:           MemberStatusFB;
+}
+
 table ClusterConfigFB {
       Id: [ubyte];
       Name: string;
-      Members: [ RaftMemberFB ];
+      Members: [ ClusterMemberFB ];
       Groups: [ HostGroupFB ];
 }
 

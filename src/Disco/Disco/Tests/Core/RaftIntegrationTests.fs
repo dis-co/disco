@@ -44,8 +44,11 @@ module RaftIntegrationTests =
         let site =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem1.Id, mem1)
-                                       (mem2.Id, mem2) |] }
+              Members =
+                Map.ofArray [|
+                  (mem1.Id, ClusterMember.ofRaftMember mem1)
+                  (mem2.Id, ClusterMember.ofRaftMember mem2)
+                |] }
         let leadercfg =
           machine1
           |> Config.create
@@ -97,7 +100,7 @@ module RaftIntegrationTests =
         let site =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem.Id, mem) |] }
+              Members = Map.ofArray [| (mem.Id, ClusterMember.ofRaftMember mem) |] }
 
         let leadercfg =
           machine
@@ -165,8 +168,8 @@ module RaftIntegrationTests =
         let site =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem1.Id, mem1)
-                                       (mem2.Id, mem2) |] }
+              Members = Map.ofArray [| (mem1.Id, ClusterMember.ofRaftMember mem1)
+                                       (mem2.Id, ClusterMember.ofRaftMember mem2) |] }
 
         let leadercfg =
           machine1
@@ -224,7 +227,7 @@ module RaftIntegrationTests =
         let site =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem1.Id, mem1) |] }
+              Members = Map.ofArray [| (mem1.Id, ClusterMember.ofRaftMember mem1) |] }
 
         let leadercfg =
           machine1
@@ -311,10 +314,10 @@ module RaftIntegrationTests =
         let site1 =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem1.Id, mem1) |] }
+              Members = Map.ofArray [| (mem1.Id, ClusterMember.ofRaftMember mem1) |] }
 
         let site2 =
-          { site1 with Members = Map.ofArray [| (mem2.Id, mem2) |] }
+          { site1 with Members = Map.ofArray [| (mem2.Id, ClusterMember.ofRaftMember mem2) |] }
 
         let leadercfg =
           machine1

@@ -227,7 +227,7 @@ module NetIntegrationTests =
   let test_pub_socket_disposes_properly =
     testCase "pub socket disposes properly" <| fun _ ->
       either {
-        let mem = DiscoId.Create() |> Member.create
+        let mem = DiscoId.Create() |> ClusterMember.create
         use pub = PubSub.create mem
         do! pub.Start()
       }

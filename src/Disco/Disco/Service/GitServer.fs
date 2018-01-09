@@ -118,7 +118,7 @@ module GitServer =
 
   // ** create
 
-  let create (mem: RaftMember) (project: DiscoProject) =
+  let create (mem: ClusterMember) (project: DiscoProject) =
     let mutable status = ServiceStatus.Stopped
     let cts = new CancellationTokenSource()
     let subscriptions = Subscriptions()

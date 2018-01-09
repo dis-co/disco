@@ -30,7 +30,7 @@ module GitTests =
     let config =
       machine
       |> Config.create
-      |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
+      |> Config.setMembers (Map.ofArray [| (mem.Id, ClusterMember.ofRaftMember mem) |])
       |> Config.setLogLevel Debug
 
     let project =
@@ -92,7 +92,7 @@ module GitTests =
         let uuid, tmpdir, project, mem, path =
           mkEnvironment 10000us
 
-        use gitserver = GitServer.create mem path
+        use gitserver = GitServer.create (ClusterMember.ofRaftMember mem) path
         do! gitserver.Start()
 
         expect "Should be running" true Service.isRunning gitserver.Status
@@ -111,7 +111,7 @@ module GitTests =
           | DiscoEvent.Started _ -> started.Set() |> ignore
           | _ -> ()
 
-        use gitserver1 = GitServer.create mem path
+        use gitserver1 = GitServer.create (ClusterMember.ofRaftMember mem) path
         use gobs1 = gitserver1.Subscribe(handleStarted)
         do! gitserver1.Start()
 
@@ -119,7 +119,7 @@ module GitTests =
 
         expect "Should be running" true Service.isRunning gitserver1.Status
 
-        use gitserver2 = GitServer.create mem path
+        use gitserver2 = GitServer.create (ClusterMember.ofRaftMember mem) path
         do! match gitserver2.Start() with
             | Right ()   -> Left (Other("test","Should have failed to start"))
             | Left error -> Right ()
@@ -141,7 +141,7 @@ module GitTests =
         let uuid, tmpdir, project, mem, path =
           mkEnvironment port
 
-        use gitserver = GitServer.create mem path
+        use gitserver = GitServer.create (ClusterMember.ofRaftMember mem) path
         use gobs1 = gitserver.Subscribe(handleStarted)
 
         do! gitserver.Start()
@@ -153,8 +153,7 @@ module GitTests =
         let target = mkTmpDir ()
 
         let repo =
-          mem
-          |> Uri.gitUri path.Name
+          Uri.gitUri path.Name mem.IpAddress mem.GitPort
           |> unwrap
           |> Git.Repo.clone target
 

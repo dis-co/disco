@@ -144,7 +144,11 @@ module ProjectTests =
         let cluster =
           { Id = DiscoId.Create()
             Name   = name "A mighty cool cluster"
-            Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
+            Members =
+              Map.ofArray [|
+                (memA.Id, ClusterMember.ofRaftMember memA)
+                (memB.Id, ClusterMember.ofRaftMember memB)
+              |]
             Groups = [| groupA; groupB |] }
 
         let! project = Project.create (Project.ofFilePath path) (unwrap fn) machine

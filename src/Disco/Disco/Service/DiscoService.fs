@@ -62,7 +62,7 @@ module DiscoService =
 
   [<NoComparison;NoEquality>]
   type private DiscoState =
-    { Member:        RaftMember
+    { Member:        ClusterMember
       Machine:       DiscoMachine
       Status:        ServiceStatus
       Store:         Store
@@ -635,9 +635,9 @@ module DiscoService =
         let snapshot = DataSnapshot state.Store.State
         let members =
           match Config.getActiveSite state.Store.State.Project.Config with
-          | Some site -> site.Members |> Map.toArray |> Array.map snd
+          | Some site -> site.Members |> Map.toArray |> Array.map (snd >> ClusterMember.toRaftMember)
           | _ -> [| |]
-        (id,yml.Index ,yml.Term ,yml.LastIndex ,yml.LastTerm ,members , snapshot)
+        (id,yml.Index,yml.Term,yml.LastIndex,yml.LastTerm,members,snapshot)
         |> Snapshot
         |> Some
       with exn ->
@@ -711,8 +711,8 @@ module DiscoService =
         if Map.containsKey machineId site.Members
         then site
         else
-          let selfMember =
-            { Member.create(machineId) with
+          let selfMember: ClusterMember =
+            { ClusterMember.create(machineId) with
                 IpAddress = serviceOptions.Machine.BindAddress
                 GitPort   = serviceOptions.Machine.GitPort
                 WsPort    = serviceOptions.Machine.WsPort

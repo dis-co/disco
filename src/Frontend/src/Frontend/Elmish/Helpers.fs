@@ -140,7 +140,7 @@ module Select =
     |> Msg.SelectElement
     |> dispatch
 
-  let clusterMember dispatch (mem: RaftMember) =
+  let clusterMember dispatch (mem: ClusterMember) =
     (mem.HostName, mem.Id)
     |> InspectorSelection.Member
     |> Msg.SelectElement

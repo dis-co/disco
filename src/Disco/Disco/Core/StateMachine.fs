@@ -1107,17 +1107,19 @@ module State =
   // ** addMember
 
   let addMember (mem: RaftMember) (state: State) =
-    { state with Project = Project.addMember mem state.Project }
+    let mem = ClusterMember.ofRaftMember mem
+    in { state with Project = Project.addMember mem state.Project }
 
   // ** updateMember
 
   let updateMember (mem: RaftMember) (state: State) =
-    { state with Project = Project.updateMember mem state.Project }
+    let mem = ClusterMember.ofRaftMember mem
+    in { state with Project = Project.updateMember mem state.Project }
 
   // ** removeMember
 
-  let removeMember (mem: RaftMember) (state: State) =
-    { state with Project = Project.removeMember mem.Id state.Project }
+  let removeMember (mem: MemberId) (state: State) =
+    { state with Project = Project.removeMember mem state.Project }
 
   //   ____ _ _            _
   //  / ___| (_) ___ _ __ | |_
@@ -1246,7 +1248,7 @@ module State =
 
     | AddMember         mem           -> addMember      mem     state
     | UpdateMember      mem           -> updateMember   mem     state
-    | RemoveMember      mem           -> removeMember   mem     state
+    | RemoveMember      mem           -> removeMember   mem.Id  state
 
     | AddClient      client           -> addClient      client  state
     | UpdateClient   client           -> updateClient   client  state

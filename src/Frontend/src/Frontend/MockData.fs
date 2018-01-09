@@ -206,7 +206,7 @@ let project =
       List.map
         (fun (machine: DiscoMachine) ->
           let mem =
-            { Disco.Raft.Member.create machine.MachineId with
+            { ClusterMember.create machine.MachineId with
                 HostName = machine.HostName
                 Status = rndState() }
           (mem.Id, mem))

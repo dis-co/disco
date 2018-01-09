@@ -80,7 +80,10 @@ module Common =
       let site =
         { ClusterConfig.Default with
             Name = name "Cool Cluster Yo"
-            Members = members |> List.map (fun mem -> mem.Id,mem) |> Map.ofList }
+            Members =
+              members
+              |> List.map (fun mem -> mem.Id,ClusterMember.ofRaftMember mem)
+              |> Map.ofList }
 
       let project =
         List.fold

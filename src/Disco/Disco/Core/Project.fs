@@ -565,6 +565,244 @@ module HostGroup =
   let setName = Optic.set HostGroup.Name_
   let setMembers = Optic.set HostGroup.Members_
 
+// * ClusterMember
+
+type ClusterMember =
+  { Id:               MemberId
+    HostName:         Name
+    IpAddress:        IpAddress
+    MulticastAddress: IpAddress
+    MulticastPort:    Port
+    HttpPort:         Port
+    RaftPort:         Port
+    WsPort:           Port
+    GitPort:          Port
+    ApiPort:          Port
+    State:            MemberState
+    Status:           MemberStatus }
+
+  // ** optics
+
+  static member Id_ =
+    (fun (mem:ClusterMember) -> mem.Id),
+    (fun id (mem:ClusterMember) -> { mem with Id = id })
+
+  static member HostName_ =
+    (fun (mem:ClusterMember) -> mem.HostName),
+    (fun hostName (mem:ClusterMember) -> { mem with HostName = hostName })
+
+  static member IpAddress_ =
+    (fun (mem:ClusterMember) -> mem.IpAddress),
+    (fun ipAddress (mem:ClusterMember) -> { mem with IpAddress = ipAddress })
+
+  static member MulticastAddress_ =
+    (fun (mem:ClusterMember) -> mem.MulticastAddress),
+    (fun multicastAddress (mem:ClusterMember) -> { mem with MulticastAddress = multicastAddress })
+
+  static member MulticastPort_ =
+    (fun (mem:ClusterMember) -> mem.MulticastPort),
+    (fun multicastPort (mem:ClusterMember) -> { mem with MulticastPort = multicastPort })
+
+  static member RaftPort_ =
+    (fun (mem:ClusterMember) -> mem.RaftPort),
+    (fun raftPort (mem:ClusterMember) -> { mem with RaftPort = raftPort })
+
+  static member HttpPort_ =
+    (fun (mem:ClusterMember) -> mem.HttpPort),
+    (fun httpPort (mem:ClusterMember) -> { mem with HttpPort = httpPort })
+
+  static member WsPort_ =
+    (fun (mem:ClusterMember) -> mem.WsPort),
+    (fun wsPort (mem:ClusterMember) -> { mem with WsPort = wsPort })
+
+  static member GitPort_ =
+    (fun (mem:ClusterMember) -> mem.GitPort),
+    (fun gitPort (mem:ClusterMember) -> { mem with GitPort = gitPort })
+
+  static member ApiPort_ =
+    (fun (mem:ClusterMember) -> mem.ApiPort),
+    (fun apiPort (mem:ClusterMember) -> { mem with ApiPort = apiPort })
+
+  static member State_ =
+    (fun (mem:ClusterMember) -> mem.State),
+    (fun state (mem:ClusterMember) -> { mem with State = state })
+
+  static member Status_ =
+    (fun (mem:ClusterMember) -> mem.Status),
+    (fun status (mem:ClusterMember) -> { mem with Status = status })
+
+  // ** ToYaml
+
+  #if !FABLE_COMPILER && !DISCO_NODES
+
+  #endif
+
+  // ** ToOffset
+
+  member mem.ToOffset (builder: FlatBufferBuilder) =
+    let id = ClusterMemberFB.CreateIdVector(builder,mem.Id.ToByteArray())
+    let ip = string mem.IpAddress |> builder.CreateString
+    let mcastip = string mem.MulticastAddress |> builder.CreateString
+
+    let hostname =
+      let unwrapped = unwrap mem.HostName
+      if isNull unwrapped then
+        None
+      else
+        unwrapped |> builder.CreateString |> Some
+
+    let state = mem.State.ToOffset(builder)
+    let status = mem.Status.ToOffset()
+
+    ClusterMemberFB.StartClusterMemberFB(builder)
+    ClusterMemberFB.AddId(builder, id)
+
+    match hostname with
+    | Some hostname -> ClusterMemberFB.AddHostName(builder, hostname)
+    | None -> ()
+
+    ClusterMemberFB.AddMulticastAddress(builder, mcastip)
+    ClusterMemberFB.AddMulticastPort(builder, unwrap mem.MulticastPort)
+    ClusterMemberFB.AddIpAddress(builder, ip)
+    ClusterMemberFB.AddRaftPort(builder, unwrap mem.RaftPort)
+    ClusterMemberFB.AddHttpPort(builder, unwrap mem.HttpPort)
+    ClusterMemberFB.AddWsPort(builder, unwrap mem.WsPort)
+    ClusterMemberFB.AddGitPort(builder, unwrap mem.GitPort)
+    ClusterMemberFB.AddApiPort(builder, unwrap mem.ApiPort)
+    ClusterMemberFB.AddState(builder, state)
+    ClusterMemberFB.AddStatus(builder, status)
+    ClusterMemberFB.EndClusterMemberFB(builder)
+
+  // ** FromFB
+
+  static member FromFB (fb: ClusterMemberFB) : Either<DiscoError, ClusterMember> =
+    either {
+      let! id = Id.decodeId fb
+      let! state = MemberState.FromFB fb.State
+      let! status = MemberStatus.FromFB fb.Status
+      let! ip = IpAddress.TryParse fb.IpAddress
+      let! mcastip = IpAddress.TryParse fb.MulticastAddress
+      return {
+        Id               = id
+        State            = state
+        Status           = status
+        HostName         = name fb.HostName
+        IpAddress        = ip
+        MulticastAddress = mcastip
+        MulticastPort    = port fb.MulticastPort
+        HttpPort         = port fb.HttpPort
+        RaftPort         = port fb.RaftPort
+        WsPort           = port fb.WsPort
+        GitPort          = port fb.GitPort
+        ApiPort          = port fb.ApiPort
+      }
+    }
+
+  // ** ToBytes
+
+  member self.ToBytes () = Binary.buildBuffer self
+
+  // ** FromBytes
+
+  static member FromBytes (bytes: byte[]) =
+    Binary.createBuffer bytes
+    |> ClusterMemberFB.GetRootAsClusterMemberFB
+    |> ClusterMember.FromFB
+
+
+// * ClusterMember module
+
+module ClusterMember =
+
+  open Aether
+
+  // ** getters
+
+  let id = Optic.get ClusterMember.Id_
+  let hostName = Optic.get ClusterMember.HostName_
+  let ipAddress = Optic.get ClusterMember.IpAddress_
+  let multicastAddress = Optic.get ClusterMember.MulticastAddress_
+  let multicastPort = Optic.get ClusterMember.MulticastPort_
+  let raftPort = Optic.get ClusterMember.RaftPort_
+  let httpPort = Optic.get ClusterMember.HttpPort_
+  let wsPort = Optic.get ClusterMember.WsPort_
+  let gitPort = Optic.get ClusterMember.GitPort_
+  let apiPort = Optic.get ClusterMember.ApiPort_
+  let status = Optic.get ClusterMember.Status_
+  let state = Optic.get ClusterMember.State_
+
+  // ** setters
+
+  let setId = Optic.set ClusterMember.Id_
+  let setHostName = Optic.set ClusterMember.HostName_
+  let setIpAddress = Optic.set ClusterMember.IpAddress_
+  let setMulticastAddress = Optic.set ClusterMember.MulticastAddress_
+  let setMulticastPort = Optic.set ClusterMember.MulticastPort_
+  let setClusterPort = Optic.set ClusterMember.RaftPort_
+  let setHttpPort = Optic.set ClusterMember.HttpPort_
+  let setWsPort = Optic.set ClusterMember.WsPort_
+  let setGitPort = Optic.set ClusterMember.GitPort_
+  let setApiPort = Optic.set ClusterMember.ApiPort_
+  let setStatus = Optic.set ClusterMember.Status_
+  let setState = Optic.set ClusterMember.State_
+
+  // **  create
+
+  let create id =
+    #if FABLE_COMPILER
+    let hostname = Fable.Import.Browser.window.location.host
+    #else
+    let hostname = Network.getHostName ()
+    #endif
+    { Id               = id
+      HostName         = name hostname
+      IpAddress        = IPv4Address "127.0.0.1"
+      MulticastAddress = IpAddress.Parse Constants.DEFAULT_MCAST_ADDRESS
+      MulticastPort    = Measure.port Constants.DEFAULT_MCAST_PORT
+      HttpPort         = Measure.port Constants.DEFAULT_HTTP_PORT
+      RaftPort         = Measure.port Constants.DEFAULT_RAFT_PORT
+      WsPort           = Measure.port Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort          = Measure.port Constants.DEFAULT_GIT_PORT
+      ApiPort          = Measure.port Constants.DEFAULT_API_PORT
+      Status           = Running
+      State            = Follower }
+
+  // ** toRaftMember
+
+  let toRaftMember (mem:ClusterMember) =
+    { Id               = mem.Id
+      HostName         = mem.HostName
+      IpAddress        = mem.IpAddress
+      MulticastAddress = mem.MulticastAddress
+      MulticastPort    = mem.MulticastPort
+      HttpPort         = mem.HttpPort
+      RaftPort         = mem.RaftPort
+      WsPort           = mem.WsPort
+      GitPort          = mem.GitPort
+      ApiPort          = mem.ApiPort
+      Status           = mem.Status
+      State            = mem.State
+      Voting           = true
+      VotedForMe       = false
+      NextIndex        = index 1
+      MatchIndex       = index 0 }
+
+  // ** ofRaftMember
+
+  let ofRaftMember (mem:RaftMember) =
+    { Id               = mem.Id
+      HostName         = mem.HostName
+      IpAddress        = mem.IpAddress
+      MulticastAddress = mem.MulticastAddress
+      MulticastPort    = mem.MulticastPort
+      HttpPort         = mem.HttpPort
+      RaftPort         = mem.RaftPort
+      WsPort           = mem.WsPort
+      GitPort          = mem.GitPort
+      ApiPort          = mem.ApiPort
+      Status           = mem.Status
+      State            = mem.State }
+
 // * ClusterConfig
 
 //   ____ _           _
@@ -576,7 +814,7 @@ module HostGroup =
 type ClusterConfig =
   { Id: ClusterId
     Name: Name
-    Members: Map<MemberId,RaftMember>
+    Members: Map<MemberId,ClusterMember>
     Groups: HostGroup array }
 
   // ** optics
@@ -647,21 +885,21 @@ type ClusterConfig =
           fb.MembersLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * Map<MemberId,RaftMember>>) _ ->
+          (fun (m: Either<DiscoError, int * Map<MemberId,ClusterMember>>) _ ->
             either {
               let! (idx,members) = m
 
               let! mem =
                 #if FABLE_COMPILER
                 fb.Members(idx)
-                |> RaftMember.FromFB
+                |> ClusterMember.FromFB
                 #else
                 let memish = fb.Members(idx)
                 if memish.HasValue then
                   let value = memish.Value
-                  RaftMember.FromFB value
+                  ClusterMember.FromFB value
                 else
-                  "Could not parse empty RaftMemberFB"
+                  "Could not parse empty ClusterMemberFB"
                   |> Error.asParseError "Cluster.FromFB"
                   |> Either.fail
                 #endif
@@ -1035,12 +1273,28 @@ module ProjectYaml =
     [<DefaultValue>] val mutable Name: string
     [<DefaultValue>] val mutable Members: string array
 
+  // ** ClusterMemberYaml
+
+  type ClusterMemberYaml() =
+    [<DefaultValue>] val mutable Id:               string
+    [<DefaultValue>] val mutable HostName:         string
+    [<DefaultValue>] val mutable IpAddress:        string
+    [<DefaultValue>] val mutable MulticastAddress: string
+    [<DefaultValue>] val mutable MulticastPort:    uint16
+    [<DefaultValue>] val mutable HttpPort:         uint16
+    [<DefaultValue>] val mutable RaftPort:         uint16
+    [<DefaultValue>] val mutable WsPort:           uint16
+    [<DefaultValue>] val mutable GitPort:          uint16
+    [<DefaultValue>] val mutable ApiPort:          uint16
+    [<DefaultValue>] val mutable State:            string
+    [<DefaultValue>] val mutable Status:           string
+
   // ** SiteYaml
 
   type SiteYaml () =
     [<DefaultValue>] val mutable Id: string
     [<DefaultValue>] val mutable Name: string
-    [<DefaultValue>] val mutable Members: RaftMemberYaml array
+    [<DefaultValue>] val mutable Members: ClusterMemberYaml array
     [<DefaultValue>] val mutable Groups: GroupYaml array
 
   // ** DiscoProjectYaml
@@ -1254,11 +1508,7 @@ module ProjectYaml =
 
   // ** saveTiming
 
-  /// ### Transfer the TimingConfig options to the passed configuration file
-  ///
-  ///
-  ///
-  /// # Returns: ConfigFile
+  /// Transfer the TimingConfig options to the passed configuration file
   let internal saveTiming (file: DiscoProjectYaml, config: DiscoConfig) =
     let timing = TimingYaml()
     timing.Framebase <- int (config.Timing.Framebase)
@@ -1269,13 +1519,54 @@ module ProjectYaml =
       servers.Add(string srv)
 
     timing.Servers <- servers.ToArray()
-
     timing.TCPPort <- int (config.Timing.TCPPort)
     timing.UDPPort <- int (config.Timing.UDPPort)
 
     file.Timing <- timing
-
     (file, config)
+
+  // ** parseMember
+
+  let internal parseMember (yaml:ClusterMemberYaml) =
+    either {
+      let! id = DiscoId.TryParse yaml.Id
+      let! ip = IpAddress.TryParse yaml.IpAddress
+      let! mcastip = IpAddress.TryParse yaml.MulticastAddress
+      let! state = MemberState.TryParse yaml.State
+      let! status = MemberStatus.TryParse yaml.Status
+      return {
+        Id               = id
+        HostName         = name yaml.HostName
+        MulticastAddress = mcastip
+        MulticastPort    = port yaml.MulticastPort
+        IpAddress        = ip
+        HttpPort         = port yaml.HttpPort
+        RaftPort         = port yaml.RaftPort
+        WsPort           = port yaml.WsPort
+        GitPort          = port yaml.GitPort
+        ApiPort          = port yaml.ApiPort
+        State            = state
+        Status           = status
+      }
+    }
+  // ** saveMember
+
+  let internal saveMember (mem:ClusterMember) =
+    let yaml = ClusterMemberYaml()
+    yaml.Id               <- string mem.Id
+    yaml.HostName         <- unwrap mem.HostName
+    yaml.IpAddress        <- string mem.IpAddress
+    yaml.MulticastAddress <- string mem.MulticastAddress
+    yaml.MulticastPort    <- unwrap mem.MulticastPort
+    yaml.HttpPort         <- unwrap mem.HttpPort
+    yaml.RaftPort         <- unwrap mem.RaftPort
+    yaml.WsPort           <- unwrap mem.WsPort
+    yaml.GitPort          <- unwrap mem.GitPort
+    yaml.ApiPort          <- unwrap mem.ApiPort
+    yaml.State            <- string mem.State
+    yaml.Status           <- string mem.Status
+    yaml
+
 
   // ** parseMembers
 
@@ -1287,13 +1578,13 @@ module ProjectYaml =
   /// - mems: MemberYaml collection
   ///
   /// Returns: Either<DiscoError, RaftMember array>
-  let internal parseMembers mems : Either<DiscoError, Map<MemberId,RaftMember>> =
+  let internal parseMembers mems : Either<DiscoError, Map<MemberId,ClusterMember>> =
     either {
       let! (_,mems) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * Map<MemberId,RaftMember>>) mem -> either {
+          (fun (m: Either<DiscoError, int * Map<MemberId,ClusterMember>>) mem -> either {
             let! (idx, mems) = m
-            let! mem = RaftMember.FromYaml mem
+            let! mem = parseMember mem
             return (idx + 1, Map.add mem.Id mem mems)
           })
           (Right(0, Map.empty))
@@ -1337,6 +1628,7 @@ module ProjectYaml =
     }
 
   // ** parseCluster
+
 
   /// ### Parse the Cluster configuration section
   ///
@@ -1404,7 +1696,7 @@ module ProjectYaml =
       cfg.Name <- unwrap cluster.Name
 
       for KeyValue(_,mem) in cluster.Members do
-        let mem = mem.ToYaml()
+        let mem = saveMember mem
         members.Add(mem)
 
       for group in cluster.Groups do
@@ -1634,7 +1926,7 @@ module Config =
 
   // ** getMembers
 
-  let getMembers (config: DiscoConfig) : Either<DiscoError,Map<MemberId,RaftMember>> =
+  let getMembers (config: DiscoConfig) : Either<DiscoError,Map<MemberId,ClusterMember>> =
     match config.ActiveSite with
     | Some active ->
       match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
@@ -1674,7 +1966,7 @@ module Config =
 
   // ** setMembers
 
-  let setMembers (mems: Map<MemberId,RaftMember>) (config: DiscoConfig) =
+  let setMembers (mems: Map<MemberId,ClusterMember>) (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
       match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
@@ -1692,7 +1984,7 @@ module Config =
   // ** validateSettings
 
   /// Cross-check the settins in a given cluster member definition with this machines settings
-  let validateSettings (mem: RaftMember) (machine:DiscoMachine): Either<DiscoError,unit> =
+  let validateSettings (mem: ClusterMember) (machine:DiscoMachine): Either<DiscoError,unit> =
     let errorMsg tag a b =
       sprintf "Member %s: %O is different from Machine %s: %O\n" tag a tag b
     let errors = [
@@ -1765,7 +2057,7 @@ module Config =
 
   // ** addMember
 
-  let addMember (mem: RaftMember) (config: DiscoConfig) =
+  let addMember (mem: ClusterMember) (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
       match Array.tryFind (fun clst -> ClusterConfig.id clst = active) config.Sites with
@@ -2173,11 +2465,9 @@ module Project =
   ///
   /// Computes the path to the passed projects' git repository from its `Path` field and checks
   /// whether it exists. If so, construct a git Repository object and return that.
-  ///
-  /// # Returns: Repository option
+
   let repository (project: DiscoProject) =
-    project.Path
-    |> Git.Repo.repository
+    Git.Repo.repository project.Path
 
   #endif
 
@@ -2186,7 +2476,7 @@ module Project =
   let localRemote (project: DiscoProject) =
     project.Config
     |> Config.getActiveMember
-    |> Option.map (Uri.gitUri project.Name)
+    |> Option.map (fun mem -> Uri.gitUri project.Name mem.IpAddress mem.GitPort)
 
   // ** currentBranch
 
@@ -2512,14 +2802,14 @@ module Project =
 
   // ** addMember
 
-  let addMember (mem: RaftMember) (project: DiscoProject) : DiscoProject =
+  let addMember (mem: ClusterMember) (project: DiscoProject) : DiscoProject =
     project.Config
     |> Config.addMember mem
     |> flip updateConfig project
 
   // ** updateMember
 
-  let updateMember (mem: RaftMember) (project: DiscoProject) : DiscoProject =
+  let updateMember (mem: ClusterMember) (project: DiscoProject) : DiscoProject =
     addMember mem project
 
   // ** removeMember
@@ -2541,9 +2831,9 @@ module Project =
 
   // ** addMembers
 
-  let addMembers (mems: RaftMember list) (project: DiscoProject) : DiscoProject =
+  let addMembers (mems: ClusterMember list) (project: DiscoProject) : DiscoProject =
     List.fold
-      (fun config (mem: RaftMember) ->
+      (fun config (mem: ClusterMember) ->
         Config.addMember mem config)
       project.Config
       mems
@@ -2581,7 +2871,7 @@ module Project =
               (fun kontinue id peer -> either {
                   do! kontinue
                   if id <> mem.Id then
-                    let url = Uri.gitUri project.Name peer
+                    let url = Uri.gitUri project.Name peer.IpAddress peer.GitPort
                     let name = string peer.Id
                     do! Git.Config.addRemote repo name url
                         |> Either.iterError (string >> Logger.err (tag "updateRemotes"))

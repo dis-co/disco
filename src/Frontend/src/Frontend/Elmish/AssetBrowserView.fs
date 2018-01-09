@@ -255,13 +255,13 @@ type AssetBrowserView(props) =
 
   // ** renderMachine
 
-  member this.renderMachine trees (node:RaftMember) =
+  member this.renderMachine trees (node:ClusterMember) =
     let isOpen =
       match this.state.Machine with
       | Some id when id = node.Id -> true
       | _ -> false
 
-    let nodeId = Member.id node
+    let nodeId = ClusterMember.id node
 
     let directories =
       if isOpen then
@@ -301,7 +301,7 @@ type AssetBrowserView(props) =
       |> Option.bind (fun id -> List.tryFind (fun site -> ClusterConfig.id site = id) sites)
       |> Option.map (ClusterConfig.members >> Map.toList)
       |> Option.defaultValue List.empty
-      |> List.sortBy (snd >> Member.hostName)
+      |> List.sortBy (snd >> ClusterMember.hostName)
       |> List.map (snd >> this.renderMachine trees)
 
     div [ Class "machines" ] members

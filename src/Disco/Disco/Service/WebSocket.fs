@@ -261,7 +261,7 @@ module WebSocketServer =
 
   // ** create
 
-  let create (mem: RaftMember) =
+  let create (mem: ClusterMember) =
     either {
       let status = ref ServiceStatus.Stopped
       let connections = Connections()
