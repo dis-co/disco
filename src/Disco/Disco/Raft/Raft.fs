@@ -1129,34 +1129,34 @@ module rec Raft =
   let entriesUntilExcludingM (idx: Index) =
     entriesUntilExcluding idx |> zoomM
 
-  // ** handleConfigChange
+  // ** handleConfiguration
 
-  let private handleConfigChange (log: RaftLogEntry) (state: RaftState) =
-    match log with
-    | Configuration(_,_,_,mems,_) ->
-      let parting =
-        mems
-        |> Array.map (fun (mem: RaftMember) -> mem.Id)
-        |> Array.contains state.Member.Id
-        |> not
+  let private handleConfiguration mems (state: RaftState) =
+    let parting =
+      mems
+      |> Array.map (fun (mem: RaftMember) -> mem.Id)
+      |> Array.contains state.Member.Id
+      |> not
 
-      let peers =
-        if parting then // we have been kicked out of the configuration
-          [| (state.Member.Id, state.Member) |]
-          |> Map.ofArray
-        else            // we are still part of the new cluster configuration
-          Array.map toPair mems
-          |> Map.ofArray
+    let peers =
+      if parting then // we have been kicked out of the configuration
+        [| (state.Member.Id, state.Member) |]
+        |> Map.ofArray
+      else            // we are still part of the new cluster configuration
+        Array.map toPair mems
+        |> Map.ofArray
 
-      state
-      |> setPeers peers
-      |> setOldPeers None
-    | JointConsensus(_,_,_,changes,_) ->
-      let old = state.Peers
-      state
-      |> applyChanges changes
-      |> setOldPeers (Some old)
-    | _ -> state
+    state
+    |> setPeers peers
+    |> setOldPeers None
+
+  // ** handleJointConsensus
+
+  let private handleJointConsensus (changes) (state:RaftState) =
+    let old = state.Peers
+    state
+    |> applyChanges changes
+    |> setOldPeers (Some old)
 
   // ** appendEntry
 
@@ -1891,25 +1891,24 @@ module rec Raft =
           // Apply log chain in the order it arrived
           let state, change =
             LogEntry.foldr
-              (fun (state, current) lg ->
-                match lg with
-                | Configuration _ as config ->
+              (fun (state, current) -> function
+                | Configuration(_,_,_,mems,_) as config ->
                   // set the peers map
-                  let newstate = handleConfigChange config state
+                  let newstate = handleConfiguration mems state
                   // when a new configuration is added, under certain circumstances a mem change
                   // might not have been applied yet, so calculate those dangling changes
                   let changes = calculateChanges state.Peers newstate.Peers
                   // apply dangling changes
-                  Array.iter (notifyChange cbs) changes
+                  do Array.iter (notifyChange cbs) changes
                   // apply the entry by calling the callback
-                  applyEntry cbs config
+                  do applyEntry cbs config
                   (newstate, None)
-                | JointConsensus _ as config ->
-                  let state = handleConfigChange config state
-                  applyEntry cbs config
+                | JointConsensus(_,_,_,changes,_) as config ->
+                  let state = handleJointConsensus changes state
+                  do applyEntry cbs config
                   (state, Some (LogEntry.head config))
                 | entry ->
-                  applyEntry cbs entry
+                  do applyEntry cbs entry
                   (state, current))
               (state, state.ConfigChangeEntry)
               entries
