@@ -1,4 +1,11 @@
-﻿namespace Disco.Tests
+﻿(*
+ *  This file is part of Distributed Show Control
+ *
+ *  Copyright 2015, 2018 by it's authors.
+ *  Some rights reserved. See COPYING, AUTHORS.
+ *)
+
+namespace Disco.Tests
 
 open Expecto
 open Disco.Core
