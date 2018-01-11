@@ -127,7 +127,7 @@ module Constants =
   let DEFAULT_GIT_PORT = 9000us
 
   [<Literal>]
-  let DEFAULT_MCAST_ADDRESS = "224.0.0.2"
+  let DEFAULT_MCAST_ADDRESS = "224.0.0.10"
 
   [<Literal>]
   let DEFAULT_MCAST_PORT = 5555us
