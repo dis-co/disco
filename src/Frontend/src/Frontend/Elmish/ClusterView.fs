@@ -76,8 +76,8 @@ let activeConfig dispatch state =
           td [Class "width-5"]  [str (string node.HttpPort)]
           td [Class "width-5"]  [str (string node.RaftPort)]
           td [Class "width-5"]  [str (string node.ApiPort)]
-          td [Class "width-5"]  [str (string node.WsPort)]
-          td [Class "width-10"] [str (string node.GitPort)]
+          td [Class "width-5"]  [str (string node.GitPort)]
+          td [Class "width-10"] [str (string node.WsPort)]
           td [
             classList [
               "width-10",true
