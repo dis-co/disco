@@ -315,10 +315,10 @@ type Component(props) =
       /// | |   / _ \ / __| |/ /
       /// | |__| (_) | (__|   <
       /// |_____\___/ \___|_|\_\
-      button [
+      span [
         classList [
           "warning",locked
-          "disco-button", true
+          "disco-icon", true
         ]
         Disabled true
       ] [

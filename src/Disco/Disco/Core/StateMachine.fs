@@ -3985,18 +3985,18 @@ module CuePlayerExtensions =
 
     static member next (cue:Cue) (player:CuePlayer) =
       CommandBatch.ofList [
-        UpdateSlices.ofList [ BoolSlices(player.NextId, None, true, [| true |]) ]
+        UpdateSlices.ofList [ BoolSlices(player.NextId, None, false, [| true |]) ]
         CallCue cue
       ]
 
     static member previous (cue:Cue) (player:CuePlayer) =
       CommandBatch.ofList [
-        UpdateSlices.ofList [ BoolSlices(player.PreviousId, None, true, [| true |]) ]
+        UpdateSlices.ofList [ BoolSlices(player.PreviousId, None, false, [| true |]) ]
         CallCue cue
       ]
 
     static member call (cue:Cue) (player:CuePlayer) =
       CommandBatch.ofList [
-        UpdateSlices.ofList [ BoolSlices(player.CallId, None, true, [| true |]) ]
+        UpdateSlices.ofList [ BoolSlices(player.CallId, None, false, [| true |]) ]
         CallCue cue
       ]
