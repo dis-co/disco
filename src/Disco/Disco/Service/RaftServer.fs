@@ -19,7 +19,6 @@ open Persistence
 module rec RaftServer =
 
   // ** tag
-
   let private tag (str: string) = String.format "RaftServer.{0}" str
 
   // ** Connections
@@ -1490,6 +1489,18 @@ module rec RaftServer =
       }
     act ()
 
+  // ** startMetrics 
+
+  let private startMetrics (agent:RaftAgent)  (cts: CancellationTokenSource) =
+    let rec loop () = 
+      async {
+        do! Async.Sleep(1000)
+        let count = agent.CurrentQueueLength
+        do Metrics.collect "raft_agent_message_count" count
+        return! loop()
+      }
+    Async.Start(loop(), cts.Token)
+
   // ** create
 
   let create (config: DiscoConfig) callbacks =
@@ -1534,6 +1545,8 @@ module rec RaftServer =
 
                   agent.Start()       // we must start the agent, so the dispose logic will work
                                       // as expected
+
+                  do startMetrics agent cts
 
                   match server.Start() with
                   | Right () ->

@@ -93,6 +93,11 @@ brew install flatbuffers
   choco install dotnetcore-sdk
   ```
 
+  - windows build tools for npm/node-gyp:
+
+  ``` 
+  npm install --global --production windows-build-tools
+  ```
 
 - Download and install [.NET Core 2.0](https://www.microsoft.com/net/download/core)
 - Install „Build Tools for Visual Studio 2017“ [from here]( https://www.visualstudio.com/de/downloads/)

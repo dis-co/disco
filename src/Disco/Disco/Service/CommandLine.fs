@@ -152,7 +152,9 @@ module CommandLine =
         UseColors = termSupportsColors
         Level = LogLevel.Debug
       }
-
+   
+      do! Metrics.init machine
+    
       use _ = Logger.subscribe Logger.stdout
 
       let! discoService = Disco.create post {

@@ -30,6 +30,7 @@ group Main
   nuget Fable.JsonConverter
   nuget Raspberry.IO.GeneralPurpose
   nuget Aether
+  nuget InfluxDB.Collector
 
 group Fable
   storage:none

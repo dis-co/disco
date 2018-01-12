@@ -11,25 +11,9 @@ module Constants =
   [<Literal>]
   let WEP_API_COMMAND = "/api/command"
 
-  //  _____
-  // |__  /_ __ ___   __ _
-  //   / /| '_ ` _ \ / _` |
-  //  / /_| | | | | | (_| |
-  // /____|_| |_| |_|\__, |
-  //                    |_|
-
   [<Literal>]
   let REQ_TIMEOUT = 500.0            // ms
-
-  [<Literal>]
-  let API_BACKEND_PREFIX = "apibackend"
-
-  [<Literal>]
-  let API_CLIENT_PREFIX = "apiclient"
-
-  [<Literal>]
-  let RAFT_BACKEND_PREFIX = "raftbackend"
-
+  
   //  ____        __ _
   // |  _ \ __ _ / _| |_
   // | |_) / _` | |_| __|
@@ -132,6 +116,15 @@ module Constants =
   [<Literal>]
   let DEFAULT_MCAST_PORT = 5555us
 
+  [<Literal>]
+  let DEFAULT_METRICS_HOST = "127.0.0.1"
+
+  [<Literal>]
+  let DEFAULT_METRICS_PORT = 3000us
+
+  [<Literal>]
+  let DEFAULT_METRICS_DB = "disco"
+  
   [<Literal>]
   let ADMIN_USER_NAME = "admin"
 

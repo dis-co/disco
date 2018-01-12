@@ -150,11 +150,19 @@ module Generators =
       let! gp = portGen
       let! ap = portGen
       let! vs = versionGen
+      let! cm = boolGen
+      let! mh = ipGen
+      let! mhp = portGen
+      let! mdb = stringGen
       return {
         MachineId = id
         HostName = hn
         WorkSpace = wrksp
         LogDirectory = logpth
+        CollectMetrics = cm
+        MetricsHost = mh
+        MetricsPort = mhp 
+        MetricsDb = mdb
         AssetDirectory = assetpth
         AssetFilter = assetFilter
         MulticastAddress = mcst
@@ -1390,6 +1398,8 @@ module Generators =
   // /_/   \_\_|  |_.__/|_|\__|_|  \__,_|_|   \__, |
   //                                          |___/
 
+  let machineArb = Arb.fromGen machineGen
+  
   let changeArb = Arb.fromGen changesGen
   let raftRequestArb = Arb.fromGen raftRequestGen
   let raftResponseArb = Arb.fromGen raftResponseGen
