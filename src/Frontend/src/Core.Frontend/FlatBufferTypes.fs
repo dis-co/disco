@@ -110,6 +110,10 @@ type DiscoMachineFB =
   abstract HostName: string
   abstract WorkSpace: string
   abstract LogDirectory: string
+  abstract CollectMetrics: bool
+  abstract MetricsHost: string
+  abstract MetricsPort: uint16
+  abstract MetricsDb: string
   abstract AssetDirectory: string
   abstract AssetFilter: string
   abstract BindAddress: string
@@ -129,6 +133,10 @@ type DiscoMachineFBConstructor =
   abstract AddHostName: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddWorkSpace: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddLogDirectory: builder: FlatBufferBuilder * key: Offset<string> -> unit
+  abstract AddCollectMetrics: builder: FlatBufferBuilder * on: bool -> unit
+  abstract AddMetricsHost: builder: FlatBufferBuilder * host: Offset<string> -> unit
+  abstract AddMetricsPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddMetricsDb: builder: FlatBufferBuilder * db: Offset<string> -> unit
   abstract AddAssetDirectory: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddAssetFilter: builder: FlatBufferBuilder * key: Offset<string> -> unit
   abstract AddBindAddress: builder: FlatBufferBuilder * key: Offset<string> -> unit

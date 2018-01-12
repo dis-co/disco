@@ -115,6 +115,9 @@
     <Compile Include="..\..\Disco\Core\Logging.fs">
       <Link>Logging.fs</Link>
     </Compile>
+    <Compile Include="..\..\Disco\Core\Metrics.fs">
+      <Link>Metrics.fs</Link>
+    </Compile>
     <Compile Include="..\..\Disco\Core\Tracing.fs">
       <Link>Tracing.fs</Link>
     </Compile>
