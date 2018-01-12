@@ -15,6 +15,12 @@ open System.Threading
 [<AutoOpen>]
 module SerializationTests =
 
+  let test_binary_machine =
+    testCase "DiscoMachine binary serialization should work" <| fun _ ->
+      binaryEncDec<DiscoMachine> 
+      |> Prop.forAll Generators.machineArb
+      |> Check.QuickThrowOnFailure 
+
   ///  _____    ___        __
   /// |  ___|__|_ _|_ __  / _| ___
   /// | |_ / __|| || '_ \| |_ / _ \
@@ -590,6 +596,8 @@ module SerializationTests =
 
   let serializationTests =
     ftestList "Serialization Tests" [
+      test_binary_machine
+      test_yaml_machine
       test_binary_pingroup_map
       test_binary_referenced_value
       test_yaml_referenced_value

@@ -34,6 +34,10 @@ type DiscoMachine =
     AssetDirectory:   FilePath
     AssetFilter:      string
     LogDirectory:     FilePath
+    CollectMetrics:   bool
+    MetricsHost:      IpAddress
+    MetricsPort:      Port
+    MetricsDb:        string
     BindAddress:      IpAddress
     MulticastAddress: IpAddress
     MulticastPort:    Port
@@ -126,6 +130,9 @@ type DiscoMachine =
     let hostname = machine.HostName |> unwrap |> mapNull
     let machineid = DiscoMachineFB.CreateMachineIdVector(builder, machine.MachineId.ToByteArray())
     let version = machine.Version |> unwrap |> mapNull
+    let metricsHost = machine.MetricsHost |> string |> builder.CreateString
+    let metricsDb = machine.MetricsDb |> mapNull
+
     DiscoMachineFB.StartDiscoMachineFB(builder)
     DiscoMachineFB.AddMachineId(builder, machineid)
     Option.iter (fun value -> DiscoMachineFB.AddHostName(builder, value)) hostname
@@ -133,6 +140,10 @@ type DiscoMachine =
     Option.iter (fun value -> DiscoMachineFB.AddLogDirectory(builder, value)) logdir
     Option.iter (fun value -> DiscoMachineFB.AddAssetDirectory(builder, value)) assetdir
     Option.iter (fun value -> DiscoMachineFB.AddAssetFilter(builder, value)) assetFilter
+    DiscoMachineFB.AddCollectMetrics(builder, machine.CollectMetrics)
+    DiscoMachineFB.AddMetricsHost(builder, metricsHost)
+    Option.iter (fun value -> DiscoMachineFB.AddMetricsDb(builder, value)) metricsDb
+    DiscoMachineFB.AddMetricsPort(builder, unwrap machine.MetricsPort)
     DiscoMachineFB.AddMulticastAddress(builder, mcastip)
     DiscoMachineFB.AddMulticastPort(builder, unwrap machine.MulticastPort)
     DiscoMachineFB.AddBindAddress(builder, webip)
@@ -150,6 +161,7 @@ type DiscoMachine =
     either {
       let! machineId = Id.decodeMachineId fb
       let! ip = IpAddress.TryParse fb.BindAddress
+      let! metricsHost = IpAddress.TryParse fb.MetricsHost
       let! mcastip = IpAddress.TryParse fb.MulticastAddress
       return {
         MachineId        = machineId
@@ -157,6 +169,10 @@ type DiscoMachine =
         AssetDirectory   = filepath fb.AssetDirectory
         AssetFilter      = fb.AssetFilter
         LogDirectory     = filepath fb.LogDirectory
+        CollectMetrics   = fb.CollectMetrics
+        MetricsHost      = metricsHost
+        MetricsPort      = port fb.MetricsPort
+        MetricsDb        = fb.MetricsDb
         HostName         = name fb.HostName
         BindAddress      = ip
         MulticastAddress = mcastip
@@ -170,12 +186,29 @@ type DiscoMachine =
       }
     }
 
+
+  // *** ToBytes
+
+  member machine.ToBytes() = Binary.buildBuffer machine
+
+  // *** FromBytes
+
+  static member FromBytes(bytes: byte[]) =
+    bytes
+    |> Binary.createBuffer
+    |> DiscoMachineFB.GetRootAsDiscoMachineFB
+    |> DiscoMachine.FromFB
+
   // ** Default
 
   static member Default
     with get () =
       { MachineId        = DiscoId.Create()
         HostName         = name "<empty>"
+        CollectMetrics   = false
+        MetricsHost      = IPv4Address Constants.DEFAULT_METRICS_HOST
+        MetricsPort      = port Constants.DEFAULT_METRICS_PORT
+        MetricsDb        = Constants.DEFAULT_METRICS_DB
         #if FABLE_COMPILER
         WorkSpace        = filepath "/dev/null"
         LogDirectory     = filepath "/dev/null"
@@ -205,6 +238,13 @@ type DiscoMachineYaml () =
   [<DefaultValue>] val mutable AssetDirectory:   string
   [<DefaultValue>] val mutable AssetFilter:      string
   [<DefaultValue>] val mutable LogDirectory:     string
+  [<DefaultValue>] val mutable CollectMetrics:   bool
+  
+  [<DefaultValue>] val mutable MetricsHost:      string
+
+  [<DefaultValue>] val mutable MetricsPort:      uint16
+
+  [<DefaultValue>] val mutable MetricsDb:        string
   [<DefaultValue>] val mutable BindAddress:      string
   [<DefaultValue>] val mutable MulticastAddress: string
   [<DefaultValue>] val mutable MulticastPort:    uint16
@@ -223,6 +263,10 @@ type DiscoMachineYaml () =
     yml.AssetDirectory   <- unwrap cfg.AssetDirectory
     yml.AssetFilter      <- cfg.AssetFilter
     yml.LogDirectory     <- unwrap cfg.LogDirectory
+    yml.CollectMetrics   <- cfg.CollectMetrics
+    yml.MetricsHost      <- string cfg.MetricsHost
+    yml.MetricsPort      <- unwrap cfg.MetricsPort  
+    yml.MetricsDb        <- cfg.MetricsDb 
     yml.BindAddress      <- string cfg.BindAddress
     yml.MulticastAddress <- string cfg.MulticastAddress
     yml.MulticastPort    <- unwrap cfg.MulticastPort
@@ -404,6 +448,7 @@ module MachineConfig =
   let private parse (yml: DiscoMachineYaml) : Either<DiscoError,DiscoMachine> =
     either {
       let! ip = IpAddress.TryParse yml.BindAddress
+      let! metricsHost = IpAddress.TryParse yml.MetricsHost
       let! id = DiscoId.TryParse yml.MachineId
       let! mcastip = IpAddress.TryParse yml.MulticastAddress
       return {
@@ -413,6 +458,10 @@ module MachineConfig =
         AssetDirectory   = filepath yml.AssetDirectory
         AssetFilter      = yml.AssetFilter
         LogDirectory     = filepath yml.LogDirectory
+        CollectMetrics   = yml.CollectMetrics
+        MetricsHost      = metricsHost
+        MetricsPort      = port yml.MetricsPort
+        MetricsDb        = yml.MetricsDb
         BindAddress      = ip
         MulticastAddress = mcastip
         MulticastPort    = port yml.MulticastPort
@@ -484,6 +533,10 @@ module MachineConfig =
       AssetDirectory   = assetDir
       AssetFilter      = Constants.DEFAULT_ASSET_FILTER
       LogDirectory     = logDir
+      CollectMetrics   = false
+      MetricsHost      = IPv4Address Constants.DEFAULT_METRICS_HOST
+      MetricsPort      = port Constants.DEFAULT_METRICS_PORT
+      MetricsDb        = Constants.DEFAULT_METRICS_DB
       BindAddress      = IpAddress.Parse bindIp
       MulticastAddress = IpAddress.Parse Constants.DEFAULT_MCAST_ADDRESS
       MulticastPort    = port Constants.DEFAULT_MCAST_PORT

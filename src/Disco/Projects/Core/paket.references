@@ -10,3 +10,4 @@ Newtonsoft.Json
 Fable.JsonConverter
 Disruptor
 Aether
+InfluxDB.Collector

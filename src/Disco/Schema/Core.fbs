@@ -67,6 +67,10 @@ table DiscoMachineFB {
       AssetDirectory: string;
       AssetFilter: string;
       LogDirectory: string;
+      CollectMetrics: bool;
+      MetricsHost: string;
+      MetricsPort: ushort;
+      MetricsDb: string;
       MulticastAddress: string;
       MulticastPort: ushort;
       BindAddress: string;
