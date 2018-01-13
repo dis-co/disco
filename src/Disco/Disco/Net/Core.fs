@@ -1,3 +1,10 @@
+(*
+ *  This file is part of Distributed Show Control
+ *
+ *  Copyright 2015, 2018 by it's authors.
+ *  Some rights reserved. See COPYING, AUTHORS.
+ *)
+
 namespace rec Disco.Net
 
 #nowarn "52" // "this value has been copied"
