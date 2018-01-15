@@ -1005,28 +1005,8 @@ module rec RaftServer =
   ///
   /// Returns: CancellationTokenSource
   let private startPeriodic (interval: int) (agent: RaftAgent) : IDisposable =
-    let cts = new CancellationTokenSource()
-
-    let loop (inbox: MailboxProcessor<unit>) =
-      let rec loop n =
-        async {
-          inbox.Post()                  // kick the machine
-          let! _ = inbox.Receive()
-          agent.Post(Msg.Periodic)
-          do! Async.Sleep(interval) // sleep for inverval (ms)
-          return! loop (n + 1)
-        }
-      loop 0
-
-    let mbp = MailboxProcessor.Start(loop, cts.Token)
-
-    { new IDisposable with
-        member self.Dispose() =
-          try
-            cts.Cancel()
-            dispose cts
-          finally
-            dispose mbp }
+    Periodically.run interval <| fun () ->
+      agent.Post(Msg.Periodic)
 
   // ** handleJoin
 
@@ -1493,15 +1473,10 @@ module rec RaftServer =
 
   // ** startMetrics
 
-  let private startMetrics (agent:RaftAgent)  (cts: CancellationTokenSource) =
-    let rec loop () =
-      async {
-        do! Async.Sleep(1000)
-        let count = agent.CurrentQueueLength
-        do Metrics.collect "raft_agent_message_count" count
-        return! loop()
-      }
-    Async.Start(loop(), cts.Token)
+  let private startMetrics (agent:RaftAgent) =
+    Periodically.run 1000 <| fun () ->
+      let count = agent.CurrentQueueLength
+      do Metrics.collect "raft_agent_message_count" count
 
   // ** create
 
@@ -1539,15 +1514,14 @@ module rec RaftServer =
               Tracing.trace (tag "Start") <| fun () ->
                 if store.State.Status = ServiceStatus.Stopped then
                   let server = TcpServer.create {
-                      ServerId = raftState.Member.Id
-                      Listen = raftState.Member.IpAddress
-                      Port = raftState.Member.RaftPort
-                    }
+                    ServerId = raftState.Member.Id
+                    Listen = raftState.Member.IpAddress
+                    Port = raftState.Member.RaftPort
+                  }
 
-                  agent.Start()       // we must start the agent, so the dispose logic will work
-                                      // as expected
-
-                  do startMetrics agent cts
+                  // we must start the agent, so the dispose logic will work as expected
+                  do agent.Start()
+                  let metrics = startMetrics agent
 
                   match server.Start() with
                   | Right () ->
@@ -1568,7 +1542,7 @@ module rec RaftServer =
                     store.Update
                       { store.State with
                           Server = server
-                          Disposables = [ srvobs ] }
+                          Disposables = [ srvobs; metrics ] }
 
                     agent.Post Msg.Start // kick it off
 

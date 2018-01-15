@@ -16,13 +16,44 @@ type IActor<'a> =
   abstract Start: unit -> unit
   abstract CurrentQueueLength: int
 
+// * Periodically
+
+module Periodically =
+
+  let run interval (task: unit -> unit) =
+    let cts = new CancellationTokenSource()
+    let rec _runner () =
+      async {
+        do task ()
+        do! Async.Sleep(interval)
+        return! _runner ()
+      }
+    Async.Start(_runner(),cts.Token)
+    { new IDisposable with
+      member self.Dispose() =
+        cts.Cancel()
+        dispose cts }
+
+// * Continuously
+
+module Continuously =
+
+  let run (f: unit -> bool) =
+    let mutable run = true
+    let thread = Thread(ThreadStart(fun () ->
+      try while run do run <- f()
+      with
+        | :? ThreadAbortException -> ()
+        | exn -> printfn "Continously: %A" exn))
+    thread.IsBackground <- true
+    thread.Start()
+    { new IDisposable with
+      member self.Dispose () =
+        run <- false }
+
 // * Actor
 
 module Actor =
-
-  // ** tag
-
-  let private tag (str: string) = String.format "MailboxProcessor.{0}" str
 
   // ** warnQueueLength
 

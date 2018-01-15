@@ -84,27 +84,24 @@ module rec TcpClient =
   // | | |  __/ (_|  __/ |\ V /| | | | | (_| |
   // |_|  \___|\___\___|_| \_/ |_|_| |_|\__, |
   //                                    |___/
-  let private receiveLoop (state: IState) =
-    async {
-      let mutable run = true
-      while run do
-        try
-          let result = state.Stream.ReadByte()
-          if result <> -1
-          then result |> byte |> state.ResponseBuilder.Write
-          else
-            "Reached end of Stream. Disconnected"
-            |> Error.asSocketError (tag "receiveLoop")
-            |> handleError state
-            run <- false
-        with
-          | :? IOException -> run <- false
-          | exn ->
-            exn.Message
-            |> Error.asSocketError (tag "receiveLoop")
-            |> handleError state
-            run <- false
-    }
+  let private receiveLoop (state: IState) () =
+    try
+      let result = state.Stream.ReadByte()
+      if result <> -1 then
+        result |> byte |> state.ResponseBuilder.Write
+        true
+      else
+        "Reached end of Stream. Disconnected"
+        |> Error.asSocketError (tag "receiveLoop")
+        |> handleError state
+        false
+    with
+      | :? IOException -> false
+      | exn ->
+        exn.Message
+        |> Error.asSocketError (tag "receiveLoop")
+        |> handleError state
+        false
 
   // ** makeState
 
@@ -135,6 +132,7 @@ module rec TcpClient =
         |> Observable.onNext subscriptions
 
     let mutable sender = Unchecked.defaultof<IActor<byte[]>>
+    let mutable receiver = Unchecked.defaultof<IDisposable>
 
     { new IState with
       member state.Status
@@ -167,8 +165,8 @@ module rec TcpClient =
       member state.StartReceiving() =
         stream <- new NetworkStream(client)
         sender <- Actor.create (sendLoop state)
+        receiver <- Continuously.run (receiveLoop state)
         sender.Start()
-        Async.Start(receiveLoop state, cts.Token)
 
       member state.Dispose() =
         if not cts.IsCancellationRequested then
@@ -176,6 +174,7 @@ module rec TcpClient =
           for KeyValue(id,_) in pending.ToArray() do
             pending.TryRemove(id) |> ignore
           dispose builder
+          tryDispose receiver ignore
           tryDispose sender ignore
           tryDispose stream ignore
           dispose client

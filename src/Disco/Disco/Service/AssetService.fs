@@ -292,12 +292,8 @@ module AssetService =
 
   // ** flushClock
 
-  let rec private flushClock agent =
-    async {
-      do! Async.Sleep(2000)
-      do post agent Msg.Flush
-      return! flushClock agent
-    }
+  let private flushClock agent () =
+    do post agent Msg.Flush
 
   // ** create
 
@@ -319,12 +315,13 @@ module AssetService =
 
       let agent = Actor.create (loop store)
       let watcher = createWatcher machine.AssetDirectory agent
+      let mutable flusher = Unchecked.defaultof<IDisposable>
 
       return {
         new IAssetService with
           member self.Start() =
             agent.Start()
-            Async.Start(flushClock agent, cts.Token)
+            flusher <- Periodically.run 2000 (flushClock agent)
             agent
             |> startCrawler machine
             |> Either.succeed
@@ -338,6 +335,7 @@ module AssetService =
 
           member self.Dispose() =
             try
+              dispose flusher
               dispose watcher
               cts.Cancel()
               dispose agent
