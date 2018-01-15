@@ -146,38 +146,36 @@ module AssetService =
   // ** loop
 
   let private loop (store: IAgentStore<AssetServiceState>) inbox msg =
-    async {
-      let state = store.State
-      match msg with
-      | Msg.Command(AddFsTree tree as ev) ->
-        ev
-        |> DiscoEvent.appendService
-        |> Observable.onNext state.Subscriptions
-        updateFiles state (Some tree)
-      | Msg.Fs(FileSystemEvent.Created(_,path) as update) ->
-        state.Files
-        |> Option.map (FsTree.add path)
-        |> updateFiles state
-        |> addUpdate update
-      | Msg.Fs(FileSystemEvent.Changed(_,path) as update) ->
-        state.Files
-        |> Option.map (FsTree.update path)
-        |> updateFiles state
-        |> addUpdate update
-      | Msg.Fs(FileSystemEvent.Deleted(_,path) as update) ->
-        state.Files
-        |> Option.map (FsTree.remove path)
-        |> updateFiles state
-        |> addUpdate update
-      | Msg.Fs(FileSystemEvent.Renamed(_,oldpath,_,path) as update) ->
-        state.Files
-        |> Option.map (FsTree.remove oldpath >> FsTree.add path)
-        |> updateFiles state
-        |> addUpdate update
-      | Msg.Flush -> flushUpdates state
-      | _ -> state
-      |> store.Update
-    }
+    let state = store.State
+    match msg with
+    | Msg.Command(AddFsTree tree as ev) ->
+      ev
+      |> DiscoEvent.appendService
+      |> Observable.onNext state.Subscriptions
+      updateFiles state (Some tree)
+    | Msg.Fs(FileSystemEvent.Created(_,path) as update) ->
+      state.Files
+      |> Option.map (FsTree.add path)
+      |> updateFiles state
+      |> addUpdate update
+    | Msg.Fs(FileSystemEvent.Changed(_,path) as update) ->
+      state.Files
+      |> Option.map (FsTree.update path)
+      |> updateFiles state
+      |> addUpdate update
+    | Msg.Fs(FileSystemEvent.Deleted(_,path) as update) ->
+      state.Files
+      |> Option.map (FsTree.remove path)
+      |> updateFiles state
+      |> addUpdate update
+    | Msg.Fs(FileSystemEvent.Renamed(_,oldpath,_,path) as update) ->
+      state.Files
+      |> Option.map (FsTree.remove oldpath >> FsTree.add path)
+      |> updateFiles state
+      |> addUpdate update
+    | Msg.Flush -> flushUpdates state
+    | _ -> state
+    |> store.Update
 
   // ** post
 
@@ -310,7 +308,7 @@ module AssetService =
         Subscriptions = subscriptions
       }
 
-      let agent = Actor.create "AssetService" (loop store)
+      let agent = ThreadActor.create "AssetService" (loop store)
       let watcher = createWatcher machine.AssetDirectory agent
       let mutable flusher = Unchecked.defaultof<IDisposable>
       let metrics = Periodically.run 1000 <| fun () ->

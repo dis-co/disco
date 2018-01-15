@@ -1435,42 +1435,40 @@ module rec RaftServer =
   // ** loop
 
   let private loop (store: IAgentStore<RaftServerState>) (inbox: RaftAgent) cmd =
-    async {
-      try
-        let state = store.State
-        let newstate =
-          match cmd with
-          | Msg.Start                         -> handleStart          state inbox
-          | Msg.Started                       -> handleStarted        state
-          | Msg.Stop                          -> handleStop           state inbox
-          | Msg.Stopped                       -> handleStopped        state
-          | Msg.Notify              ev        -> handleNotify         state ev
-          | Msg.Periodic                      -> handlePeriodic       state
-          | Msg.ForceElection                 -> handleForceElection  state inbox
-          | Msg.AddCmd             cmd        -> handleAddCmd         state inbox cmd
-          | Msg.AddMember          mem        -> handleAddMember      state inbox mem
-          | Msg.RemoveMember        id        -> handleRemoveMember   state inbox id
-          | Msg.ServerEvent         ev        -> handleServerEvent    state inbox ev
-          | Msg.ClientEvent         ev        -> handleClientEvent    state inbox ev
-          | Msg.RawServerResponse   response  -> handleServerResponse state inbox response
-          | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state inbox ts entry raw
-          // | Msg.Join        (ip, port)        -> handleJoin          state ip port
-          // | Msg.Leave                         -> handleLeave         state
+    try
+      let state = store.State
+      let newstate =
+        match cmd with
+        | Msg.Start                         -> handleStart          state inbox
+        | Msg.Started                       -> handleStarted        state
+        | Msg.Stop                          -> handleStop           state inbox
+        | Msg.Stopped                       -> handleStopped        state
+        | Msg.Notify              ev        -> handleNotify         state ev
+        | Msg.Periodic                      -> handlePeriodic       state
+        | Msg.ForceElection                 -> handleForceElection  state inbox
+        | Msg.AddCmd             cmd        -> handleAddCmd         state inbox cmd
+        | Msg.AddMember          mem        -> handleAddMember      state inbox mem
+        | Msg.RemoveMember        id        -> handleRemoveMember   state inbox id
+        | Msg.ServerEvent         ev        -> handleServerEvent    state inbox ev
+        | Msg.ClientEvent         ev        -> handleClientEvent    state inbox ev
+        | Msg.RawServerResponse   response  -> handleServerResponse state inbox response
+        | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state inbox ts entry raw
+        // | Msg.Join        (ip, port)        -> handleJoin          state ip port
+        // | Msg.Leave                         -> handleLeave         state
 
-        // once we received the signal to stop we don't allow any more updates to the state to get
-        // a consistent result in the Dispose method (due to possibly queued up messages on the
-        // actors queue)
-        if not (Service.isStopping newstate.Status) then
-          store.Update newstate
-      with exn ->
-        String.Format(
-          "Message: {0}\nStackTrace: {1}\nInner Message: {2}\n Inner StackTrace: {3}",
-          exn.Message,
-          exn.StackTrace,
-          exn.InnerException.Message,
-          exn.InnerException.StackTrace)
-        |> Logger.err (tag "loop")
-    }
+      // once we received the signal to stop we don't allow any more updates to the state to get
+      // a consistent result in the Dispose method (due to possibly queued up messages on the
+      // actors queue)
+      if not (Service.isStopping newstate.Status) then
+        store.Update newstate
+    with exn ->
+      String.Format(
+        "Message: {0}\nStackTrace: {1}\nInner Message: {2}\n Inner StackTrace: {3}",
+        exn.Message,
+        exn.StackTrace,
+        exn.InnerException.Message,
+        exn.InnerException.StackTrace)
+      |> Logger.err (tag "loop")
 
   // ** create
 
@@ -1480,7 +1478,7 @@ module rec RaftServer =
       let connections = new Connections()
       let store = AgentStore.create()
 
-      let agent = Actor.create "RaftServer" (loop store)
+      let agent = ThreadActor.create "RaftServer" (loop store)
       let metrics = Periodically.run 1000 <| fun () ->
         Metrics.collect Constants.METRIC_RAFT_SERVICE_QUEUE agent.CurrentQueueLength
 

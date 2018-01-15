@@ -81,11 +81,9 @@ module Resolver =
   // ** loop
 
   let private loop (store: ResolverStore) inbox msg =
-    async {
-      store.State
-      |> handleMessage msg
-      |> store.Update
-    }
+    store.State
+    |> handleMessage msg
+    |> store.Update
 
   // ** create
 
@@ -99,7 +97,7 @@ module Resolver =
       Subscriptions = subscriptions
     }
 
-    let agent = Actor.create "Resolver" (loop store)
+    let agent = ThreadActor.create "Resolver" (loop store)
     let metrics = Periodically.run 1000 <| fun () ->
       Metrics.collect Constants.METRIC_RESOLVER_SERVICE_QUEUE agent.CurrentQueueLength
 

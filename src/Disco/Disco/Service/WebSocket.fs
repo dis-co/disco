@@ -246,8 +246,8 @@ module WebSocketServer =
 
   // ** loop
 
-  let private loop (subscriptions: Subscriptions) _ msg =
-    async { Observable.onNext subscriptions msg }
+  let private loop (subscriptions: Subscriptions) _ =
+    Observable.onNext subscriptions
 
   // ** broadcast
 
@@ -267,7 +267,7 @@ module WebSocketServer =
       let connections = Connections()
       let subscriptions = Subscriptions()
 
-      let agent = Actor.create "WebSocketServer" (loop subscriptions)
+      let agent = ThreadActor.create "WebSocketServer" (loop subscriptions)
       let metrics = Periodically.run 1000 <| fun () ->
         Metrics.collect Constants.METRIC_WEBSOCKET_SERVICE_QUEUE agent.CurrentQueueLength
 

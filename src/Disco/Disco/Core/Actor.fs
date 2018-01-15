@@ -68,6 +68,11 @@ module Actor =
       |> String.format "Queue length threshold was reached: {0}"
       |> printfn "[WARNING-%s]: %s" t
 
+
+// * AsyncActor
+
+module AsyncActor =
+
   // ** loop
 
   let private loop<'a> tag actor (f: AsyncActorTask<'a>) (inbox: MailboxProcessor<'a>) =
@@ -75,7 +80,7 @@ module Actor =
       async {
         let! msg = inbox.Receive()
         do! f actor msg
-        do warnQueueLength tag actor
+        do Actor.warnQueueLength tag actor
         return! _loop ()
       }
     _loop ()
@@ -126,9 +131,3 @@ module ThreadActor =
       member actor.Post value = try queue.Add value with _ -> ()
       member actor.CurrentQueueLength = try queue.Count with _ -> 0
       member actor.Dispose() = tryDispose queue ignore }
-
-
-/// let actor = ThreadActor.create "Test" (fun _ () -> printfn "msg")
-/// actor.Start()
-/// actor.Post ()
-/// actor.Dispose()

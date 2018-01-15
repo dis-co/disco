@@ -272,23 +272,21 @@ module DiscoveryService =
   // ** loop
 
   let private loop (store: IAgentStore<DiscoveryState>) inbox msg =
-    async {
-      let state = store.State
-      let newstate =
-        match msg with
-        | Msg.Stop              are  -> handleStop        state inbox are
-        | Msg.Start                  -> handleStart       state inbox
-        | Msg.Register      project  -> handleRegister    state inbox project
-        | Msg.UnRegister             -> handleUnRegister  state inbox
-        | Msg.RegisterErr (error,_)  -> handleRegisterErr state error
-        | Msg.Discovered srvc        -> handleDiscovery   state inbox srvc
-        | Msg.Vanished id            -> handleVanishing   state inbox id
-        | Msg.Notify ev              -> handleNotify      state       ev
-      store.Update newstate
-      /// if Service.isStopping newstate.Status then
-      ///   printfn "DiscoveryService"
-      /// else
-    }
+    let state = store.State
+    let newstate =
+      match msg with
+      | Msg.Stop              are  -> handleStop        state inbox are
+      | Msg.Start                  -> handleStart       state inbox
+      | Msg.Register      project  -> handleRegister    state inbox project
+      | Msg.UnRegister             -> handleUnRegister  state inbox
+      | Msg.RegisterErr (error,_)  -> handleRegisterErr state error
+      | Msg.Discovered srvc        -> handleDiscovery   state inbox srvc
+      | Msg.Vanished id            -> handleVanishing   state inbox id
+      | Msg.Notify ev              -> handleNotify      state       ev
+    store.Update newstate
+    /// if Service.isStopping newstate.Status then
+    ///   printfn "DiscoveryService"
+    /// else
 
   // ** startBrowser
 
@@ -310,7 +308,7 @@ module DiscoveryService =
     }
 
     let store = AgentStore.create()
-    let agent = Actor.create "DiscoverService" (loop store)
+    let agent = ThreadActor.create "DiscoverService" (loop store)
     let metrics = Periodically.run 1000 <| fun () ->
       Metrics.collect Constants.METRIC_DISCO_SERVICE_QUEUE agent.CurrentQueueLength
 

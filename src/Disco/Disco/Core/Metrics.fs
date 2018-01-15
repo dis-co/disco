@@ -30,11 +30,10 @@ module Metrics =
         | Some _ -> Either.nothing
         | None ->
           let collector = createCollector config
-          let actor = Actor.create "Metrics" (fun inbox (name,value) -> async {
+          let actor = ThreadActor.create "Metrics" (fun inbox (name,value) ->
               let values = Dictionary<string,obj>()
               do values.Add(name, value)
-              do collector.Write(name, values)
-            })
+              do collector.Write(name, values))
           agent <- Some actor
           Either.nothing
       else Either.nothing

@@ -458,31 +458,29 @@ module ApiServer =
   // ** loop
 
   let private loop (store: IAgentStore<ServerState>) inbox (msg: Msg) =
-    async {
-      try
-        let state = store.State
-        let newstate =
-          try
-            match msg with
-            | Msg.Start                       -> handleStart state
-            | Msg.Stop                        -> handleStop state
-            | Msg.AddClient(client)           -> handleAddClient state client inbox
-            | Msg.RemoveClient(client)        -> handleRemoveClient state client
-            | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
-            | Msg.SetStatus(status)           -> handleSetStatus state status
-            | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id
-            | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
-            | Msg.ServerEvent(ev)             -> handleServerEvent state ev inbox
-          with
-            | exn ->
-              exn.Message + exn.StackTrace
-              |> String.format "Error in loop: {0}"
-              |> Logger.err (tag "loop")
-              state
-        if not (Service.isStopping newstate.Status) then
-          store.Update newstate
-      with exn -> Logger.err (tag "loop") exn.Message
-    }
+    try
+      let state = store.State
+      let newstate =
+        try
+          match msg with
+          | Msg.Start                       -> handleStart state
+          | Msg.Stop                        -> handleStop state
+          | Msg.AddClient(client)           -> handleAddClient state client inbox
+          | Msg.RemoveClient(client)        -> handleRemoveClient state client
+          | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
+          | Msg.SetStatus(status)           -> handleSetStatus state status
+          | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id
+          | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
+          | Msg.ServerEvent(ev)             -> handleServerEvent state ev inbox
+        with
+          | exn ->
+            exn.Message + exn.StackTrace
+            |> String.format "Error in loop: {0}"
+            |> Logger.err (tag "loop")
+            state
+      if not (Service.isStopping newstate.Status) then
+        store.Update newstate
+    with exn -> Logger.err (tag "loop") exn.Message
 
   // ** start
 
@@ -544,7 +542,7 @@ module ApiServer =
         Stopper = new AutoResetEvent(false)
       }
 
-      let agent = Actor.create "ApiServer" (loop store)
+      let agent = ThreadActor.create "ApiServer" (loop store)
       let metrics = Periodically.run 1000 <| fun () ->
         Metrics.collect Constants.METRIC_API_SERVICE_QUEUE agent.CurrentQueueLength
 

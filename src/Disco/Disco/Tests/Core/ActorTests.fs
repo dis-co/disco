@@ -24,9 +24,9 @@ module ActorTests =
   let test_actor_properly =
     testCase "actor disposes properly" <| fun _ ->
       either {
-        let actor = Actor.create "test" <| fun actor -> function
-          | "done" -> async { dispose actor }
-          | msg -> async { ignore msg }
+        let actor = ThreadActor.create "test" <| fun actor -> function
+          | "done" -> dispose actor
+          | msg -> ignore msg
         do actor.Start()
         do ignore [ for n in 0 .. 9 -> actor.Post (string n) ]
         do actor.Post "done"
