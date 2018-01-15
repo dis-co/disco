@@ -148,6 +148,9 @@
     <Compile Include="..\..\Disco\Tests\Core\AssetServiceTests.fs">
       <Link>AssetServiceTests.fs</Link>
     </Compile>
+    <Compile Include="..\..\Disco\Tests\Core\ActorTests.fs">
+      <Link>ActorTests.fs</Link>
+    </Compile>
     <Compile Include="..\..\Disco\Tests\Core\NetTests.fs">
       <Link>NetTests.fs</Link>
     </Compile>

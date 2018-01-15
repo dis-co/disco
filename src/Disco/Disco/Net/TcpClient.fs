@@ -69,19 +69,14 @@ module rec TcpClient =
   // \__ \  __/ | | | (_| | | | | | (_| |
   // |___/\___|_| |_|\__,_|_|_| |_|\__, |
   //                               |___/
-  let private sendLoop (state: IState) (inbox: MailboxProcessor<byte array>) =
-    let rec sendLoopImpl () = async {
-      let! msg = inbox.Receive()
+  let private sendLoop (state: IState) inbox msg = async {
       try
         do state.Stream.Write(msg, 0, msg.Length)
-        return! sendLoopImpl ()
-      with
-        | exn ->
-          exn.Message
-          |> Error.asSocketError (tag "sendLoop")
-          |> handleError state
+      with exn ->
+        exn.Message
+        |> Error.asSocketError (tag "sendLoop")
+        |> handleError state
     }
-    sendLoopImpl ()
 
   //                    _       _
   //  _ __ ___  ___ ___(_)_   _(_)_ __   __ _
@@ -139,69 +134,52 @@ module rec TcpClient =
         |> TcpClientEvent.Request
         |> Observable.onNext subscriptions
 
-    let mutable sender = Unchecked.defaultof<MailboxProcessor<byte[]>>
+    let mutable sender = Unchecked.defaultof<IActor<byte[]>>
 
     { new IState with
-        member state.Status
-          with get () = status
-          and set st = status <- st
+      member state.Status
+        with get () = status
+        and set st = status <- st
+      member state.ClientId = options.ClientId
+      member state.ConnectionId = guid
+      member state.Socket = client
+      member state.Stream = stream
+      member state.EndPoint = endpoint
+      member state.PendingRequests = pending
+      member state.Disposed = cts.IsCancellationRequested
+      member state.ResponseBuilder = builder
+      member state.Subscriptions = subscriptions
 
-        member state.ClientId
-          with get () = options.ClientId
+      member state.Request (request: Request) =
+        // this socket is asking something, so we need to track this in pending requests
+        do request.RequestId
+            |> sprintf "sending to %A (id: %A)" request.PeerId
+            |> Logger.debug (tag "Request")
+        do pending.TryAdd(request.RequestId, request) |> ignore
+        do request |> RequestBuilder.serialize |> sender.Post
 
-        member state.ConnectionId
-          with get () = guid
+      member state.Respond (response: Response) =
+        do response.RequestId
+            |> sprintf "sending to %A (id: %A)" response.PeerId
+            |> Logger.debug (tag "Respond")
+        do response |> RequestBuilder.serialize |> sender.Post
 
-        member state.Socket
-          with get () = client
+      member state.StartReceiving() =
+        stream <- new NetworkStream(client)
+        sender <- Actor.create (sendLoop state)
+        sender.Start()
+        Async.Start(receiveLoop state, cts.Token)
 
-        member state.Stream
-          with get () = stream
-
-        member state.EndPoint
-          with get () = endpoint
-
-        member state.PendingRequests
-          with get () = pending
-
-        member state.Disposed
-          with get () = cts.IsCancellationRequested
-
-        member state.ResponseBuilder
-          with get () = builder
-
-        member state.Subscriptions
-          with get () = subscriptions
-
-        member state.Request (request: Request) =
-          // this socket is asking something, so we need to track this in pending requests
-          do request.RequestId
-             |> sprintf "sending to %A (id: %A)" request.PeerId
-             |> Logger.debug (tag "Request")
-          do pending.TryAdd(request.RequestId, request) |> ignore
-          do request |> RequestBuilder.serialize |> sender.Post
-
-        member state.Respond (response: Response) =
-          do response.RequestId
-             |> sprintf "sending to %A (id: %A)" response.PeerId
-             |> Logger.debug (tag "Respond")
-          do response |> RequestBuilder.serialize |> sender.Post
-
-        member state.StartReceiving() =
-          stream <- new NetworkStream(client)
-          sender <- new MailboxProcessor<byte[]>(sendLoop state, cts.Token)
-          sender.Start()
-          Async.Start(receiveLoop state, cts.Token)
-
-        member state.Dispose() =
-          if not cts.IsCancellationRequested then
-            try cts.Cancel() with | _ -> ()
-            for KeyValue(id,_) in pending.ToArray() do
-              pending.TryRemove(id) |> ignore
-            dispose builder
-            tryDispose stream ignore
-            dispose client
-            status <- ServiceStatus.Disposed
+      member state.Dispose() =
+        if not cts.IsCancellationRequested then
+          try cts.Cancel() with | _ -> ()
+          for KeyValue(id,_) in pending.ToArray() do
+            pending.TryRemove(id) |> ignore
+          dispose builder
+          tryDispose sender ignore
+          tryDispose stream ignore
+          dispose client
+          status <- ServiceStatus.Disposed
       }
 
   // ** onError

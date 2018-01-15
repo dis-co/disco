@@ -113,10 +113,6 @@ type IPProtocol =
   | IPv4
   | IPv6
 
-// * Actor<'t>
-
-type Actor<'t> = MailboxProcessor<'t>
-
 // * StringPayload
 
 type StringPayload = Payload of string

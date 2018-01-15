@@ -82,7 +82,7 @@ module ApiServer =
 
   // ** ApiAgent
 
-  type private ApiAgent = MailboxProcessor<Msg>
+  type private ApiAgent = IActor<Msg>
 
   // ** pruneStaleClientData
 
@@ -457,42 +457,32 @@ module ApiServer =
 
   // ** loop
 
-  let private loop (store: IAgentStore<ServerState>) (inbox: ApiAgent) =
-    let rec act () =
-      async {
-        try
-          let! msg = inbox.Receive()
-
-          Actors.warnQueueLength (tag "loop") inbox
-
-          let state = store.State
-          let newstate =
-            try
-              match msg with
-              | Msg.Start                       -> handleStart state
-              | Msg.Stop                        -> handleStop state
-              | Msg.AddClient(client)           -> handleAddClient state client inbox
-              | Msg.RemoveClient(client)        -> handleRemoveClient state client
-              | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
-              | Msg.SetStatus(status)           -> handleSetStatus state status
-              | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id
-              | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
-              | Msg.ServerEvent(ev)             -> handleServerEvent state ev inbox
-            with
-              | exn ->
-                exn.Message + exn.StackTrace
-                |> String.format "Error in loop: {0}"
-                |> Logger.err (tag "loop")
-                state
-          if not (Service.isStopping newstate.Status) then
-            store.Update newstate
-        with
-          | exn ->
-            exn.Message
-            |> Logger.err (tag "loop")
-        return! act ()
-      }
-    act ()
+  let private loop (store: IAgentStore<ServerState>) inbox (msg: Msg) =
+    async {
+      try
+        let state = store.State
+        let newstate =
+          try
+            match msg with
+            | Msg.Start                       -> handleStart state
+            | Msg.Stop                        -> handleStop state
+            | Msg.AddClient(client)           -> handleAddClient state client inbox
+            | Msg.RemoveClient(client)        -> handleRemoveClient state client
+            | Msg.SetClientStatus(id, status) -> handleSetClientStatus state id status
+            | Msg.SetStatus(status)           -> handleSetStatus state status
+            | Msg.InstallSnapshot(id)         -> handleInstallSnapshot state id
+            | Msg.Update(origin,sm)           -> handleUpdate state origin sm inbox
+            | Msg.ServerEvent(ev)             -> handleServerEvent state ev inbox
+          with
+            | exn ->
+              exn.Message + exn.StackTrace
+              |> String.format "Error in loop: {0}"
+              |> Logger.err (tag "loop")
+              state
+        if not (Service.isStopping newstate.Status) then
+          store.Update newstate
+      with exn -> Logger.err (tag "loop") exn.Message
+    }
 
   // ** start
 
@@ -554,8 +544,8 @@ module ApiServer =
         Stopper = new AutoResetEvent(false)
       }
 
-      let agent = new ApiAgent(loop store, cts.Token)
-      agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
+      let agent = Actor.create (loop store)
+      /// agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
 
       return
         { new IApiServer with

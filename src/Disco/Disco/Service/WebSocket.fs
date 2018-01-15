@@ -35,7 +35,7 @@ module WebSocketServer =
 
   // ** SocketEventProcessor
 
-  type private SocketEventProcessor = MailboxProcessor<DiscoEvent>
+  type private SocketEventProcessor = IActor<DiscoEvent>
 
   // ** getConnectionId
 
@@ -246,13 +246,8 @@ module WebSocketServer =
 
   // ** loop
 
-  let private loop (subscriptions: Subscriptions) (inbox: SocketEventProcessor) =
-    let rec act () = async {
-        let! msg = inbox.Receive()
-        Observable.onNext subscriptions msg
-        return! act ()
-      }
-    act()
+  let private loop (subscriptions: Subscriptions) _ msg =
+    async { Observable.onNext subscriptions msg }
 
   // ** broadcast
 
@@ -272,7 +267,7 @@ module WebSocketServer =
       let connections = Connections()
       let subscriptions = Subscriptions()
 
-      let agent = new SocketEventProcessor(loop subscriptions)
+      let agent = Actor.create (loop subscriptions)
 
       let uri = sprintf "ws://%s:%d" (string mem.IpAddress) mem.WsPort
 

@@ -112,6 +112,9 @@
     <Compile Include="..\..\Disco\Core\Color.fs">
       <Link>Color.fs</Link>
     </Compile>
+    <Compile Include="..\..\Disco\Core\Actor.fs">
+      <Link>Actor.fs</Link>
+    </Compile>
     <Compile Include="..\..\Disco\Core\Logging.fs">
       <Link>Logging.fs</Link>
     </Compile>
@@ -123,9 +126,6 @@
     </Compile>
     <Compile Include="..\..\Disco\Core\Observable.fs">
       <Link>Observable.fs</Link>
-    </Compile>
-    <Compile Include="..\..\Disco\Core\Actors.fs">
-      <Link>Actors.fs</Link>
     </Compile>
     <Compile Include="..\..\Disco\Core\Pin.fs">
       <Link>Pin.fs</Link>

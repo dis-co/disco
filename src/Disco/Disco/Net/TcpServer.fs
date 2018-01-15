@@ -169,10 +169,8 @@ module TcpServer =
       // \__ \  __/ | | | (_| | | | | | (_| |
       // |___/\___|_| |_|\__,_|_|_| |_|\__, |
       //                               |___/
-      let rec sendLoop (inbox: MailboxProcessor<byte[]>) = async {
-          let! msg = inbox.Receive()
+      let rec sendLoop (inbox: IActor<byte[]>) msg = async {
           do stream.Write(msg, 0, msg.Length)
-          return! sendLoop inbox
         }
 
       //                    _       _
@@ -206,7 +204,9 @@ module TcpServer =
                 Logger.err (tag "receiveLoop") exn.Message
         }
 
-      let sender = MailboxProcessor.Start(sendLoop, cts.Token)
+      let sender = Actor.create sendLoop
+      sender.Start()
+
       Async.Start(receiveLoop, cts.Token)
 
       { new IConnection with

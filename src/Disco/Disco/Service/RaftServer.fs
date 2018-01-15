@@ -98,15 +98,16 @@ module rec RaftServer =
 
   // ** RaftAgent
 
-  type private RaftAgent = MailboxProcessor<Msg>
+  type private RaftAgent = IActor<Msg>
 
   // ** tryPost
 
   let private tryPost (agent: RaftAgent) msg =
     try agent.Post msg
-    with
-      | exn -> sprintf "exn: %s" exn.Message
-               |> Logger.err (tag "tryPost")
+    with exn ->
+      exn
+      |> string
+      |> Logger.err (tag "tryPost")
 
   // ** getRaft
 
@@ -1452,55 +1453,48 @@ module rec RaftServer =
 
   // ** loop
 
-  let private loop (store: IAgentStore<RaftServerState>) (inbox: RaftAgent) =
-    let rec act () =
-      async {
-        try
-          let! cmd = inbox.Receive()
+  let private loop (store: IAgentStore<RaftServerState>) (inbox: RaftAgent) cmd =
+    async {
+      try
+        let state = store.State
+        let newstate =
+          match cmd with
+          | Msg.Start                         -> handleStart          state inbox
+          | Msg.Started                       -> handleStarted        state
+          | Msg.Stop                          -> handleStop           state inbox
+          | Msg.Stopped                       -> handleStopped        state
+          | Msg.Notify              ev        -> handleNotify         state ev
+          | Msg.Periodic                      -> handlePeriodic       state
+          | Msg.ForceElection                 -> handleForceElection  state inbox
+          | Msg.AddCmd             cmd        -> handleAddCmd         state inbox cmd
+          | Msg.AddMember          mem        -> handleAddMember      state inbox mem
+          | Msg.RemoveMember        id        -> handleRemoveMember   state inbox id
+          | Msg.ServerEvent         ev        -> handleServerEvent    state inbox ev
+          | Msg.ClientEvent         ev        -> handleClientEvent    state inbox ev
+          | Msg.RawServerResponse   response  -> handleServerResponse state inbox response
+          | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state inbox ts entry raw
+          // | Msg.Join        (ip, port)        -> handleJoin          state ip port
+          // | Msg.Leave                         -> handleLeave         state
 
-          Actors.warnQueueLength (tag "loop") inbox
+        // once we received the signal to stop we don't allow any more updates to the state to get
+        // a consistent result in the Dispose method (due to possibly queued up messages on the
+        // actors queue)
+        if not (Service.isStopping newstate.Status) then
+          store.Update newstate
+      with exn ->
+        String.Format(
+          "Message: {0}\nStackTrace: {1}\nInner Message: {2}\n Inner StackTrace: {3}",
+          exn.Message,
+          exn.StackTrace,
+          exn.InnerException.Message,
+          exn.InnerException.StackTrace)
+        |> Logger.err (tag "loop")
+    }
 
-          Tracing.trace (tag "loop") <| fun () ->
-            let state = store.State
-            let newstate =
-              match cmd with
-              | Msg.Start                         -> handleStart          state inbox
-              | Msg.Started                       -> handleStarted        state
-              | Msg.Stop                          -> handleStop           state inbox
-              | Msg.Stopped                       -> handleStopped        state
-              | Msg.Notify              ev        -> handleNotify         state ev
-              | Msg.Periodic                      -> handlePeriodic       state
-              | Msg.ForceElection                 -> handleForceElection  state inbox
-              | Msg.AddCmd             cmd        -> handleAddCmd         state inbox cmd
-              | Msg.AddMember          mem        -> handleAddMember      state inbox mem
-              | Msg.RemoveMember        id        -> handleRemoveMember   state inbox id
-              | Msg.ServerEvent         ev        -> handleServerEvent    state inbox ev
-              | Msg.ClientEvent         ev        -> handleClientEvent    state inbox ev
-              | Msg.RawServerResponse   response  -> handleServerResponse state inbox response
-              | Msg.ReqCommitted (ts, entry, raw) -> handleReqCommitted   state inbox ts entry raw
-              // | Msg.Join        (ip, port)        -> handleJoin          state ip port
-              // | Msg.Leave                         -> handleLeave         state
-
-            // once we received the signal to stop we don't allow any more updates to the state to get
-            // a consistent result in the Dispose method (due to possibly queued up messages on the
-            // actors queue)
-            if not (Service.isStopping newstate.Status) then
-              store.Update newstate
-        with
-          | exn ->
-            let format = "Message: {0}\nStackTrace: {1}\nInner Message: {2}\n Inner StackTrace: {3}"
-            String.Format(format,
-                          exn.Message, exn.StackTrace,
-                          exn.InnerException.Message, exn.InnerException.StackTrace)
-            |> Logger.err (tag "loop")
-        return! act ()
-      }
-    act ()
-
-  // ** startMetrics 
+  // ** startMetrics
 
   let private startMetrics (agent:RaftAgent)  (cts: CancellationTokenSource) =
-    let rec loop () = 
+    let rec loop () =
       async {
         do! Async.Sleep(1000)
         let count = agent.CurrentQueueLength
@@ -1517,8 +1511,7 @@ module rec RaftServer =
       let connections = new Connections()
       let store = AgentStore.create()
 
-      let agent = new RaftAgent(loop store, cts.Token)
-      agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
+      let agent = Actor.create (loop store)
 
       let! raftState = Persistence.getRaft config
       let callbacks =
