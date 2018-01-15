@@ -100,7 +100,7 @@ module Resolver =
       Subscriptions = subscriptions
     }
 
-    let agent = Actor.create (loop store)
+    let agent = Actor.create "Resolver" (loop store)
     agent.Start()
 
     { new IResolver with

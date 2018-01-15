@@ -164,7 +164,7 @@ module rec TcpClient =
 
       member state.StartReceiving() =
         stream <- new NetworkStream(client)
-        sender <- Actor.create (sendLoop state)
+        sender <- Actor.create "TcpClient" (sendLoop state)
         receiver <- Continuously.run (receiveLoop state)
         sender.Start()
 

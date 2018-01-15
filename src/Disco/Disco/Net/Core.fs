@@ -524,7 +524,8 @@ module Response =
 // ** TcpClientSettings
 
 type TcpClientSettings =
-  { ClientId: ClientId
+  { Tag: string
+    ClientId: ClientId
     PeerAddress: IpAddress
     PeerPort: Port
     Timeout: Timeout }

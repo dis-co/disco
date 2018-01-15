@@ -398,6 +398,7 @@ module DiscoService =
   /// the current members Id *must* be used to set up the client socket.
   let private makeLeader (leader: RaftMember) (store: IAgentStore<DiscoState>) =
     let socket = TcpClient.create {
+      Tag = "DiscoService.Leader.TcpClient"
       ClientId = store.State.Member.Id  // IMPORTANT: this must be the current member's Id
       PeerAddress = leader.IpAddress
       PeerPort = leader.RaftPort

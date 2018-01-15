@@ -544,7 +544,7 @@ module ApiServer =
         Stopper = new AutoResetEvent(false)
       }
 
-      let agent = Actor.create (loop store)
+      let agent = Actor.create "ApiServer" (loop store)
       /// agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
 
       return

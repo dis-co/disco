@@ -16,6 +16,8 @@ type IActor<'a> =
   abstract Start: unit -> unit
   abstract CurrentQueueLength: int
 
+type ActorTask<'a> = IActor<'a> -> 'a -> Async<unit>
+
 // * Periodically
 
 module Periodically =
@@ -63,29 +65,29 @@ module Actor =
     if count > Constants.QUEUE_LENGTH_THRESHOLD then
       count
       |> String.format "Queue length threshold was reached: {0}"
-      |> printfn "WARNING: %s"
+      |> printfn "%s: WARNING: %s" t
 
   // ** loop
 
-  let private loop<'a> actor (f: IActor<'a> -> 'a -> Async<unit>) (inbox: MailboxProcessor<'a>) =
+  let private loop<'a> tag actor (f: ActorTask<'a>) (inbox: MailboxProcessor<'a>) =
     let rec _loop () =
       async {
         let! msg = inbox.Receive()
         do! f actor msg
-        do warnQueueLength "tag" actor
+        do warnQueueLength tag actor
         return! _loop ()
       }
     _loop ()
 
   // ** create
 
-  let create<'a> (f: IActor<'a> -> 'a -> Async<unit>) =
+  let create<'a> tag (f: ActorTask<'a>) =
     let cts = new CancellationTokenSource()
     let mutable mbp = Unchecked.defaultof<MailboxProcessor<'a>>
     { new IActor<'a> with
       member actor.Start () =
-        mbp <- MailboxProcessor.Start(loop<'a> actor f, cts.Token)
-        mbp.Error.Add(sprintf "unhandled error on loop: %O" >> printfn "IActor: %s")
+        mbp <- MailboxProcessor.Start(loop<'a> tag actor f, cts.Token)
+        mbp.Error.Add(sprintf "unhandled error on loop: %O" >> printfn "%s: %s" tag)
       member actor.Post value = try mbp.Post value with _ -> ()
       member actor.CurrentQueueLength = try mbp.CurrentQueueLength with _ -> 0
       member actor.Dispose () = cts.Cancel() }

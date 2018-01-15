@@ -267,7 +267,7 @@ module WebSocketServer =
       let connections = Connections()
       let subscriptions = Subscriptions()
 
-      let agent = Actor.create (loop subscriptions)
+      let agent = Actor.create "WebSocketServer" (loop subscriptions)
 
       let uri = sprintf "ws://%s:%d" (string mem.IpAddress) mem.WsPort
 

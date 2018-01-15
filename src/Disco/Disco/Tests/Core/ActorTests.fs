@@ -24,7 +24,7 @@ module ActorTests =
   let test_actor_properly =
     testCase "actor disposes properly" <| fun _ ->
       either {
-        let actor = Actor.create <| fun actor -> function
+        let actor = Actor.create "test" <| fun actor -> function
           | "done" -> async { dispose actor }
           | msg -> async { ignore msg }
         do actor.Start()

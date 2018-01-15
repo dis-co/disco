@@ -202,7 +202,7 @@ module TcpServer =
             Logger.err (tag "receiveLoop") exn.Message
             false
 
-      let sender = Actor.create sendLoop
+      let sender = Actor.create "TcpServer" sendLoop
       let receiver = Continuously.run receiveLoop
       sender.Start()
 

@@ -313,7 +313,7 @@ module AssetService =
         Subscriptions = subscriptions
       }
 
-      let agent = Actor.create (loop store)
+      let agent = Actor.create "AssetService" (loop store)
       let watcher = createWatcher machine.AssetDirectory agent
       let mutable flusher = Unchecked.defaultof<IDisposable>
 

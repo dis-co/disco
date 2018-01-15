@@ -299,6 +299,7 @@ module ApiClient =
   let private makeSocket (server: DiscoServer) (client: DiscoClient) (agent: ApiAgent) =
     let socket =
       TcpClient.create {
+        Tag = "ApiClient.TcpClient"
         ClientId = client.Id
         PeerAddress = server.IpAddress
         PeerPort = server.Port
@@ -355,7 +356,7 @@ module ApiClient =
 
       let store:IAgentStore<ClientState> = AgentStore.create()
 
-      let agent = Actor.create (loop store)
+      let agent = Actor.create "ApiClient" (loop store)
       let subscription, socket = makeSocket server client agent
 
       let state =

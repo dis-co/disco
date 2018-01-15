@@ -310,7 +310,7 @@ module DiscoveryService =
     }
 
     let store = AgentStore.create()
-    let agent = Actor.create (loop store)
+    let agent = Actor.create "DiscoverService" (loop store)
     agent.Start()
 
     { new IDiscoveryService with

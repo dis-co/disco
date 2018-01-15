@@ -171,6 +171,7 @@ module rec RaftServer =
 
   let private makePeerSocket (peer: RaftMember) =
     let socket = TcpClient.create {
+      Tag = "RaftServer.PeerSocket"
       ClientId = peer.Id
       PeerAddress = peer.IpAddress
       PeerPort = peer.RaftPort
@@ -1486,7 +1487,7 @@ module rec RaftServer =
       let connections = new Connections()
       let store = AgentStore.create()
 
-      let agent = Actor.create (loop store)
+      let agent = Actor.create "RaftServer" (loop store)
 
       let! raftState = Persistence.getRaft config
       let callbacks =

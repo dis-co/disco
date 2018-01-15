@@ -37,11 +37,12 @@ module NetIntegrationTests =
         use onDisconnected = new WaitEvent()
 
         use client = TcpClient.create {
-            ClientId = DiscoId.Create()
-            PeerAddress = ip
-            PeerPort = prt
-            Timeout = 0<ms>
-          }
+          Tag = "TcpClient.Test"
+          ClientId = DiscoId.Create()
+          PeerAddress = ip
+          PeerPort = prt
+          Timeout = 0<ms>
+        }
 
         use clientHandler =
           client.Subscribe <| function
@@ -141,6 +142,7 @@ module NetIntegrationTests =
         let clients =
           [| for n in 0 .. (numclients - 1) do
                let socket = TcpClient.create {
+                  Tag = "TcpClient.Test"
                   ClientId = DiscoId.Create()
                   PeerAddress = ip
                   PeerPort = prt
