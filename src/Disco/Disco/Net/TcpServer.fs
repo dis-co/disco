@@ -168,9 +168,8 @@ module TcpServer =
       // \__ \  __/ | | | (_| | | | | | (_| |
       // |___/\___|_| |_|\__,_|_|_| |_|\__, |
       //                               |___/
-      let rec sendLoop (inbox: IActor<byte[]>) msg = async {
-          do stream.Write(msg, 0, msg.Length)
-        }
+      let rec sendLoop (inbox: IActor<byte[]>) msg =
+        do stream.Write(msg, 0, msg.Length)
 
       //                    _       _
       //  _ __ ___  ___ ___(_)_   _(_)_ __   __ _
@@ -202,7 +201,7 @@ module TcpServer =
             Logger.err (tag "receiveLoop") exn.Message
             false
 
-      let sender = Actor.create "TcpServer" sendLoop
+      let sender = ThreadActor.create "TcpServer" sendLoop
       let metrics = Periodically.run 1000 <| fun () ->
         Metrics.collect Constants.METRIC_TCPSERVER_QUEUE sender.CurrentQueueLength
       let receiver = Continuously.run receiveLoop

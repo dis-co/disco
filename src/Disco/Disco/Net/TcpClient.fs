@@ -69,14 +69,13 @@ module rec TcpClient =
   // \__ \  __/ | | | (_| | | | | | (_| |
   // |___/\___|_| |_|\__,_|_|_| |_|\__, |
   //                               |___/
-  let private sendLoop (state: IState) inbox msg = async {
-      try
-        do state.Stream.Write(msg, 0, msg.Length)
-      with exn ->
-        exn.Message
-        |> Error.asSocketError (tag "sendLoop")
-        |> handleError state
-    }
+  let private sendLoop (state: IState) inbox msg =
+    try
+      do state.Stream.Write(msg, 0, msg.Length)
+    with exn ->
+      exn.Message
+      |> Error.asSocketError (tag "sendLoop")
+      |> handleError state
 
   //                    _       _
   //  _ __ ___  ___ ___(_)_   _(_)_ __   __ _
@@ -164,7 +163,7 @@ module rec TcpClient =
 
       member state.StartReceiving() =
         stream <- new NetworkStream(client)
-        sender <- Actor.create "TcpClient" (sendLoop state)
+        sender <- ThreadActor.create "TcpClient" (sendLoop state)
         receiver <- Continuously.run (receiveLoop state)
         sender.Start()
 

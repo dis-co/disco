@@ -16,7 +16,8 @@ type IActor<'a> =
   abstract Start: unit -> unit
   abstract CurrentQueueLength: int
 
-type ActorTask<'a> = IActor<'a> -> 'a -> Async<unit>
+type AsyncActorTask<'a> = IActor<'a> -> 'a -> Async<unit>
+type ActorTask<'a> = IActor<'a> -> 'a -> unit
 
 // * Periodically
 
@@ -59,17 +60,17 @@ module Actor =
 
   // ** warnQueueLength
 
-  let private warnQueueLength t (inbox: IActor<_>) =
+  let warnQueueLength t (inbox: IActor<_>) =
     // wa't when 't :> rn if the queue length surpasses threshold
     let count = inbox.CurrentQueueLength
     if count > Constants.QUEUE_LENGTH_THRESHOLD then
       count
       |> String.format "Queue length threshold was reached: {0}"
-      |> printfn "%s: WARNING: %s" t
+      |> printfn "[WARNING-%s]: %s" t
 
   // ** loop
 
-  let private loop<'a> tag actor (f: ActorTask<'a>) (inbox: MailboxProcessor<'a>) =
+  let private loop<'a> tag actor (f: AsyncActorTask<'a>) (inbox: MailboxProcessor<'a>) =
     let rec _loop () =
       async {
         let! msg = inbox.Receive()
@@ -81,7 +82,7 @@ module Actor =
 
   // ** create
 
-  let create<'a> tag (f: ActorTask<'a>) =
+  let create<'a> tag (f: AsyncActorTask<'a>) =
     let cts = new CancellationTokenSource()
     let mutable mbp = Unchecked.defaultof<MailboxProcessor<'a>>
     { new IActor<'a> with
@@ -91,3 +92,43 @@ module Actor =
       member actor.Post value = try mbp.Post value with _ -> ()
       member actor.CurrentQueueLength = try mbp.CurrentQueueLength with _ -> 0
       member actor.Dispose () = cts.Cancel() }
+
+// * ThreadActor
+
+module ThreadActor =
+
+  open System.Collections.Concurrent
+
+  type Queue<'a> = BlockingCollection<'a>
+
+  // ** loop
+
+  let private loop<'a> tag (queue: Queue<'a>) (actor: IActor<'a>) (f: ActorTask<'a>) () =
+    let mutable run = true
+    try
+      while run do
+        let msg = queue.Take()
+        do f actor msg
+        do Actor.warnQueueLength tag actor
+    with
+      | :? ThreadAbortException -> ()
+      | exn -> () // printfn "ThreadActor: %A" exn
+
+  // ** create
+
+  let create<'a> tag (f: ActorTask<'a>) =
+    let queue = new BlockingCollection<'a>()
+    { new IActor<'a> with
+      member actor.Start() =
+        let thread = Thread(ThreadStart(loop<'a> tag queue actor f))
+        thread.IsBackground <- true
+        thread.Start()
+      member actor.Post value = try queue.Add value with _ -> ()
+      member actor.CurrentQueueLength = try queue.Count with _ -> 0
+      member actor.Dispose() = tryDispose queue ignore }
+
+
+/// let actor = ThreadActor.create "Test" (fun _ () -> printfn "msg")
+/// actor.Start()
+/// actor.Post ()
+/// actor.Dispose()
