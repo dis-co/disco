@@ -90,7 +90,6 @@ module Resolver =
   // ** create
 
   let create () =
-    let cts = new CancellationTokenSource()
     let subscriptions = Subscriptions()
     let store = AgentStore.create ()
 
@@ -101,6 +100,9 @@ module Resolver =
     }
 
     let agent = Actor.create "Resolver" (loop store)
+    let metrics = Periodically.run 1000 <| fun () ->
+      Metrics.collect Constants.METRIC_RESOLVER_SERVICE_QUEUE agent.CurrentQueueLength
+
     agent.Start()
 
     { new IResolver with
@@ -114,8 +116,5 @@ module Resolver =
           Observable.subscribe callback subscriptions
 
         member resolver.Dispose () =
-          try
-            cts.Cancel()
-            dispose cts
-          finally
-            Logger.debug (tag "Dispose") "disposed" }
+          dispose metrics
+          dispose agent }

@@ -545,7 +545,8 @@ module ApiServer =
       }
 
       let agent = Actor.create "ApiServer" (loop store)
-      /// agent.Error.Add(sprintf "unhandled error on actor loop: %O" >> Logger.err (tag "loop"))
+      let metrics = Periodically.run 1000 <| fun () ->
+        Metrics.collect Constants.METRIC_API_SERVICE_QUEUE agent.CurrentQueueLength
 
       return
         { new IApiServer with

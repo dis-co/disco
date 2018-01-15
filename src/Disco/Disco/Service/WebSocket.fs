@@ -268,6 +268,8 @@ module WebSocketServer =
       let subscriptions = Subscriptions()
 
       let agent = Actor.create "WebSocketServer" (loop subscriptions)
+      let metrics = Periodically.run 1000 <| fun () ->
+        Metrics.collect Constants.METRIC_WEBSOCKET_SERVICE_QUEUE agent.CurrentQueueLength
 
       let uri = sprintf "ws://%s:%d" (string mem.IpAddress) mem.WsPort
 
@@ -369,5 +371,7 @@ module WebSocketServer =
                 connections.Clear()
                 subscriptions.Clear()
                 dispose server
+                dispose metrics
+                dispose agent
                 status := ServiceStatus.Disposed }
     }

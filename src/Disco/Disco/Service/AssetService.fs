@@ -300,10 +300,7 @@ module AssetService =
   let create (machine: DiscoMachine) =
     either {
       do! Directory.createDirectory machine.AssetDirectory |> Either.map ignore
-
-      let cts = new CancellationTokenSource()
       let subscriptions = Subscriptions()
-
       let store = AgentStore.create()
 
       store.Update {
@@ -316,6 +313,8 @@ module AssetService =
       let agent = Actor.create "AssetService" (loop store)
       let watcher = createWatcher machine.AssetDirectory agent
       let mutable flusher = Unchecked.defaultof<IDisposable>
+      let metrics = Periodically.run 1000 <| fun () ->
+        Metrics.collect Constants.METRIC_ASSET_SERVICE_QUEUE agent.CurrentQueueLength
 
       return {
         new IAssetService with
@@ -337,7 +336,7 @@ module AssetService =
             try
               dispose flusher
               dispose watcher
-              cts.Cancel()
+              dispose metrics
               dispose agent
             with exn -> printfn "exn: %A" exn
       }

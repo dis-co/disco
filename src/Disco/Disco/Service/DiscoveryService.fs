@@ -311,6 +311,9 @@ module DiscoveryService =
 
     let store = AgentStore.create()
     let agent = Actor.create "DiscoverService" (loop store)
+    let metrics = Periodically.run 1000 <| fun () ->
+      Metrics.collect Constants.METRIC_DISCO_SERVICE_QUEUE agent.CurrentQueueLength
+
     agent.Start()
 
     { new IDiscoveryService with
@@ -357,6 +360,7 @@ module DiscoveryService =
             are |> Msg.Stop |> agent.Post
             if not (are.WaitOne(TimeSpan.FromMilliseconds 1000.0)) then
               Logger.debug (tag "Dispose") "timeout: attempt to dispose discovery service failed"
+            dispose metrics
             dispose store.State
             source.Cancel()
             dispose source

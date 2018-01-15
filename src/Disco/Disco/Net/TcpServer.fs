@@ -203,6 +203,8 @@ module TcpServer =
             false
 
       let sender = Actor.create "TcpServer" sendLoop
+      let metrics = Periodically.run 1000 <| fun () ->
+        Metrics.collect Constants.METRIC_TCPSERVER_QUEUE sender.CurrentQueueLength
       let receiver = Continuously.run receiveLoop
       sender.Start()
 

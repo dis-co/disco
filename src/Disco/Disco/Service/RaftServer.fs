@@ -1472,13 +1472,6 @@ module rec RaftServer =
         |> Logger.err (tag "loop")
     }
 
-  // ** startMetrics
-
-  let private startMetrics (agent:RaftAgent) =
-    Periodically.run 1000 <| fun () ->
-      let count = agent.CurrentQueueLength
-      do Metrics.collect "raft_agent_message_count" count
-
   // ** create
 
   let create (config: DiscoConfig) callbacks =
@@ -1488,6 +1481,8 @@ module rec RaftServer =
       let store = AgentStore.create()
 
       let agent = Actor.create "RaftServer" (loop store)
+      let metrics = Periodically.run 1000 <| fun () ->
+        Metrics.collect Constants.METRIC_RAFT_SERVICE_QUEUE agent.CurrentQueueLength
 
       let! raftState = Persistence.getRaft config
       let callbacks =
@@ -1522,8 +1517,6 @@ module rec RaftServer =
 
                   // we must start the agent, so the dispose logic will work as expected
                   do agent.Start()
-                  let metrics = startMetrics agent
-
                   match server.Start() with
                   | Right () ->
                     let srvobs = server.Subscribe(Msg.ServerEvent >> agent.Post)
@@ -1543,7 +1536,7 @@ module rec RaftServer =
                     store.Update
                       { store.State with
                           Server = server
-                          Disposables = [ srvobs; metrics ] }
+                          Disposables = [ srvobs ] }
 
                     agent.Post Msg.Start // kick it off
 
@@ -1645,6 +1638,8 @@ module rec RaftServer =
                 // stop the actor
                 try cts.Cancel()
                 with | exn -> Logger.err (tag "Dispose") exn.Message
+
+                dispose metrics
                 tryDispose agent ignore // then stop the actor so it doesn't keep processing
                 tryDispose cts ignore   // buffered msgs
 
