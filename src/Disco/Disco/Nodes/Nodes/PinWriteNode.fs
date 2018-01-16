@@ -89,7 +89,7 @@ type PinWriteNode() =
               match map.Slices.[mapping.PinId] with
               // ignore resets
               | BoolSlices (_,_,trig,values) when trig && not (Array.contains true values) -> ()
-              | slices ->
+              | _ ->
                 mapping.Pin.Spread <- map.Slices.[mapping.PinId].ToSpread()
                 if mapping.Trigger then
                   // schedule frame accurate reset

@@ -399,9 +399,17 @@ module Logger =
   /// Logging agent. Hidden.
   ///
   let private agent =
+    #if FABLE_COMPILER
+    let actor = AsyncActor.create "Logging" <| fun _ log ->
+      async {
+        let snap = subscriptions.ToArray()
+        for sub in snap do sub.OnNext log
+      }
+    #else
     let actor = ThreadActor.create "Logging" <| fun _ log ->
       let snap = subscriptions.ToArray()
       for sub in snap do sub.OnNext log
+    #endif
     actor.Start()
     actor
 
