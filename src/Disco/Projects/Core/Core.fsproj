@@ -121,9 +121,6 @@
     <Compile Include="..\..\Disco\Core\Metrics.fs">
       <Link>Metrics.fs</Link>
     </Compile>
-    <Compile Include="..\..\Disco\Core\Tracing.fs">
-      <Link>Tracing.fs</Link>
-    </Compile>
     <Compile Include="..\..\Disco\Core\Observable.fs">
       <Link>Observable.fs</Link>
     </Compile>

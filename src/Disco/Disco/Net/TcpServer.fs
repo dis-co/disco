@@ -168,7 +168,7 @@ module TcpServer =
       // \__ \  __/ | | | (_| | | | | | (_| |
       // |___/\___|_| |_|\__,_|_|_| |_|\__, |
       //                               |___/
-      let rec sendLoop (inbox: IActor<byte[]>) msg =
+      let rec sendLoop _ msg =
         do stream.Write(msg, 0, msg.Length)
 
       //                    _       _
@@ -234,6 +234,7 @@ module TcpServer =
 
           member connection.Dispose() =
             Socket.dispose socket
+            dispose metrics
             dispose sender
             dispose receiver
             dispose stream

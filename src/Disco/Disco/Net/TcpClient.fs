@@ -69,7 +69,7 @@ module rec TcpClient =
   // \__ \  __/ | | | (_| | | | | | (_| |
   // |___/\___|_| |_|\__,_|_|_| |_|\__, |
   //                               |___/
-  let private sendLoop (state: IState) inbox msg =
+  let private sendLoop (state: IState) _ msg =
     try
       do state.Stream.Write(msg, 0, msg.Length)
     with exn ->

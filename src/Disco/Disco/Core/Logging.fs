@@ -399,7 +399,7 @@ module Logger =
   /// Logging agent. Hidden.
   ///
   let private agent =
-    let actor = ThreadActor.create "Logging" <| fun inbox log ->
+    let actor = ThreadActor.create "Logging" <| fun _ log ->
       let snap = subscriptions.ToArray()
       for sub in snap do sub.OnNext log
     actor.Start()

@@ -30,7 +30,7 @@ module Metrics =
         | Some _ -> Either.nothing
         | None ->
           let collector = createCollector config
-          let actor = ThreadActor.create "Metrics" (fun inbox (name,value) ->
+          let actor = ThreadActor.create "Metrics" (fun _ (name,value) ->
               let values = Dictionary<string,obj>()
               do values.Add(name, value)
               do collector.Write(name, values))

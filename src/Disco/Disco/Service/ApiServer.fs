@@ -193,14 +193,13 @@ module ApiServer =
   // ** handleRemoveClient
 
   let private handleRemoveClient (state: ServerState) (peer: DiscoClient) =
-    Tracing.trace (tag "handleRemoveClient") <| fun () ->
-      match Map.tryFind peer.Id state.Clients with
-      | Some _ ->
-        RemoveClient peer
-        |> DiscoEvent.appendService
-        |> Observable.onNext state.Subscriptions
-        { state with Clients = Map.remove peer.Id state.Clients }
-      | _ -> state
+    match Map.tryFind peer.Id state.Clients with
+    | Some _ ->
+      RemoveClient peer
+      |> DiscoEvent.appendService
+      |> Observable.onNext state.Subscriptions
+      { state with Clients = Map.remove peer.Id state.Clients }
+    | _ -> state
 
   // ** updateClient
 
@@ -214,21 +213,19 @@ module ApiServer =
   // ** updateAllClients
 
   let private updateAllClients (state: ServerState) (sm: StateMachine) =
-    Tracing.trace (tag "updateAllClients") <| fun () ->
-      state.Clients
-      |> Map.toArray
-      |> Array.Parallel.map (snd >> updateClient sm state.Server)
-      |> ignore
+    state.Clients
+    |> Map.toArray
+    |> Array.Parallel.map (snd >> updateClient sm state.Server)
+    |> ignore
 
   // ** multicastClients
 
   let private multicastClients (state: ServerState) except (sm: StateMachine) =
-    Tracing.trace (tag "multicastClients") <| fun () ->
-      state.Clients
-      |> Map.filter (fun id _ -> except <> id)
-      |> Map.toArray
-      |> Array.Parallel.map (snd >> updateClient sm state.Server)
-      |> ignore
+    state.Clients
+    |> Map.filter (fun id _ -> except <> id)
+    |> Map.toArray
+    |> Array.Parallel.map (snd >> updateClient sm state.Server)
+    |> ignore
 
   // ** publish
 
@@ -326,64 +323,63 @@ module ApiServer =
   // ** handleServerRequest
 
   let private handleServerRequest (state: ServerState) (req: Request) (agent: ApiAgent) =
-    Tracing.trace (tag "handleServerRequest") <| fun () ->
-      match req.Body |> Binary.decode with
-      | Right (Register client) ->
-        client.Id
-        |> sprintf "%O requested to be registered"
-        |> Logger.info (tag "handleServerRequest")
+    match req.Body |> Binary.decode with
+    | Right (Register client) ->
+      client.Id
+      |> sprintf "%O requested to be registered"
+      |> Logger.info (tag "handleServerRequest")
 
-        client
-        |> Msg.AddClient
-        |> agent.Post
+      client
+      |> Msg.AddClient
+      |> agent.Post
 
-        Registered
-        |> Binary.encode
-        |> Response.fromRequest req
-        |> state.Server.Respond
+      Registered
+      |> Binary.encode
+      |> Response.fromRequest req
+      |> state.Server.Respond
 
-      | Right (UnRegister client) ->
-        client.Id
-        |> sprintf "%O requested to be un-registered"
-        |> Logger.info (tag "handleServerRequest")
+    | Right (UnRegister client) ->
+      client.Id
+      |> sprintf "%O requested to be un-registered"
+      |> Logger.info (tag "handleServerRequest")
 
-        client
-        |> Msg.RemoveClient
-        |> agent.Post
+      client
+      |> Msg.RemoveClient
+      |> agent.Post
 
-        Unregistered
-        |> Binary.encode
-        |> Response.fromRequest req
-        |> state.Server.Respond
+      Unregistered
+      |> Binary.encode
+      |> Response.fromRequest req
+      |> state.Server.Respond
 
-      | Right (Update sm) ->
-        let id = DiscoId.FromGuid req.PeerId
-        (Origin.Client id, sm)
-        |> Msg.Update
-        |> agent.Post
+    | Right (Update sm) ->
+      let id = DiscoId.FromGuid req.PeerId
+      (Origin.Client id, sm)
+      |> Msg.Update
+      |> agent.Post
 
-      | Right _ -> ()                // ignore Ping et al
+    | Right _ -> ()                // ignore Ping et al
 
-      | Left error ->
-        error
-        |> String.format "error decoding request: {0}"
+    | Left error ->
+      error
+      |> String.format "error decoding request: {0}"
+      |> Logger.err (tag "handleServerRequest")
+
+      try
+        String.Format("request-id: {0} peer-id: {1} request-length: {2}",
+                      req.RequestId,
+                      req.PeerId,
+                      req.Body.Length)
         |> Logger.err (tag "handleServerRequest")
+      with | _ -> ()
 
-        try
-          String.Format("request-id: {0} peer-id: {1} request-length: {2}",
-                        req.RequestId,
-                        req.PeerId,
-                        req.Body.Length)
-          |> Logger.err (tag "handleServerRequest")
-        with | _ -> ()
-
-        string error
-        |> ApiError.Internal
-        |> NOK
-        |> Binary.encode
-        |> Response.fromRequest req
-        |> state.Server.Respond
-      state
+      string error
+      |> ApiError.Internal
+      |> NOK
+      |> Binary.encode
+      |> Response.fromRequest req
+      |> state.Server.Respond
+    state
 
   // ** handleClientResponse
 

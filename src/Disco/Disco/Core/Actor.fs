@@ -23,19 +23,20 @@ type ActorTask<'a> = IActor<'a> -> 'a -> unit
 
 module Periodically =
 
-  let run interval (task: unit -> unit) =
-    let cts = new CancellationTokenSource()
-    let rec _runner () =
-      async {
-        do task ()
-        do! Async.Sleep(interval)
-        return! _runner ()
-      }
-    Async.Start(_runner(),cts.Token)
+  let run (interval: int) (task: unit -> unit) =
+    let mutable run = true
+    let thread = Thread(ThreadStart(fun () ->
+      try
+        while run do
+          do task()
+          do Thread.Sleep(interval)
+      with
+        | :? ThreadAbortException -> ()
+        | exn -> printfn "Periodically: %A" exn))
+    thread.IsBackground <- true
+    thread.Start()
     { new IDisposable with
-      member self.Dispose() =
-        cts.Cancel()
-        dispose cts }
+      member self.Dispose() = run <- false }
 
 // * Continuously
 
@@ -117,7 +118,7 @@ module ThreadActor =
         do Actor.warnQueueLength tag actor
     with
       | :? ThreadAbortException -> ()
-      | exn -> () // printfn "ThreadActor: %A" exn
+      | _ -> () // printfn "ThreadActor: %A" exn
 
   // ** create
 
