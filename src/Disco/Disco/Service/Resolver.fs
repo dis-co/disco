@@ -28,7 +28,7 @@ module Resolver =
 
   // ** ResolverAgent
 
-  type private ResolverAgent = MailboxProcessor<StateMachine>
+  type private ResolverAgent = IActor<StateMachine>
 
   // ** ResolverState
 
@@ -80,37 +80,28 @@ module Resolver =
 
   // ** loop
 
-  let private loop (store: ResolverStore) (inbox: ResolverAgent) =
-    let rec impl () =
-      async {
-        let! msg = inbox.Receive()
-
-        Actors.warnQueueLength (tag "loop") inbox
-
-        store.State
-        |> handleMessage msg
-        |> store.Update
-
-        return! impl()
-      }
-
-    impl ()
+  let private loop (store: ResolverStore) inbox msg =
+    store.State
+    |> handleMessage msg
+    |> store.Update
 
   // ** create
 
   let create () =
-    let cts = new CancellationTokenSource()
     let subscriptions = Subscriptions()
-
     let store = AgentStore.create ()
 
     store.Update {
-        Current = 0<frame>
-        Pending = Map.empty
-        Subscriptions = subscriptions
-      }
+      Current = 0<frame>
+      Pending = Map.empty
+      Subscriptions = subscriptions
+    }
 
-    let agent = ResolverAgent.Start(loop store, cts.Token)
+    let agent = ThreadActor.create "Resolver" (loop store)
+    let metrics = Periodically.run 1000 <| fun () ->
+      Metrics.collect Constants.METRIC_RESOLVER_SERVICE_QUEUE agent.CurrentQueueLength
+
+    agent.Start()
 
     { new IResolver with
         member resolver.Pending
@@ -123,8 +114,5 @@ module Resolver =
           Observable.subscribe callback subscriptions
 
         member resolver.Dispose () =
-          try
-            cts.Cancel()
-            dispose cts
-          finally
-            Logger.debug (tag "Dispose") "disposed" }
+          dispose metrics
+          dispose agent }

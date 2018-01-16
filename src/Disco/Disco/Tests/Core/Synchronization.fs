@@ -22,7 +22,7 @@ module SynchronizationTests =
         async {
           do! Async.Sleep(1000)
           ev.Set()
-          }
+        }
         |> Async.Start
         do! waitFor "Should not timeout" ev
       }

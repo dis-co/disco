@@ -357,12 +357,6 @@ module RequestBuilder =
           member writer.Dispose() =
             stream.Dispose() }
 
-  // ** Aliases
-
-  type private Offset = int
-  type private BytesRead = int
-  type private JobQueue = MailboxProcessor<Offset * BytesRead * IBuffer>
-
   // ** IState
 
   type private IState =
@@ -530,7 +524,8 @@ module Response =
 // ** TcpClientSettings
 
 type TcpClientSettings =
-  { ClientId: ClientId
+  { Tag: string
+    ClientId: ClientId
     PeerAddress: IpAddress
     PeerPort: Port
     Timeout: Timeout }

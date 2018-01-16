@@ -57,35 +57,36 @@ let expectoConfig =
 
 let parallelTests =
   testList "parallel tests" [
-      utilTests
-      pinTests
-      stateTests
-      serializationTests
-      storeTests
-      persistenceTests
-      fsTests
-      assetServiceTests
-    ]
+    utilTests
+    pinTests
+    stateTests
+    serializationTests
+    storeTests
+    persistenceTests
+    fsTests
+    assetServiceTests
+    actorTests
+  ]
 
 let serialTests =
   testList "serial tests" [
-      gitTests
-      raftTests
-      apiTests
-      assetTests
-      configTests
-      projectTests
-      netIntegrationTests
-      raftIntegrationTests
-      discoServiceTests
-    ] |> testSequenced
+    gitTests
+    raftTests
+    apiTests
+    assetTests
+    configTests
+    projectTests
+    netIntegrationTests
+    raftIntegrationTests
+    discoServiceTests
+  ] |> testSequenced
 
 let all =
   testList "all" [
-      syncTests
-      parallelTests
-      serialTests
-    ]
+    syncTests
+    parallelTests
+    serialTests
+  ]
 
 [<EntryPoint>]
 let main _ =

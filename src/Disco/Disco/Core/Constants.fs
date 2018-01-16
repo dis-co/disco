@@ -20,7 +20,34 @@ module Constants =
 
   [<Literal>]
   let REQ_TIMEOUT = 500.0            // ms
-  
+
+  ///  __  __      _        _
+  /// |  \/  | ___| |_ _ __(_) ___ ___
+  /// | |\/| |/ _ \ __| '__| |/ __/ __|
+  /// | |  | |  __/ |_| |  | | (__\__ \
+  /// |_|  |_|\___|\__|_|  |_|\___|___/
+
+  [<Literal>]
+  let METRIC_DISCO_SERVICE_QUEUE = "disco_service_queue_length"
+
+  [<Literal>]
+  let METRIC_API_SERVICE_QUEUE = "api_service_queue_length"
+
+  [<Literal>]
+  let METRIC_WEBSOCKET_SERVICE_QUEUE = "websocket_service_queue_length"
+
+  [<Literal>]
+  let METRIC_ASSET_SERVICE_QUEUE = "asset_service_queue_length"
+
+  [<Literal>]
+  let METRIC_RAFT_SERVICE_QUEUE = "raft_service_queue_length"
+
+  [<Literal>]
+  let METRIC_RESOLVER_SERVICE_QUEUE = "resolver_service_queue_length"
+
+  [<Literal>]
+  let METRIC_TCPSERVER_QUEUE = "tcpserver_queue_length"
+
   //  ____        __ _
   // |  _ \ __ _ / _| |_
   // | |_) / _` | |_| __|
@@ -131,7 +158,7 @@ module Constants =
 
   [<Literal>]
   let DEFAULT_METRICS_DB = "disco"
-  
+
   [<Literal>]
   let ADMIN_USER_NAME = "admin"
 

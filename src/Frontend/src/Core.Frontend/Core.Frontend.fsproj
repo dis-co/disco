@@ -27,6 +27,7 @@
     <Compile Include="../../../Disco/Disco/Core/Client.fs" />
     <Compile Include="../../../Disco/Disco/Core/Session.fs" />
     <Compile Include="../../../Disco/Disco/Core/Color.fs" />
+    <Compile Include="../../../Disco/Disco/Core/Actor.fs" />
     <Compile Include="../../../Disco/Disco/Core/Logging.fs" />
     <Compile Include="../../../Disco/Disco/Core/Tracing.fs" />
     <Compile Include="../../../Disco/Disco/Raft/Member.fs" />

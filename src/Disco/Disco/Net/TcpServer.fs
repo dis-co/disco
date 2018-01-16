@@ -145,7 +145,6 @@ module TcpServer =
     // *** create
 
     let create (id: Guid) (state: IState) (socket: Socket)  =
-      let cts = new CancellationTokenSource()
       let endpoint = socket.RemoteEndPoint :?> IPEndPoint
       let pending = ConcurrentDictionary<Guid,Request>()
       let stream = new NetworkStream(socket)
@@ -169,11 +168,8 @@ module TcpServer =
       // \__ \  __/ | | | (_| | | | | | (_| |
       // |___/\___|_| |_|\__,_|_|_| |_|\__, |
       //                               |___/
-      let rec sendLoop (inbox: MailboxProcessor<byte[]>) = async {
-          let! msg = inbox.Receive()
-          do stream.Write(msg, 0, msg.Length)
-          return! sendLoop inbox
-        }
+      let rec sendLoop _ msg =
+        do stream.Write(msg, 0, msg.Length)
 
       //                    _       _
       //  _ __ ___  ___ ___(_)_   _(_)_ __   __ _
@@ -181,33 +177,35 @@ module TcpServer =
       // | | |  __/ (_|  __/ |\ V /| | | | | (_| |
       // |_|  \___|\___\___|_| \_/ |_|_| |_|\__, |
       //                                    |___/
-      let receiveLoop = async {
-          let mutable run = true
-          while run do
-            try
-              let data = stream.ReadByte()
-              if data <> -1
-              then data |> byte |> builder.Write
-              else // once the stream returns -1, the underlying stream has ended
-                id
-                |> String.format "Reached end of Stream. Disconnected. {0}"
-                |> Logger.info (tag "receiveLoop")
-                id
-                |> TcpServerEvent.Disconnect
-                |> Observable.onNext state.Subscriptions
-                run <- false
-            with
-              | :? IOException -> run <- false
-              | exn ->
-                run <- false
-                id
-                |> TcpServerEvent.Disconnect
-                |> Observable.onNext state.Subscriptions
-                Logger.err (tag "receiveLoop") exn.Message
-        }
+      let receiveLoop () =
+        try
+          let data = stream.ReadByte()
+          if data <> -1
+          then
+            data |> byte |> builder.Write
+            true
+          else // once the stream returns -1, the underlying stream has ended
+            id
+            |> String.format "Reached end of Stream. Disconnected. {0}"
+            |> Logger.info (tag "receiveLoop")
+            id
+            |> TcpServerEvent.Disconnect
+            |> Observable.onNext state.Subscriptions
+            false
+        with
+          | :? IOException -> false
+          | exn ->
+            id
+            |> TcpServerEvent.Disconnect
+            |> Observable.onNext state.Subscriptions
+            Logger.err (tag "receiveLoop") exn.Message
+            false
 
-      let sender = MailboxProcessor.Start(sendLoop, cts.Token)
-      Async.Start(receiveLoop, cts.Token)
+      let sender = ThreadActor.create "TcpServer" sendLoop
+      let metrics = Periodically.run 1000 <| fun () ->
+        Metrics.collect Constants.METRIC_TCPSERVER_QUEUE sender.CurrentQueueLength
+      let receiver = Continuously.run receiveLoop
+      sender.Start()
 
       { new IConnection with
           member connection.Socket
@@ -235,8 +233,10 @@ module TcpServer =
             sender.Post data
 
           member connection.Dispose() =
-            try cts.Cancel() with | _ -> ()
             Socket.dispose socket
+            dispose metrics
+            dispose sender
+            dispose receiver
             dispose stream
             dispose builder }
 

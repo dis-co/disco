@@ -76,7 +76,7 @@ module ApiClient =
 
   // ** ApiAgent
 
-  type private ApiAgent = MailboxProcessor<Msg>
+  type private ApiAgent = IActor<Msg>
 
   // ** handleNotify
 
@@ -299,6 +299,7 @@ module ApiClient =
   let private makeSocket (server: DiscoServer) (client: DiscoClient) (agent: ApiAgent) =
     let socket =
       TcpClient.create {
+        Tag = "ApiClient.TcpClient"
         ClientId = client.Id
         PeerAddress = server.IpAddress
         PeerPort = server.Port
@@ -325,26 +326,20 @@ module ApiClient =
 
   // ** loop
 
-  let private loop (store: IAgentStore<ClientState>) (inbox: ApiAgent) =
-    let rec act () =
-      async {
-        let! msg = inbox.Receive()
-        let state = store.State
-        let newstate =
-          match msg with
-          | Msg.Restart    server  -> handleRestart     state server   inbox
-          | Msg.Notify ev          -> handleNotify      state ev
-          | Msg.Dispose            -> handleDispose     state
-          | Msg.Start              -> handleStart       state inbox
-          | Msg.Stop               -> handleStop        state
-          | Msg.SetStatus status   -> handleSetStatus   state status   inbox
-          | Msg.SetState newstate  -> handleSetState    state newstate inbox
-          | Msg.Update sm          -> handleUpdate      state sm       inbox
-          | Msg.SocketEvent   ev   -> handleSocketEvent state ev       inbox
-        store.Update newstate
-        return! act()
-      }
-    act ()
+  let private loop (store: IAgentStore<ClientState>) inbox msg =
+    let state = store.State
+    let newstate =
+      match msg with
+      | Msg.Restart    server  -> handleRestart     state server   inbox
+      | Msg.Notify ev          -> handleNotify      state ev
+      | Msg.Dispose            -> handleDispose     state
+      | Msg.Start              -> handleStart       state inbox
+      | Msg.Stop               -> handleStop        state
+      | Msg.SetStatus status   -> handleSetStatus   state status   inbox
+      | Msg.SetState newstate  -> handleSetState    state newstate inbox
+      | Msg.Update sm          -> handleUpdate      state sm       inbox
+      | Msg.SocketEvent   ev   -> handleSocketEvent state ev       inbox
+    store.Update newstate
 
   // ** ApiClient module
 
@@ -359,7 +354,7 @@ module ApiClient =
 
       let store:IAgentStore<ClientState> = AgentStore.create()
 
-      let agent = new ApiAgent(loop store, cts.Token)
+      let agent = ThreadActor.create "ApiClient" (loop store)
       let subscription, socket = makeSocket server client agent
 
       let state =
@@ -372,8 +367,6 @@ module ApiClient =
           SocketSubscription = subscription }
 
       store.Update state
-
-      agent.Error.Add(sprintf "unhandled error on loop: %O" >> Logger.err (tag "loop"))
 
       { new IApiClient with
           // **** Id

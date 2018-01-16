@@ -398,14 +398,20 @@ module Logger =
   ///
   /// Logging agent. Hidden.
   ///
-  /// Returns: MailboxProcessor<LogEvent>
   let private agent =
-    MailboxProcessor<LogEvent>.Start <| fun inbox -> async {
-      while true do
-        let! log = inbox.Receive()
-        for sub in subscriptions do
-          sub.OnNext log
-    }
+    #if FABLE_COMPILER
+    let actor = AsyncActor.create "Logging" <| fun _ log ->
+      async {
+        let snap = subscriptions.ToArray()
+        for sub in snap do sub.OnNext log
+      }
+    #else
+    let actor = ThreadActor.create "Logging" <| fun _ log ->
+      let snap = subscriptions.ToArray()
+      for sub in snap do sub.OnNext log
+    #endif
+    actor.Start()
+    actor
 
   // ** subscribe
 

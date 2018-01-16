@@ -35,7 +35,7 @@ module WebSocketServer =
 
   // ** SocketEventProcessor
 
-  type private SocketEventProcessor = MailboxProcessor<DiscoEvent>
+  type private SocketEventProcessor = IActor<DiscoEvent>
 
   // ** getConnectionId
 
@@ -246,13 +246,8 @@ module WebSocketServer =
 
   // ** loop
 
-  let private loop (subscriptions: Subscriptions) (inbox: SocketEventProcessor) =
-    let rec act () = async {
-        let! msg = inbox.Receive()
-        Observable.onNext subscriptions msg
-        return! act ()
-      }
-    act()
+  let private loop (subscriptions: Subscriptions) _ =
+    Observable.onNext subscriptions
 
   // ** broadcast
 
@@ -272,7 +267,9 @@ module WebSocketServer =
       let connections = Connections()
       let subscriptions = Subscriptions()
 
-      let agent = new SocketEventProcessor(loop subscriptions)
+      let agent = ThreadActor.create "WebSocketServer" (loop subscriptions)
+      let metrics = Periodically.run 1000 <| fun () ->
+        Metrics.collect Constants.METRIC_WEBSOCKET_SERVICE_QUEUE agent.CurrentQueueLength
 
       let uri = sprintf "ws://%s:%d" (string mem.IpAddress) mem.WsPort
 
@@ -374,5 +371,7 @@ module WebSocketServer =
                 connections.Clear()
                 subscriptions.Clear()
                 dispose server
+                dispose metrics
+                dispose agent
                 status := ServiceStatus.Disposed }
     }

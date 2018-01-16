@@ -39,7 +39,7 @@ module AssetService =
 
   // ** AssetEventProcessor
 
-  type private AssetEventProcessor = MailboxProcessor<Msg>
+  type private AssetEventProcessor = IActor<Msg>
 
   // ** AssetServiceState
 
@@ -145,43 +145,37 @@ module AssetService =
 
   // ** loop
 
-  let private loop (store: IAgentStore<AssetServiceState>) (inbox: AssetEventProcessor) =
-    let rec impl () =
-      async {
-        let! msg = inbox.Receive()
-        let state = store.State
-        match msg with
-        | Msg.Command(AddFsTree tree as ev) ->
-          ev
-          |> DiscoEvent.appendService
-          |> Observable.onNext state.Subscriptions
-          updateFiles state (Some tree)
-        | Msg.Fs(FileSystemEvent.Created(_,path) as update) ->
-          state.Files
-          |> Option.map (FsTree.add path)
-          |> updateFiles state
-          |> addUpdate update
-        | Msg.Fs(FileSystemEvent.Changed(_,path) as update) ->
-          state.Files
-          |> Option.map (FsTree.update path)
-          |> updateFiles state
-          |> addUpdate update
-        | Msg.Fs(FileSystemEvent.Deleted(_,path) as update) ->
-          state.Files
-          |> Option.map (FsTree.remove path)
-          |> updateFiles state
-          |> addUpdate update
-        | Msg.Fs(FileSystemEvent.Renamed(_,oldpath,_,path) as update) ->
-          state.Files
-          |> Option.map (FsTree.remove oldpath >> FsTree.add path)
-          |> updateFiles state
-          |> addUpdate update
-        | Msg.Flush -> flushUpdates state
-        | _ -> state
-        |> store.Update
-        return! impl()
-      }
-    impl()
+  let private loop (store: IAgentStore<AssetServiceState>) inbox msg =
+    let state = store.State
+    match msg with
+    | Msg.Command(AddFsTree tree as ev) ->
+      ev
+      |> DiscoEvent.appendService
+      |> Observable.onNext state.Subscriptions
+      updateFiles state (Some tree)
+    | Msg.Fs(FileSystemEvent.Created(_,path) as update) ->
+      state.Files
+      |> Option.map (FsTree.add path)
+      |> updateFiles state
+      |> addUpdate update
+    | Msg.Fs(FileSystemEvent.Changed(_,path) as update) ->
+      state.Files
+      |> Option.map (FsTree.update path)
+      |> updateFiles state
+      |> addUpdate update
+    | Msg.Fs(FileSystemEvent.Deleted(_,path) as update) ->
+      state.Files
+      |> Option.map (FsTree.remove path)
+      |> updateFiles state
+      |> addUpdate update
+    | Msg.Fs(FileSystemEvent.Renamed(_,oldpath,_,path) as update) ->
+      state.Files
+      |> Option.map (FsTree.remove oldpath >> FsTree.add path)
+      |> updateFiles state
+      |> addUpdate update
+    | Msg.Flush -> flushUpdates state
+    | _ -> state
+    |> store.Update
 
   // ** post
 
@@ -296,22 +290,15 @@ module AssetService =
 
   // ** flushClock
 
-  let rec private flushClock agent =
-    async {
-      do! Async.Sleep(2000)
-      do post agent Msg.Flush
-      return! flushClock agent
-    }
+  let private flushClock agent () =
+    do post agent Msg.Flush
 
   // ** create
 
   let create (machine: DiscoMachine) =
     either {
       do! Directory.createDirectory machine.AssetDirectory |> Either.map ignore
-
-      let cts = new CancellationTokenSource()
       let subscriptions = Subscriptions()
-
       let store = AgentStore.create()
 
       store.Update {
@@ -321,14 +308,17 @@ module AssetService =
         Subscriptions = subscriptions
       }
 
-      let agent = new AssetEventProcessor(loop store, cts.Token)
+      let agent = ThreadActor.create "AssetService" (loop store)
       let watcher = createWatcher machine.AssetDirectory agent
+      let mutable flusher = Unchecked.defaultof<IDisposable>
+      let metrics = Periodically.run 1000 <| fun () ->
+        Metrics.collect Constants.METRIC_ASSET_SERVICE_QUEUE agent.CurrentQueueLength
 
       return {
         new IAssetService with
           member self.Start() =
             agent.Start()
-            Async.Start(flushClock agent, cts.Token)
+            flusher <- Periodically.run 2000 (flushClock agent)
             agent
             |> startCrawler machine
             |> Either.succeed
@@ -342,8 +332,9 @@ module AssetService =
 
           member self.Dispose() =
             try
+              dispose flusher
               dispose watcher
-              cts.Cancel()
+              dispose metrics
               dispose agent
             with exn -> printfn "exn: %A" exn
       }
