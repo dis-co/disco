@@ -64,21 +64,6 @@ module Continuously =
 
 #endif
 
-// * Actor
-
-module Actor =
-
-  // ** warnQueueLength
-
-  let warnQueueLength t (inbox: IActor<_>) =
-    // wa't when 't :> rn if the queue length surpasses threshold
-    let count = inbox.CurrentQueueLength
-    if count > Constants.QUEUE_LENGTH_THRESHOLD then
-      count
-      |> String.format "Queue length threshold was reached: {0}"
-      |> printfn "[WARNING-%s]: %s" t
-
-
 // * AsyncActor
 
 module AsyncActor =
@@ -90,7 +75,6 @@ module AsyncActor =
       async {
         let! msg = inbox.Receive()
         do! f actor msg
-        do Actor.warnQueueLength tag actor
         return! _loop ()
       }
     _loop ()
@@ -134,7 +118,6 @@ module ThreadActor =
       while run do
         let msg = queue.Take()
         do f actor msg
-        do Actor.warnQueueLength tag actor
     with
       | :? ThreadAbortException -> ()
       | _ -> () // printfn "ThreadActor: %A" exn
