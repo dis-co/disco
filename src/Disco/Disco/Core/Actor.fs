@@ -129,6 +129,7 @@ module ThreadActor =
     { new IActor<'a> with
       member actor.Start() =
         let thread = Thread(ThreadStart(loop<'a> tag queue actor f))
+        thread.Name <- tag
         thread.IsBackground <- true
         thread.Start()
       member actor.Post value = try queue.Add value with _ -> ()
