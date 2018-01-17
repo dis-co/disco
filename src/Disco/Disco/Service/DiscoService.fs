@@ -606,9 +606,10 @@ module DiscoService =
         member dispatcher.Start() =
           if Service.isStopped status then
             pipeline <- Pipeline.create {
-              PreActions  = preActions store
-              Processors  = processors store
-              Publishers  = publishers store
+              Type        = Actor       /// or Disruptor
+              PreActions  = preActions  store
+              Processors  = processors  store
+              Publishers  = publishers  store
               PostActions = postActions store
             }
             status <- ServiceStatus.Running

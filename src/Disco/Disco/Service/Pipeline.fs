@@ -21,11 +21,18 @@ open Disco.Raft
 open Disco.Net
 open SharpYaml.Serialization
 
+// * PipelineType
+
+type PipelineType =
+  | Actor
+  | Disruptor
+
 // * PipelineOptions
 
 [<NoComparison;NoEquality>]
 type PipelineOptions =
-  { PreActions:  IHandler<DiscoEvent>[]
+  { Type:        PipelineType
+    PreActions:  IHandler<DiscoEvent>[]
     Processors:  IHandler<DiscoEvent>[]
     Publishers:  IHandler<DiscoEvent>[]
     PostActions: IHandler<DiscoEvent>[] }
@@ -54,12 +61,25 @@ module Pipeline =
   // ** createDisruptor
 
   let private createDisruptor () =
-    Dsl.Disruptor<PipelineEvent<DiscoEvent>>(PipelineEvent<DiscoEvent>, BufferSize, scheduler)
+    /// default is multi-producer + BlcokingWait
+    Dsl.Disruptor<PipelineEvent<DiscoEvent>>(
+      PipelineEvent<DiscoEvent>,
+      BufferSize,
+      TaskScheduler.Default)
+    (*
+    Dsl.Disruptor<PipelineEvent<DiscoEvent>>(
+      (fun () -> PipelineEvent<DiscoEvent>()),
+      BufferSize,
+      TaskScheduler.Default,
+      ProducerType.Single,
+      BlockingWaitStrategy())
+    *)
 
   // ** handleEventsWith
 
-  let private handleEventsWith (handlers: IHandler<DiscoEvent> [])
-                               (disruptor: Disruptor<PipelineEvent<DiscoEvent>>) =
+  let private handleEventsWith
+    (handlers: IHandler<DiscoEvent> [])
+    (disruptor: Disruptor<PipelineEvent<DiscoEvent>>) =
     disruptor.HandleEventsWith handlers
 
   // ** thenDo
@@ -92,21 +112,33 @@ module Pipeline =
   // ** create
 
   let create (options: PipelineOptions) =
-    let disruptor = createDisruptor()
-
-    disruptor
-    |> handleEventsWith options.PreActions
-    |> thenDo options.Processors
-    |> thenDo options.Publishers
-    |> thenDo options.PostActions
-    |> thenDo clearEvent
-    |> ignore
-
-    let ringBuffer = disruptor.Start()
-
-    { new IPipeline<DiscoEvent> with
-        member pipeline.Push(cmd: DiscoEvent) =
-          insertInto ringBuffer cmd
-
-        member pipeline.Dispose() =
-          disruptor.Shutdown() }
+    match options.Type with
+    | Disruptor ->
+      let disruptor = createDisruptor()
+      disruptor
+      |> handleEventsWith options.PreActions
+      |> thenDo options.Processors
+      |> thenDo options.Publishers
+      |> thenDo options.PostActions
+      |> thenDo clearEvent
+      |> ignore
+      let ringBuffer = disruptor.Start()
+      { new IPipeline<DiscoEvent> with
+          member pipeline.Push(cmd: DiscoEvent) = insertInto ringBuffer cmd
+          member pipeline.Dispose() = disruptor.Shutdown() }
+    | Actor ->
+      let ev = PipelineEvent<DiscoEvent>()
+      let apply (handlers: IHandler<DiscoEvent> []) cmd =
+        ev.Event <- Some cmd
+        for handler in handlers do
+          handler.OnEvent(ev,0L,false)
+      let actor = ThreadActor.create "pipeline" <| fun _ cmd ->
+        apply options.PreActions  cmd
+        apply options.Processors  cmd
+        apply options.Publishers  cmd
+        apply options.PostActions cmd
+        ev.Clear()
+      actor.Start()
+      { new IPipeline<DiscoEvent> with
+          member pipeline.Push(cmd: DiscoEvent) = actor.Post cmd
+          member pipeline.Dispose() = dispose actor }
