@@ -34,6 +34,7 @@ module Metrics =
               let values = Dictionary<string,obj>()
               do values.Add(name, value)
               do collector.Write(name, values))
+          actor.Start()
           agent <- Some actor
           Either.nothing
       else Either.nothing

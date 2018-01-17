@@ -142,8 +142,6 @@ module TcpServer =
 
   module private Connection =
 
-    // *** create
-
     let create (id: Guid) (state: IState) (socket: Socket)  =
       let endpoint = socket.RemoteEndPoint :?> IPEndPoint
       let pending = ConcurrentDictionary<Guid,Request>()
@@ -162,22 +160,14 @@ module TcpServer =
           |> TcpServerEvent.Request
           |> Observable.onNext state.Subscriptions
 
-      //                     _ _
-      //  ___  ___ _ __   __| (_)_ __   __ _
-      // / __|/ _ \ '_ \ / _` | | '_ \ / _` |
-      // \__ \  __/ | | | (_| | | | | | (_| |
-      // |___/\___|_| |_|\__,_|_|_| |_|\__, |
-      //                               |___/
-      let rec sendLoop _ msg =
+      let name = "TcpServer.Connection." + string id
+      let sender = ThreadActor.create name <| fun _ msg ->
         do stream.Write(msg, 0, msg.Length)
 
-      //                    _       _
-      //  _ __ ___  ___ ___(_)_   _(_)_ __   __ _
-      // | '__/ _ \/ __/ _ \ \ \ / / | '_ \ / _` |
-      // | | |  __/ (_|  __/ |\ V /| | | | | (_| |
-      // |_|  \___|\___\___|_| \_/ |_|_| |_|\__, |
-      //                                    |___/
-      let receiveLoop () =
+      let metrics = Periodically.run 1000 <| fun () ->
+        Metrics.collect Constants.METRIC_TCPSERVER_QUEUE sender.CurrentQueueLength
+
+      let receiver = Continuously.run <| fun () ->
         try
           let data = stream.ReadByte()
           if data <> -1
@@ -201,10 +191,6 @@ module TcpServer =
             Logger.err (tag "receiveLoop") exn.Message
             false
 
-      let sender = ThreadActor.create "TcpServer" sendLoop
-      let metrics = Periodically.run 1000 <| fun () ->
-        Metrics.collect Constants.METRIC_TCPSERVER_QUEUE sender.CurrentQueueLength
-      let receiver = Continuously.run receiveLoop
       sender.Start()
 
       { new IConnection with
@@ -390,12 +376,11 @@ module TcpServer =
               do state.Listener.Bind(state.EndPoint)
               do state.Listener.Listen(Core.MAX_CONNECTIONS)
               do Server.acceptAsync state
-            with
-              | exn ->
-                return!
-                  exn.Message
-                  |> Error.asSocketError (tag "Start")
-                  |> Either.fail
+            with exn ->
+              return!
+                exn.Message
+                |> Error.asSocketError (tag "Start")
+                |> Either.fail
           }
 
         member server.Request (client: Guid) (request: Request) =
@@ -403,28 +388,24 @@ module TcpServer =
             request
             |> RequestBuilder.serialize
             |> state.Connections.[client].Send
-          with
-            | exn ->
-              String.Format("{0} {1}", exn.Message, request.PeerId)
-              |> Logger.err (tag "Request")
-
-              state.Connections.Keys
-              |> sprintf "current peers: %A"
-              |> Logger.err (tag "Request")
+          with exn ->
+            String.Format("{0} {1}", exn.Message, request.PeerId)
+            |> Logger.err (tag "Request")
+            state.Connections.Keys
+            |> sprintf "current peers: %A"
+            |> Logger.err (tag "Request")
 
         member server.Respond (response: Response) =
           try
             response
             |> RequestBuilder.serialize
             |> state.Connections.[response.PeerId].Send
-          with
-            | exn ->
-              String.Format("{0} {1}", exn.Message, response.PeerId)
-              |> Logger.err (tag "Respond")
-
-              state.Connections.Keys
-              |> sprintf "current peers: %A"
-              |> Logger.err (tag "Respond")
+          with exn ->
+            String.Format("{0} {1}", exn.Message, response.PeerId)
+            |> Logger.err (tag "Respond")
+            state.Connections.Keys
+            |> sprintf "current peers: %A"
+            |> Logger.err (tag "Respond")
 
         member server.Subscribe (callback: TcpServerEvent -> unit) =
           Observable.subscribe callback state.Subscriptions

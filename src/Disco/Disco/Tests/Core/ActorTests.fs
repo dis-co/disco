@@ -73,6 +73,6 @@ module ActorTests =
       analyse "thread" threadMeasurements
 
   let actorTests =
-    ftestList "Actor Tests" [
+    testList "Actor Tests" [
       test_actor_performance
     ]
