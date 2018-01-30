@@ -166,7 +166,6 @@ type DiscoEvent =
       // |  _| | | |  __/___) | |_| \__ \ ||  __/ | | | | |
       // |_|   |_|_|\___|____/ \__, |___/\__\___|_| |_| |_|
       //                       |___/
-
       | FileSystem          _                                -> Ignore
 
       //  ____        __ _
@@ -174,7 +173,6 @@ type DiscoEvent =
       // | |_) / _` | |_| __|
       // |  _ < (_| |  _| |_
       // |_| \_\__,_|_|  \__|
-
       | ConfigurationDone   _
       | EnterJointConsensus _
       | StateChanged        _
@@ -187,7 +185,6 @@ type DiscoEvent =
       // | |  _| | __|
       // | |_| | | |_
       //  \____|_|\__|
-
       | GitPull         _
       | GitPush         _                                    -> Process
 
@@ -196,7 +193,6 @@ type DiscoEvent =
       //  \ \ /\ / / _ \ '_ \___ \ / _ \ / __| |/ / _ \ __|
       //   \ V  V /  __/ |_) |__) | (_) | (__|   <  __/ |_
       //    \_/\_/ \___|_.__/____/ \___/ \___|_|\_\___|\__|
-
       | SessionOpened   _
       | SessionClosed   _                                    -> Replicate
 
@@ -209,7 +205,6 @@ type DiscoEvent =
       // |  _ \ / _` | __/ __| '_ \
       // | |_) | (_| | || (__| | | |
       // |____/ \__,_|\__\___|_| |_|
-
       | Append (Origin.Client  _, CommandBatch _)
       | Append (Origin.Service _, CommandBatch _)
       | Append (Origin.Web     _, CommandBatch _)            -> Replicate
@@ -220,7 +215,6 @@ type DiscoEvent =
       // | |  | | (_| | |_) | |_) | | | | | (_| |
       // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
       //              |_|   |_|            |___/
-
       | Append (Origin.Client  _, AddPinMapping _)
       | Append (Origin.Service _, AddPinMapping _)
       | Append (Origin.Web     _, AddPinMapping _)
@@ -237,7 +231,6 @@ type DiscoEvent =
       //   \ V  V / | | (_| | (_| |  __/ |_
       //    \_/\_/  |_|\__,_|\__, |\___|\__|
       //                     |___/
-
       | Append (Origin.Client  _, AddPinWidget _)
       | Append (Origin.Service _, AddPinWidget _)
       | Append (Origin.Web     _, AddPinWidget _)
@@ -254,7 +247,6 @@ type DiscoEvent =
       // |  __/| | | (_) | |  __/ (__| |_
       // |_|   |_|  \___// |\___|\___|\__|
       //               |__/
-
       | Append (Origin.Web     _, UnloadProject)             -> Replicate
       | Append (Origin.Client  _, UnloadProject)             -> Ignore
       | Append (Origin.Service _, UnloadProject)             -> Replicate
@@ -268,23 +260,33 @@ type DiscoEvent =
       // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
       // | |  | |  __/ | | | | | |_) |  __/ |
       // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+      | Append (Origin.Web     _, AddMachine    _)           -> Replicate
+      | Append (Origin.Web     _, UpdateMachine _)           -> Ignore
+      | Append (Origin.Web     _, RemoveMachine _)           -> Replicate
+      | Append (Origin.Client  _, AddMachine    _)
+      | Append (Origin.Client  _, UpdateMachine _)
+      | Append (Origin.Client  _, RemoveMachine _)           -> Ignore
+      | Append (Origin.Service _, AddMachine    _)
+      | Append (Origin.Service _, UpdateMachine _)
+      | Append (Origin.Service _, RemoveMachine _)           -> Replicate
 
-      | Append (Origin.Web     _, AddMember    _)            -> Replicate
-      | Append (Origin.Web     _, UpdateMember _)            -> Ignore
-      | Append (Origin.Web     _, RemoveMember _)            -> Replicate
-      | Append (Origin.Client  _, AddMember    _)
-      | Append (Origin.Client  _, UpdateMember _)
-      | Append (Origin.Client  _, RemoveMember _)            -> Ignore
+      //  __  __                _
+      // |  \/  | ___ _ __ ___ | |__   ___ _ __
+      // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+      // | |  | |  __/ | | | | | |_) |  __/ |
+      // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
       | Append (Origin.Service _, AddMember    _)
       | Append (Origin.Service _, UpdateMember _)
       | Append (Origin.Service _, RemoveMember _)            -> Replicate
+      | Append (               _, AddMember    _)
+      | Append (               _, UpdateMember _)
+      | Append (               _, RemoveMember _)            -> Ignore
 
       //   ____ _ _            _
       //  / ___| (_) ___ _ __ | |_
       // | |   | | |/ _ \ '_ \| __|
       // | |___| | |  __/ | | | |_
       //  \____|_|_|\___|_| |_|\__|
-
       | Append (Origin.Web     _, AddClient    _)
       | Append (Origin.Web     _, UpdateClient _)
       | Append (Origin.Web     _, RemoveClient _)
@@ -301,7 +303,6 @@ type DiscoEvent =
       // |  __/| | | | | |_| | | | (_) | |_| | |_) |
       // |_|   |_|_| |_|\____|_|  \___/ \__,_| .__/
       //                                     |_|
-
       | Append (Origin.Web     _, AddPinGroup    _)
       | Append (Origin.Web     _, UpdatePinGroup _)
       | Append (Origin.Web     _, RemovePinGroup _)          -> Ignore
@@ -317,7 +318,6 @@ type DiscoEvent =
       // | |_) | | '_ \
       // |  __/| | | | |
       // |_|   |_|_| |_|
-
       | Append (Origin.Web     _, AddPin    _)               -> Ignore
       | Append (Origin.Web     _, UpdatePin _)               -> Replicate
       | Append (Origin.Web     _, RemovePin _)               -> Ignore
@@ -333,7 +333,6 @@ type DiscoEvent =
       // | |  | | | |/ _ \
       // | |__| |_| |  __/
       //  \____\__,_|\___|
-
       | Append (Origin.Web     _, AddCue    _)
       | Append (Origin.Web     _, UpdateCue _)
       | Append (Origin.Web     _, RemoveCue _)
@@ -377,7 +376,6 @@ type DiscoEvent =
       // | |  | | | |/ _ \ |   | / __| __|
       // | |__| |_| |  __/ |___| \__ \ |_
       //  \____\__,_|\___|_____|_|___/\__|
-
       | Append (Origin.Web     _, AddCueList    _)
       | Append (Origin.Web     _, UpdateCueList _)
       | Append (Origin.Web     _, RemoveCueList _)
@@ -394,7 +392,6 @@ type DiscoEvent =
       // | |__| |_| |  __/  __/| | (_| | |_| |  __/ |
       //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
       //                                |___/
-
       | Append (Origin.Web     _, AddCuePlayer    _)
       | Append (Origin.Web     _, UpdateCuePlayer _)
       | Append (Origin.Web     _, RemoveCuePlayer _)
@@ -410,7 +407,6 @@ type DiscoEvent =
       // | | | / __|/ _ \ '__|
       // | |_| \__ \  __/ |
       //  \___/|___/\___|_|
-
       | Append (Origin.Web     _, AddUser    _)
       | Append (Origin.Web     _, UpdateUser _)
       | Append (Origin.Web     _, RemoveUser _)              -> Replicate
@@ -426,7 +422,6 @@ type DiscoEvent =
       // \___ \ / _ \/ __/ __| |/ _ \| '_ \
       //  ___) |  __/\__ \__ \ | (_) | | | |
       // |____/ \___||___/___/_|\___/|_| |_|
-
       | Append (Origin.Web     _, AddSession    _)
       | Append (Origin.Web     _, UpdateSession _)
       | Append (Origin.Web     _, RemoveSession _)           -> Replicate
@@ -442,7 +437,6 @@ type DiscoEvent =
       // | | | | / __|/ __/ _ \ \ / / _ \ '__/ _ \/ _` |
       // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
       // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
-
       | Append (Origin.Web     _, AddDiscoveredService    _)
       | Append (Origin.Web     _, UpdateDiscoveredService _)
       | Append (Origin.Web     _, RemoveDiscoveredService _)
@@ -458,7 +452,6 @@ type DiscoEvent =
       // | |   | |/ _ \ / __| |/ /
       // | |___| | (_) | (__|   <
       //  \____|_|\___/ \___|_|\_\
-
       | Append (Origin.Service _, UpdateClock _)             -> Publish
       | Append (               _, UpdateClock _)             -> Ignore
 
@@ -467,7 +460,6 @@ type DiscoEvent =
       // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
       // | |__| (_) | | | | | | | | | | | (_| | | | | (_| |
       //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|
-
       | Append (Origin.Web     _, Command _)
       | Append (Origin.Client  _, Command _)
       | Append (Origin.Service _, Command _)                 -> Replicate
@@ -478,7 +470,6 @@ type DiscoEvent =
       // | |_| | (_| | || (_| |___) | | | | (_| | |_) \__ \ | | | (_) | |_
       // |____/ \__,_|\__\__,_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
       //                                        |_|
-
       | Append (Origin.Web     _, DataSnapshot _)
       | Append (Origin.Client  _, DataSnapshot _)
       | Append (Origin.Service _, DataSnapshot _)            -> Ignore
@@ -488,7 +479,6 @@ type DiscoEvent =
       // | |_ / _` / __| __| |_) | '__/ _ \ / __/ _ \/ __/ __|
       // |  _| (_| \__ \ |_|  __/| | | (_) | (_|  __/\__ \__ \
       // |_|  \__,_|___/\__|_|   |_|  \___/ \___\___||___/___/
-
       | Append (_, UpdateSlices _)                           -> Publish
       | Append (_, CallCue      _)                           -> Publish
 
@@ -498,7 +488,6 @@ type DiscoEvent =
       // | |__| (_) | (_| | |  | \__ \ (_| |
       // |_____\___/ \__, |_|  |_|___/\__, |
       //             |___/            |___/
-
       | Append (_, LogMsg _)                                 -> Publish
 
       //  __  __ _
@@ -506,7 +495,6 @@ type DiscoEvent =
       // | |\/| | / __|/ __|
       // | |  | | \__ \ (__
       // |_|  |_|_|___/\___|
-
       | Append (_, SetLogLevel  _)                           -> Replicate
 
 // * DiscoEvent module

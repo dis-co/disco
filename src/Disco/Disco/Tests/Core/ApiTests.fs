@@ -190,7 +190,6 @@ module ApiTests =
           AddCue     (mkCue ())
           AddPin     (mkPin ())
           AddCueList (mkCueList ())
-          AddMember  (mkMember ())
           AddUser    (mkUser ())
         ]
 
@@ -369,7 +368,8 @@ module ApiTests =
   let test_client_should_dispose_properly =
     testCase "client should dispose properly" <| fun _ ->
       either {
-        let mem = Member.create (DiscoId.Create())
+        let machine = MachineConfig.create "127.0.0.1" None
+        let mem = Machine.toClusterMember machine
 
         let srvr : DiscoServer =
           { Port = mem.ApiPort

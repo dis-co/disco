@@ -150,32 +150,40 @@ module DiscoService =
       | DiscoEvent.Append(_, sm) when sm.PersistenceStrategy = PersistenceStrategy.Commit ->
         if isLeader store then
           do persistWithLogging store sm
-          let state= store.State
+
+          let state = store.State
+
           //   ____                          _ _
           //  / ___|___  _ __ ___  _ __ ___ (_) |_
           // | |   / _ \| '_ ` _ \| '_ ` _ \| | __|
           // | |__| (_) | | | | | | | | | | | | |_
           //  \____\___/|_| |_| |_|_| |_| |_|_|\__|
-          match Persistence.commitChanges state.Store.State with
-          | Right (repo, commit) ->
-            commit.Sha
-            |> String.format "Successfully committed changes in: {0}"
-            |> Logger.debug (tag "statePersistor")
-            repo
-            |> Persistence.ensureRemotes
-                state.RaftServer.MemberId
-                state.Store.State.Project
-                state.RaftServer.Raft.Peers
-            |> Persistence.pushChanges
-            |> Map.iter
-              (fun name err ->
-                sprintf "could not push to %s: %O" name err
-                |> Logger.err (tag "statePersistor"))
-            dispose repo
+          match Config.getMembers state.Store.State.Project.Config with
           | Left error ->
-            error
+            error.Message
             |> String.format "Error committing changes to disk: {0}"
             |> Logger.err (tag "statePersistor")
+          | Right members ->
+            match Persistence.commitChanges state.Store.State with
+            | Right (repo, commit) ->
+              commit.Sha
+              |> String.format "Successfully committed changes in: {0}"
+              |> Logger.debug (tag "statePersistor")
+              repo
+              |> Persistence.ensureRemotes
+                  state.RaftServer.MemberId
+                  state.Store.State.Project
+                  members
+              |> Persistence.pushChanges
+              |> Map.iter
+                (fun name err ->
+                  sprintf "could not push to %s: %O" name err
+                  |> Logger.err (tag "statePersistor"))
+              dispose repo
+            | Left error ->
+              error
+              |> String.format "Error committing changes to disk: {0}"
+              |> Logger.err (tag "statePersistor")
       | _ -> ()
 
   // ** mappingResolver
@@ -352,6 +360,10 @@ module DiscoService =
   /// will simply be ignored.
   let private sendLocalData (socket: ITcpClient) (store: IAgentStore<DiscoState>) =
     if (store.State.SocketServer.Sessions.Count + store.State.ApiServer.Clients.Count) > 0 then
+      let mem =
+        match Config.getActiveMember store.State.Store.State.Project.Config with
+        | Some clusterMem -> [ AddMember clusterMem ]
+        | None -> List.empty
       let sessions =
         store.State.SocketServer.Sessions
         |> Map.toList
@@ -365,7 +377,13 @@ module DiscoService =
         |> Option.map (fun tree -> [ AddFsTree tree ])
         |> Option.defaultValue List.empty
 
-      let batch = List.concat [ sessions; clients; tree ]
+      let batch =
+        List.concat [
+          mem
+          sessions
+          clients
+          tree
+        ]
 
       /// send a batched state machine command to leader if non-empty
       if not (List.isEmpty batch) then
@@ -526,11 +544,11 @@ module DiscoService =
     // | |  | |  __/ | | | | | |_) |  __/ |  \__ \
     // |_|  |_|\___|_| |_| |_|_.__/ \___|_|  |___/
 
-    | Append (_, AddMember mem) ->
-      if isLeader store then store.State.RaftServer.AddMember mem
+    | Append (_, AddMachine mem) ->
+      if isLeader store then store.State.RaftServer.AddMachine mem
 
-    | Append (_, RemoveMember mem) ->
-      if isLeader store then store.State.RaftServer.RemoveMember mem.Id
+    | Append (_, RemoveMachine mem) ->
+      if isLeader store then store.State.RaftServer.RemoveMachine mem.Id
 
     //  ____             _        _
     // / ___|  ___   ___| | _____| |_
@@ -624,9 +642,10 @@ module DiscoService =
   // ** retrieveSnapshot
 
   let private retrieveSnapshot (state: DiscoState) =
-    let path = Constants.RAFT_DIRECTORY <.>
-               Constants.SNAPSHOT_FILENAME +
-               Constants.ASSET_EXTENSION
+    let path =
+      Constants.RAFT_DIRECTORY <.>
+      Constants.SNAPSHOT_FILENAME +
+      Constants.ASSET_EXTENSION
     match DiscoData.read path with
     | Right str ->
       try
@@ -699,7 +718,7 @@ module DiscoService =
     | Some (name, site) ->
       let site =
         state.Project.Config.Sites
-        |> Array.tryFind (fun s -> s.Id = site)
+        |> Map.tryFind site
         |> function
         | Some s -> s
         | None -> { ClusterConfig.Default with Name = name }
@@ -875,19 +894,19 @@ module DiscoService =
     dispose store.State         // dispose the state
     store.Update { store.State with Status = ServiceStatus.Disposed }
 
-  // ** addMember
+  // ** addMachine
 
-  let private addMember (store: IAgentStore<DiscoState>) (mem: RaftMember) =
-    AddMember mem
+  let private addMachine (store: IAgentStore<DiscoState>) (mem: RaftMember) =
+    AddMachine mem
     |> DiscoEvent.appendService
     |> store.State.Dispatcher.Dispatch
 
-  // ** removeMember
+  // ** removeMachine
 
-  let private removeMember (store: IAgentStore<DiscoState>) (id: MemberId) =
+  let private removeMachine (store: IAgentStore<DiscoState>) (id: MemberId) =
     store.State.RaftServer.Raft.Peers
     |> Map.tryFind id
-    |> Option.iter (RemoveMember >> DiscoEvent.appendService >> store.State.Dispatcher.Dispatch)
+    |> Option.iter (RemoveMachine >> DiscoEvent.appendService >> store.State.Dispatcher.Dispatch)
 
   // ** append
 
@@ -919,9 +938,9 @@ module DiscoService =
 
         member self.Periodic () = store.State.RaftServer.Periodic()
 
-        member self.AddMember mem = addMember store mem
+        member self.AddMachine mem = addMachine store mem
 
-        member self.RemoveMember id = removeMember store id
+        member self.RemoveMachine id = removeMachine store id
 
         member self.Append cmd = append store cmd
 

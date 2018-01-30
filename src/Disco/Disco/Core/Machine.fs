@@ -246,7 +246,7 @@ type DiscoMachineYaml () =
   [<DefaultValue>] val mutable AssetFilter:      string
   [<DefaultValue>] val mutable LogDirectory:     string
   [<DefaultValue>] val mutable CollectMetrics:   bool
-  
+
   [<DefaultValue>] val mutable MetricsHost:      string
 
   [<DefaultValue>] val mutable MetricsPort:      uint16
@@ -272,8 +272,8 @@ type DiscoMachineYaml () =
     yml.LogDirectory     <- unwrap cfg.LogDirectory
     yml.CollectMetrics   <- cfg.CollectMetrics
     yml.MetricsHost      <- string cfg.MetricsHost
-    yml.MetricsPort      <- unwrap cfg.MetricsPort  
-    yml.MetricsDb        <- cfg.MetricsDb 
+    yml.MetricsPort      <- unwrap cfg.MetricsPort
+    yml.MetricsDb        <- cfg.MetricsDb
     yml.BindAddress      <- string cfg.BindAddress
     yml.MulticastAddress <- string cfg.MulticastAddress
     yml.MulticastPort    <- unwrap cfg.MulticastPort

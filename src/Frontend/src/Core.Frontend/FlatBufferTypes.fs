@@ -2177,6 +2177,7 @@ type StateMachinePayloadFBConstructor =
   abstract PinMappingFB: StateMachinePayloadFB
   abstract PinWidgetFB: StateMachinePayloadFB
   abstract RaftMemberFB: StateMachinePayloadFB
+  abstract ClusterMemberFB: StateMachinePayloadFB
   abstract UserFB: StateMachinePayloadFB
   abstract SessionFB: StateMachinePayloadFB
   abstract LogEventFB: StateMachinePayloadFB
@@ -2205,6 +2206,7 @@ type StateMachineFB =
   abstract PinMappingFB: PinMappingFB
   abstract PinWidgetFB: PinWidgetFB
   abstract RaftMemberFB: RaftMemberFB
+  abstract ClusterMemberFB: ClusterMemberFB
   abstract UserFB: UserFB
   abstract SessionFB: SessionFB
   abstract LogEventFB: LogEventFB

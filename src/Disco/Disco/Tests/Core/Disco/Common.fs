@@ -60,11 +60,7 @@ module Common =
     }
 
   let mkMember (machine: DiscoMachine) =
-    { Member.create machine.MachineId with
-        RaftPort = machine.RaftPort
-        ApiPort = machine.ApiPort
-        GitPort = machine.GitPort
-        WsPort = machine.WsPort }
+    Machine.toClusterMember machine
 
   let mkCluster (num: int) =
     either {
@@ -82,7 +78,7 @@ module Common =
             Name = name "Cool Cluster Yo"
             Members =
               members
-              |> List.map (fun mem -> mem.Id,ClusterMember.ofRaftMember mem)
+              |> List.map (fun mem -> mem.Id, mem)
               |> Map.ofList }
 
       let project =

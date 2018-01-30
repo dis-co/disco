@@ -101,7 +101,7 @@ module RemoveMemberShouldSplitCluster =
           | false, false -> failwith "no leader"
           | true, true -> failwith "two leaders!!"
 
-        do leader.RemoveMember otherId
+        do leader.RemoveMachine otherId
 
         do! waitFor "removeDone" removeDone /// remove done on first service
         do! waitFor "removeDone" removeDone /// remove done on other service

@@ -738,7 +738,7 @@ module ClusterMember =
   let setIpAddress = Optic.set ClusterMember.IpAddress_
   let setMulticastAddress = Optic.set ClusterMember.MulticastAddress_
   let setMulticastPort = Optic.set ClusterMember.MulticastPort_
-  let setClusterPort = Optic.set ClusterMember.RaftPort_
+  let setRaftPort = Optic.set ClusterMember.RaftPort_
   let setHttpPort = Optic.set ClusterMember.HttpPort_
   let setWsPort = Optic.set ClusterMember.WsPort_
   let setGitPort = Optic.set ClusterMember.GitPort_
@@ -770,38 +770,15 @@ module ClusterMember =
   // ** toRaftMember
 
   let toRaftMember (mem:ClusterMember) =
-    { Id               = mem.Id
-      HostName         = mem.HostName
-      IpAddress        = mem.IpAddress
-      MulticastAddress = mem.MulticastAddress
-      MulticastPort    = mem.MulticastPort
-      HttpPort         = mem.HttpPort
-      RaftPort         = mem.RaftPort
-      WsPort           = mem.WsPort
-      GitPort          = mem.GitPort
-      ApiPort          = mem.ApiPort
-      Status           = mem.Status
-      State            = mem.State
-      Voting           = true
-      VotedForMe       = false
-      NextIndex        = index 1
-      MatchIndex       = index 0 }
-
-  // ** ofRaftMember
-
-  let ofRaftMember (mem:RaftMember) =
-    { Id               = mem.Id
-      HostName         = mem.HostName
-      IpAddress        = mem.IpAddress
-      MulticastAddress = mem.MulticastAddress
-      MulticastPort    = mem.MulticastPort
-      HttpPort         = mem.HttpPort
-      RaftPort         = mem.RaftPort
-      WsPort           = mem.WsPort
-      GitPort          = mem.GitPort
-      ApiPort          = mem.ApiPort
-      Status           = mem.Status
-      State            = mem.State }
+    { Id         = mem.Id
+      IpAddress  = mem.IpAddress
+      RaftPort   = mem.RaftPort
+      Status     = mem.Status
+      State      = mem.State
+      Voting     = true
+      VotedForMe = false
+      NextIndex  = index 1
+      MatchIndex = index 0 }
 
 // * ClusterConfig
 
@@ -985,7 +962,7 @@ type DiscoConfig =
     Clients:    ClientConfig
     Raft:       RaftConfig
     Timing:     TimingConfig
-    Sites:      ClusterConfig array }
+    Sites:      Map<SiteId,ClusterConfig> }
 
   // ** optics
 
@@ -1036,7 +1013,7 @@ type DiscoConfig =
         Clients   = ClientConfig.Default
         Raft      = RaftConfig.Default
         Timing    = TimingConfig.Default
-        Sites     = [| |] }
+        Sites     = Map.empty }
 
   // ** ToOffset
 
@@ -1061,7 +1038,9 @@ type DiscoConfig =
         self.ActiveSite
 
     let sites =
-      Array.map (Binary.toOffset builder) self.Sites
+      self.Sites
+      |> Map.toArray
+      |> Array.map (snd >> Binary.toOffset builder)
       |> fun sites -> ConfigFB.CreateSitesVector(builder, sites)
 
     ConfigFB.StartConfigFB(builder)
@@ -1160,11 +1139,8 @@ type DiscoConfig =
         #endif
 
       let! (_, sites) =
-        let arr =
-          fb.SitesLength
-          |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * ClusterConfig array>) _ ->
+          (fun (m: Either<DiscoError, int * Map<SiteId,ClusterConfig>>) _ ->
             either {
               let! (idx, sites) = m
               let! site =
@@ -1181,11 +1157,10 @@ type DiscoConfig =
                   |> Error.asParseError "DiscoConfig.FromFB"
                   |> Either.fail
                 #endif
-              sites.[idx] <- site
-              return (idx + 1, sites)
+              return (idx + 1, Map.add site.Id site sites)
             })
-            (Right(0, arr))
-            arr
+            (Right(0, Map.empty))
+            [| 0 .. fb.SitesLength - 1 |]
 
       return {
         Machine    = machine
@@ -1225,6 +1200,11 @@ module DiscoConfig =
   let setRaft = Optic.set DiscoConfig.Raft_
   let setTiming = Optic.set DiscoConfig.Timing_
   let setSites = Optic.set DiscoConfig.Sites_
+
+  // ** currentSite
+
+  let currentSite (config:DiscoConfig) =
+    activeSite config
 
 // * ProjectYaml
 
@@ -1651,25 +1631,18 @@ module ProjectYaml =
 
   // ** parseSites
 
-  let internal parseSites (config: DiscoProjectYaml) : Either<DiscoError, ClusterConfig array> =
+  let internal parseSites (config: DiscoProjectYaml) =
     either {
-      let arr =
-        config.Sites
-        |> Seq.length
-        |> Array.zeroCreate
-
       let! (_, sites) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * ClusterConfig array>) cfg ->
+          (fun (m: Either<DiscoError, int * Map<SiteId,ClusterConfig>>) cfg ->
             either {
               let! (idx, sites) = m
               let! site = parseCluster cfg
-              sites.[idx] <- site
-              return (idx + 1, sites)
+              return (idx + 1, Map.add site.Id site sites)
             })
-          (Right(0, arr))
+          (Right(0, Map.empty))
           config.Sites
-
       return sites
     }
 
@@ -1687,12 +1660,12 @@ module ProjectYaml =
     | Some id -> file.ActiveSite <- string id
     | None -> file.ActiveSite <- null
 
-    for cluster in config.Sites do
+    for KeyValue(id, cluster) in config.Sites do
       let cfg = SiteYaml()
       let members = ResizeArray()
       let groups = ResizeArray()
 
-      cfg.Id <- string cluster.Id
+      cfg.Id <- string id
       cfg.Name <- unwrap cluster.Name
 
       for KeyValue(_,mem) in cluster.Members do
@@ -1839,7 +1812,7 @@ module Config =
       Audio     = AudioConfig.Default
       Raft      = RaftConfig.Default
       Timing    = TimingConfig.Default
-      Sites     = [| |] }
+      Sites     = Map.empty }
 
   // ** updateMachine
 
@@ -1866,33 +1839,14 @@ module Config =
   let updateTiming (timing: TimingConfig) (config: DiscoConfig) =
     { config with Timing = timing }
 
-  // ** updateCluster
-
-  let updateCluster (cluster: ClusterConfig) (config: DiscoConfig) =
-    let sites =
-      Array.map
-        (fun (site: ClusterConfig) ->
-          if cluster.Id = site.Id
-          then cluster
-          else site)
-        config.Sites
-    { config with Sites = sites }
-
   // ** updateSite
 
   let updateSite (site: ClusterConfig) (config: DiscoConfig) =
-    let sites =
-      Array.map
-        (fun existing ->
-          if ClusterConfig.id existing = ClusterConfig.id site
-          then site
-          else existing)
-        config.Sites
-    { config with Sites = sites }
+    { config with Sites = Map.add site.Id site config.Sites }
 
   // ** updateSites
 
-  let updateSites (sites: ClusterConfig array) (config: DiscoConfig) =
+  let updateSites (sites: Map<SiteId,ClusterConfig>) (config: DiscoConfig) =
     { config with Sites = sites }
 
   // ** findMember
@@ -1900,7 +1854,7 @@ module Config =
   let findMember (config: DiscoConfig) (id: MemberId) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
+      match Map.tryFind active config.Sites with
       | Some cluster ->
         match Map.tryFind id cluster.Members with
         | Some mem -> Either.succeed mem
@@ -1926,10 +1880,10 @@ module Config =
 
   // ** getMembers
 
-  let getMembers (config: DiscoConfig) : Either<DiscoError,Map<MemberId,ClusterMember>> =
+  let getMembers (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
+      match Map.tryFind active config.Sites with
       | Some site -> site.Members |> Either.succeed
       | None ->
         ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
@@ -1943,7 +1897,7 @@ module Config =
   // ** setActiveSite
 
   let setActiveSite (id: SiteId) (config: DiscoConfig) =
-    if config.Sites |> Array.exists (fun x -> x.Id = id)
+    if Map.containsKey id config.Sites
     then Right { config with ActiveSite = Some id }
     else
       ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
@@ -1954,7 +1908,7 @@ module Config =
 
   let getActiveSite (config: DiscoConfig) =
     match config.ActiveSite with
-    | Some id -> Array.tryFind (fun (site: ClusterConfig) -> site.Id = id) config.Sites
+    | Some id -> Map.tryFind id config.Sites
     | None -> None
 
   // ** getActiveMember
@@ -1969,9 +1923,9 @@ module Config =
   let setMembers (mems: Map<MemberId,ClusterMember>) (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
+      match Map.tryFind active config.Sites with
       | Some site ->
-        updateCluster { site with Members = mems } config
+        updateSite { site with Members = mems } config
       | None -> config
     | None -> config
 
@@ -2010,13 +1964,10 @@ module Config =
   // ** addSitePrivate
 
   let private addSitePrivate (site: ClusterConfig) setActive (config: DiscoConfig) =
-    let i = config.Sites |> Array.tryFindIndex (fun s -> s.Id = site.Id)
-    let copy = Array.zeroCreate (config.Sites.Length + (if Option.isSome i then 0 else 1))
-    Array.iteri (fun i s -> copy.[i] <- s) config.Sites
-    copy.[match i with Some i -> i | None -> config.Sites.Length] <- site
+    let sites = Map.add site.Id site config.Sites
     if setActive
-    then { config with ActiveSite = Some site.Id; Sites = copy }
-    else { config with Sites = copy }
+    then { config with ActiveSite = Some site.Id; Sites = sites }
+    else { config with Sites = sites }
 
   // ** addSite
 
@@ -2033,19 +1984,18 @@ module Config =
   // ** removeSite
 
   let removeSite (id: SiteId) (config: DiscoConfig) =
-    let sites = Array.filter (fun (site: ClusterConfig) -> site.Id <> id) config.Sites
-    { config with Sites = sites }
+    { config with Sites = Map.remove id config.Sites }
 
   // ** siteByMember
 
   let siteByMember (memid: SiteId) (config: DiscoConfig) =
-    Array.fold
-      (fun (m: ClusterConfig option) site ->
+    Map.fold
+      (fun (m: ClusterConfig option) _ site ->
         match m with
         | Some _ -> m
         | None ->
-          if Map.containsKey memid site.Members then
-            Some site
+          if Map.containsKey memid site.Members
+          then Some site
           else None)
       None
       config.Sites
@@ -2053,17 +2003,17 @@ module Config =
   // ** findSite
 
   let findSite (id: SiteId) (config: DiscoConfig) =
-    Array.tryFind (fun (site: ClusterConfig) -> site.Id = id) config.Sites
+    Map.tryFind id config.Sites
 
   // ** addMember
 
   let addMember (mem: ClusterMember) (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun clst -> ClusterConfig.id clst = active) config.Sites with
+      match Map.tryFind active config.Sites with
       | Some site ->
         let mems = Map.add mem.Id mem site.Members
-        updateCluster { site with Members = mems } config
+        updateSite { site with Members = mems } config
       | None -> config
     | None -> config
 
@@ -2072,10 +2022,10 @@ module Config =
   let removeMember (id: MemberId) (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun (clst:ClusterConfig) -> clst.Id = active) config.Sites with
+      match Map.tryFind active config.Sites with
       | Some site ->
         let mems = Map.remove id site.Members
-        updateCluster { site with Members = mems } config
+        updateSite { site with Members = mems } config
       | None -> config
     | None -> config
 
@@ -2441,6 +2391,7 @@ module Project =
 
   let id = Optic.get DiscoProject.Id_
   let name = Optic.get DiscoProject.Name_
+
 
   // ** setters
 
@@ -2883,3 +2834,30 @@ module Project =
     }
 
   #endif
+
+// * Machine module
+
+module Machine =
+
+  // ** toClusterMember
+
+  let toClusterMember (machine: DiscoMachine) =
+    { Id = machine.MachineId
+      HostName = machine.HostName
+      IpAddress = machine.BindAddress
+      MulticastAddress = machine.MulticastAddress
+      MulticastPort = machine.MulticastPort
+      HttpPort = machine.WebPort
+      RaftPort = machine.RaftPort
+      WsPort = machine.WsPort
+      GitPort = machine.GitPort
+      ApiPort = machine.ApiPort
+      State = MemberState.Follower
+      Status = MemberStatus.Running }
+
+  // ** toRaftMember
+
+  let toRaftMember (machine: DiscoMachine) =
+    { Member.create machine.MachineId with
+        IpAddress = machine.BindAddress
+        RaftPort = machine.RaftPort }

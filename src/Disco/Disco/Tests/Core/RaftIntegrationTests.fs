@@ -32,22 +32,22 @@ module RaftIntegrationTests =
         let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
-          machine1.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8000us)
+          machine1
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8000us)
 
         let mem2 =
-          machine2.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8001us)
+          machine2
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8001us)
 
         let site =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
               Members =
                 Map.ofArray [|
-                  (mem1.Id, ClusterMember.ofRaftMember mem1)
-                  (mem2.Id, ClusterMember.ofRaftMember mem2)
+                  (mem1.Id, mem1)
+                  (mem2.Id, mem2)
                 |] }
         let leadercfg =
           machine1
@@ -93,14 +93,14 @@ module RaftIntegrationTests =
         let machine = MachineConfig.create "127.0.0.1" None
 
         let mem =
-          machine.MachineId
-          |> Member.create
-          |> Member.setRaftPort port
+          machine
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort port
 
         let site =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem.Id, ClusterMember.ofRaftMember mem) |] }
+              Members = Map.ofArray [| (mem.Id, mem) |] }
 
         let leadercfg =
           machine
@@ -156,20 +156,20 @@ module RaftIntegrationTests =
         let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
-          machine1.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8000us)
+          machine1
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8000us)
 
         let mem2 =
-          machine2.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8001us)
+          machine2
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8001us)
 
         let site =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem1.Id, ClusterMember.ofRaftMember mem1)
-                                       (mem2.Id, ClusterMember.ofRaftMember mem2) |] }
+              Members = Map.ofArray [| (mem1.Id, mem1)
+                                       (mem2.Id, mem2) |] }
 
         let leadercfg =
           machine1
@@ -220,14 +220,14 @@ module RaftIntegrationTests =
         let store = Store(State.Empty)
 
         let mem1 =
-          machine1.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8000us)
+          machine1
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8000us)
 
         let site =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem1.Id, ClusterMember.ofRaftMember mem1) |] }
+              Members = Map.ofArray [| (mem1.Id, mem1) |] }
 
         let leadercfg =
           machine1
@@ -286,7 +286,7 @@ module RaftIntegrationTests =
             |> sprintf "%O became follower"
             |> Logger.debug "test"
             are.Set() |> ignore
-          | DiscoEvent.Append(Origin.Raft, AddMember mem) ->
+          | DiscoEvent.Append(Origin.Raft, AddMachine mem) ->
             mem.Id
             |> sprintf "%O was added"
             |> Logger.debug "test"
@@ -302,22 +302,27 @@ module RaftIntegrationTests =
         let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
-          machine1.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8000us)
+          machine1
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8000us)
 
         let mem2 =
-          machine2.MachineId
-          |> Member.create
+          machine2
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8001us)
+
+        let raftMem2 =
+          machine2
+          |> Machine.toRaftMember
           |> Member.setRaftPort (port 8001us)
 
         let site1 =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem1.Id, ClusterMember.ofRaftMember mem1) |] }
+              Members = Map.ofArray [| (mem1.Id, mem1) |] }
 
         let site2 =
-          { site1 with Members = Map.ofArray [| (mem2.Id, ClusterMember.ofRaftMember mem2) |] }
+          { site1 with Members = Map.ofArray [| (mem2.Id, mem2) |] }
 
         let leadercfg =
           machine1
@@ -332,20 +337,20 @@ module RaftIntegrationTests =
           |> Config.setLogLevel (LogLevel.Debug)
 
         use! leader = RaftServer.create leadercfg {
-            new IRaftSnapshotCallbacks with
-              member self.RetrieveSnapshot() = None
-              member self.PrepareSnapshot() = None
-          }
+          new IRaftSnapshotCallbacks with
+            member self.RetrieveSnapshot() = None
+            member self.PrepareSnapshot() = None
+        }
 
         use obs1 = leader.Subscribe (setState mem1.Id check1)
 
         do! leader.Start()
 
         use! follower = RaftServer.create followercfg {
-            new IRaftSnapshotCallbacks with
-              member self.RetrieveSnapshot() = None
-              member self.PrepareSnapshot() = None
-          }
+          new IRaftSnapshotCallbacks with
+            member self.RetrieveSnapshot() = None
+            member self.PrepareSnapshot() = None
+        }
 
         use obs2 = follower.Subscribe (setState mem2.Id check2)
 
@@ -354,7 +359,7 @@ module RaftIntegrationTests =
         do! waitFor "check1" check1
         do! waitFor "check2" check2
 
-        leader.AddMember mem2           // add mem2 to cluster
+        leader.AddMachine raftMem2           // add mem2 to cluster
 
         do! waitFor "added" added
         do! waitFor "configured" configured

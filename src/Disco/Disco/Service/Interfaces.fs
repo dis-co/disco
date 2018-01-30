@@ -124,8 +124,8 @@ type IRaftServer =
   abstract Status        : ServiceStatus
   abstract Subscribe     : (DiscoEvent -> unit) -> IDisposable
   abstract Periodic      : unit -> unit
-  abstract AddMember     : RaftMember -> unit
-  abstract RemoveMember  : MemberId -> unit
+  abstract AddMachine    : RaftMember -> unit
+  abstract RemoveMachine : MemberId -> unit
   abstract Connections   : ConcurrentDictionary<PeerId,ITcpClient>
   abstract Leader        : RaftMember option
   abstract IsLeader      : bool
@@ -193,7 +193,7 @@ type DiscoServiceOptions =
 /// Interface type to close over internal actors and state.
 type IDiscoService =
   inherit IDisposable
-  abstract AddMember:     RaftMember -> unit
+  abstract AddMachine:    RaftMember -> unit
   abstract Append:        StateMachine -> unit
   abstract Config:        DiscoConfig with get, set
   abstract ForceElection: unit       -> unit
@@ -203,7 +203,7 @@ type IDiscoService =
   abstract Project:       DiscoProject
   abstract RaftServer:    IRaftServer
   abstract AssetService:  IAssetService
-  abstract RemoveMember:  MemberId         -> unit
+  abstract RemoveMachine: MemberId         -> unit
   abstract SocketServer:  IWebSocketServer
   abstract Start:         unit -> Either<DiscoError,unit>
   abstract State:         State

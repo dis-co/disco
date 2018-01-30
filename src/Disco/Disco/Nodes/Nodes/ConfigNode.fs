@@ -79,14 +79,18 @@ type ConfigNode() =
     member self.Evaluate (_: int) : unit =
       if self.InUpdate.[0] && not (Util.isNullReference self.InConfig.[0]) then
         let config = self.InConfig.[0]
+        let sites =
+          config.Sites
+          |> Map.toArray
+          |> Array.map snd
 
         self.OutMachine.[0] <- config.Machine
         self.OutAudio.[0] <- config.Audio
         self.OutClients.[0] <- config.Clients
         self.OutRaft.[0] <- config.Raft
         self.OutTiming.[0] <- config.Timing
-        self.OutSites.SliceCount <- Array.length config.Sites
-        self.OutSites.AssignFrom config.Sites
+        self.OutSites.SliceCount <- Map.count config.Sites
+        self.OutSites.AssignFrom sites
         self.OutVersion.[0] <- string config.Version
 
       if self.InUpdate.IsChanged then

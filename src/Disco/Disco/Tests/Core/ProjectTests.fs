@@ -117,37 +117,41 @@ module ProjectTests =
                Version    = version "1.2.34.4"
                Required   = false }]
 
-        let memA =
+        let raftMemA =
           { Member.create (DiscoId.Create()) with
-              HostName  = name "moomoo"
               IpAddress = IpAddress.Parse "182.123.18.2"
               Status    = Running
               RaftPort  = port 1234us }
 
-        let memB =
+        let raftMemB =
           { Member.create (DiscoId.Create()) with
-              HostName  = name "taataaa"
               IpAddress = IpAddress.Parse "118.223.8.12"
               Status    = Joining
               RaftPort  = port 1234us }
 
+        let clusterMemA =
+          { Machine.toClusterMember machine with
+              Id = raftMemA.Id }
+
+        let clusterMemB =
+          { Machine.toClusterMember machine with
+              Id = raftMemB.Id }
+
         let groupA: HostGroup =
           { Name    = name "Group A"
-          ; Members = [| DiscoId.Create() |]
-          }
+            Members = [| DiscoId.Create() |] }
 
         let groupB: HostGroup =
           { Name    = name "Group B"
-          ; Members = [| DiscoId.Create() |]
-          }
+            Members = [| DiscoId.Create() |] }
 
         let cluster =
           { Id = DiscoId.Create()
             Name   = name "A mighty cool cluster"
             Members =
               Map.ofArray [|
-                (memA.Id, ClusterMember.ofRaftMember memA)
-                (memB.Id, ClusterMember.ofRaftMember memB)
+                (raftMemA.Id, clusterMemA)
+                (raftMemB.Id, clusterMemB)
               |]
             Groups = [| groupA; groupB |] }
 
@@ -159,7 +163,7 @@ module ProjectTests =
                 Raft       = engineCfg
                 Clients    = clientCfg
                 ActiveSite = Some cluster.Id
-                Sites      = [| cluster |] }
+                Sites      = Map [ cluster.Id,cluster ] }
             project
 
         let! commit = DiscoData.saveWithCommit path User.Admin.Signature updated

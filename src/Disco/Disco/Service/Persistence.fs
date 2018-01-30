@@ -313,7 +313,7 @@ module Persistence =
 
   // ** getRemote
 
-  let getRemote (project: DiscoProject) (repo: Repository) (leader: RaftMember) =
+  let getRemote (project: DiscoProject) (repo: Repository) (leader: ClusterMember) =
     let uri = Uri.gitUri project.Name leader.IpAddress leader.GitPort
     match Git.Config.tryFindRemote repo (string leader.Id) with
     | None ->
@@ -335,7 +335,7 @@ module Persistence =
 
   // ** ensureRemote
 
-  let ensureRemote (project: DiscoProject) (repo: Repository) (peer: RaftMember) =
+  let ensureRemote (project: DiscoProject) (repo: Repository) (peer: ClusterMember) =
     let uri = Uri.gitUri project.Name peer.IpAddress peer.GitPort
     match Git.Config.tryFindRemote repo (string peer.Id) with
     | None ->
@@ -359,7 +359,7 @@ module Persistence =
 
   let ensureRemotes (leader: MemberId)
                     (project: DiscoProject)
-                    (peers: Map<MemberId,RaftMember>)
+                    (peers: Map<MemberId,ClusterMember>)
                     (repo: Repository) =
     peers
     |> Map.toArray

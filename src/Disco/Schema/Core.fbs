@@ -830,6 +830,7 @@ union StateMachinePayloadFB {
       PinGroupMapFB,
       DiscoClientFB,
       RaftMemberFB,
+      ClusterMemberFB,
       UserFB,
       SessionFB,
       LogEventFB,

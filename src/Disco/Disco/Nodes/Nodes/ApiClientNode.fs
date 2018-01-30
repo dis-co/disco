@@ -454,10 +454,6 @@ type ApiClientNode() =
   val mutable OutConnected: ISpread<bool>
 
   [<DefaultValue>]
-  [<Output("Count", IsSingle = true)>]
-  val mutable OutCount: ISpread<int>
-
-  [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
   val mutable OutUpdate: ISpread<bool>
 

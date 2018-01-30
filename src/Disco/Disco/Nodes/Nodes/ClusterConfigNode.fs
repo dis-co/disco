@@ -48,7 +48,7 @@ type ClusterConfigNode() =
 
   [<DefaultValue>]
   [<Output("Members")>]
-  val mutable OutMembers: ISpread<ISpread<RaftMember>>
+  val mutable OutMembers: ISpread<ISpread<ClusterMember>>
 
   [<DefaultValue>]
   [<Output("Groups")>]

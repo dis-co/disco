@@ -1106,15 +1106,13 @@ module State =
 
   // ** addMember
 
-  let addMember (mem: RaftMember) (state: State) =
-    let mem = ClusterMember.ofRaftMember mem
-    in { state with Project = Project.addMember mem state.Project }
+  let addMember (mem: ClusterMember) (state: State) =
+    { state with Project = Project.addMember mem state.Project }
 
   // ** updateMember
 
-  let updateMember (mem: RaftMember) (state: State) =
-    let mem = ClusterMember.ofRaftMember mem
-    in { state with Project = Project.updateMember mem state.Project }
+  let updateMember (mem: ClusterMember) (state: State) =
+    { state with Project = Project.updateMember mem state.Project }
 
   // ** removeMember
 
@@ -1792,9 +1790,14 @@ type StateMachine =
   | UnloadProject
 
   // Member
-  | AddMember               of RaftMember
-  | UpdateMember            of RaftMember
-  | RemoveMember            of RaftMember
+  | AddMember               of ClusterMember
+  | UpdateMember            of ClusterMember
+  | RemoveMember            of ClusterMember
+
+  // Machine
+  | AddMachine              of RaftMember
+  | UpdateMachine           of RaftMember
+  | RemoveMachine           of RaftMember
 
   // Client
   | AddClient               of DiscoClient
@@ -1887,6 +1890,11 @@ type StateMachine =
     | UpdateMember            _ -> "UpdateMember"
     | RemoveMember            _ -> "RemoveMember"
 
+    // Machine
+    | AddMachine              _ -> "AddMachine"
+    | UpdateMachine           _ -> "UpdateMachine"
+    | RemoveMachine           _ -> "RemoveMachine"
+
     // Client
     | AddClient               _ -> "AddClient"
     | UpdateClient            _ -> "UpdateClient"
@@ -1974,6 +1982,11 @@ type StateMachine =
       | UpdateMember            _      -> Save
       | AddMember               _
       | RemoveMember            _      -> Commit
+
+      // Machine
+      | AddMachine              _
+      | UpdateMachine           _
+      | RemoveMachine           _      -> Save
 
       // Client
       | AddClient               _
@@ -2066,6 +2079,10 @@ type StateMachine =
       | UpdateMember            _
       | RemoveMember            _  -> ParameterFB.RaftMemberFB
 
+      | AddMachine              _
+      | UpdateMachine           _
+      | RemoveMachine           _  -> ParameterFB.ClusterMemberFB
+
       | AddClient               _
       | UpdateClient            _
       | RemoveClient            _  -> ParameterFB.DiscoClientFB
@@ -2152,6 +2169,7 @@ type StateMachine =
       | AddClient               _
       | AddFsEntry              _
       | AddFsTree               _
+      | AddMachine              _
       | AddMember               _ -> ApiCommandFB.AddFB
 
       | UpdateClock             _
@@ -2168,6 +2186,7 @@ type StateMachine =
       | UpdatePinWidget         _
       | UpdateClient            _
       | UpdateMember            _
+      | UpdateMachine           _
       | UpdateFsEntry           _
       | UpdateProject           _  -> ApiCommandFB.UpdateFB
 
@@ -2184,6 +2203,7 @@ type StateMachine =
       | RemoveClient            _
       | RemoveFsEntry           _
       | RemoveFsTree            _
+      | RemoveMachine           _
       | RemoveMember            _ -> ApiCommandFB.RemoveFB
 
       | CallCue                 _ -> ApiCommandFB.CallCueFB
@@ -2241,6 +2261,25 @@ type StateMachine =
     // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
     | x when x = StateMachinePayloadFB.RaftMemberFB ->
       let mem = fb.RaftMemberFB |> RaftMember.FromFB
+      match fb.Action with
+      | x when x = StateMachineActionFB.AddFB ->
+        Either.map AddMachine mem
+      | x when x = StateMachineActionFB.UpdateFB ->
+        Either.map UpdateMachine mem
+      | x when x = StateMachineActionFB.RemoveFB ->
+        Either.map RemoveMachine mem
+      | x ->
+        sprintf "Could not parse unknown StateMachineActionFB %A" x
+        |> Error.asParseError "StateMachine.FromFB"
+        |> Either.fail
+
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    // | |  | |  __/ | | | | | |_) |  __/ |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+    | x when x = StateMachinePayloadFB.ClusterMemberFB ->
+      let mem = fb.ClusterMemberFB |> ClusterMember.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
         Either.map AddMember mem
@@ -2887,11 +2926,11 @@ type StateMachine =
             |> Either.fail
       }
 
-    //  _   _           _
-    // | \ | | ___   __| | ___
-    // |  \| |/ _ \ / _` |/ _ \
-    // | |\  | (_) | (_| |  __/
-    // |_| \_|\___/ \__,_|\___|
+    ///  __  __                _
+    /// |  \/  | ___ _ __ ___ | |__   ___ _ __
+    /// | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    /// | |  | |  __/ | | | | | |_) |  __/ |
+    /// |_|  |_|\___|_| |_| |_|_.__/ \___|_|
     | StateMachinePayloadFB.RaftMemberFB ->
       either {
         let! mem =
@@ -2904,7 +2943,34 @@ type StateMachine =
             |> Error.asParseError "StateMachine.FromFB"
             |> Either.fail
         match fb.Action with
-        | StateMachineActionFB.AddFB    -> return (AddMember    mem)
+        | StateMachineActionFB.AddFB    -> return (AddMachine    mem)
+        | StateMachineActionFB.UpdateFB -> return (UpdateMachine mem)
+        | StateMachineActionFB.RemoveFB -> return (RemoveMachine mem)
+        | x ->
+          return!
+            sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+      }
+
+    ///  __  __                _
+    /// |  \/  | ___ _ __ ___ | |__   ___ _ __
+    /// | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    /// | |  | |  __/ | | | | | |_) |  __/ |
+    /// |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+    | StateMachinePayloadFB.ClusterMemberFB ->
+      either {
+        let! mem =
+          let memish = fb.Payload<ClusterMemberFB>()
+          if memish.HasValue then
+            memish.Value
+            |> ClusterMember.FromFB
+          else
+            "Could not parse empty mem payload"
+            |> Error.asParseError "StateMachine.FromFB"
+            |> Either.fail
+        match fb.Action with
+        | StateMachineActionFB.AddFB    -> return (AddMember   mem)
         | StateMachineActionFB.UpdateFB -> return (UpdateMember mem)
         | StateMachineActionFB.RemoveFB -> return (RemoveMember mem)
         | x ->
@@ -3244,7 +3310,48 @@ type StateMachine =
     // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
     // | |  | |  __/ | | | | | |_) |  __/ |
     // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
-    | AddMember       mem ->
+    | AddMember mem ->
+      let mem = mem.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.AddFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ClusterMemberFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, mem)
+#else
+      StateMachineFB.AddPayload(builder, mem.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | UpdateMember mem ->
+      let mem = mem.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ClusterMemberFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, mem)
+#else
+      StateMachineFB.AddPayload(builder, mem.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    | RemoveMember    mem ->
+      let mem = mem.ToOffset(builder)
+      StateMachineFB.StartStateMachineFB(builder)
+      StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)
+      StateMachineFB.AddPayloadType(builder, StateMachinePayloadFB.ClusterMemberFB)
+#if FABLE_COMPILER
+      StateMachineFB.AddPayload(builder, mem)
+#else
+      StateMachineFB.AddPayload(builder, mem.Value)
+#endif
+      StateMachineFB.EndStateMachineFB(builder)
+
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    // | |  | |  __/ | | | | | |_) |  __/ |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+    | AddMachine mem ->
       let mem = mem.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.AddFB)
@@ -3256,7 +3363,7 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
-    | UpdateMember    mem ->
+    | UpdateMachine mem ->
       let mem = mem.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.UpdateFB)
@@ -3268,7 +3375,7 @@ type StateMachine =
 #endif
       StateMachineFB.EndStateMachineFB(builder)
 
-    | RemoveMember    mem ->
+    | RemoveMachine mem ->
       let mem = mem.ToOffset(builder)
       StateMachineFB.StartStateMachineFB(builder)
       StateMachineFB.AddAction(builder, StateMachineActionFB.RemoveFB)

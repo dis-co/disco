@@ -171,12 +171,24 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
-  let mkMember _ = DiscoId.Create() |> Member.create
+  let mkMember _ : ClusterMember =
+    { Id               = DiscoId.Create()
+      HostName         = rndname ()
+      IpAddress        = IPv4Address "127.0.0.1"
+      MulticastAddress = IPv4Address "224.0.0.1"
+      MulticastPort    = rndport()
+      HttpPort         = rndport()
+      RaftPort         = rndport()
+      WsPort           = rndport()
+      GitPort          = rndport()
+      ApiPort          = rndport()
+      State            = Follower
+      Status           = Running }
 
   let mkSession _ =
     { Id = DiscoId.Create()
-    ; IpAddress = IPv4Address "127.0.0.1"
-    ; UserAgent = "Oh my goodness" }
+      IpAddress = IPv4Address "127.0.0.1"
+      UserAgent = "Oh my goodness" }
 
   let mkPinMapping _ =
     { Id = DiscoId.Create()
@@ -314,9 +326,12 @@ module SerializationTests =
             RemoveFsEntry           (DiscoId.Create(), mkFsPath ())
             AddFsTree               <| mkFsTree()
             RemoveFsTree            <| DiscoId.Create()
-            AddMember               <| Member.create (DiscoId.Create())
-            UpdateMember            <| Member.create (DiscoId.Create())
-            RemoveMember            <| Member.create (DiscoId.Create())
+            AddMachine              <| Member.create (DiscoId.Create())
+            UpdateMachine           <| Member.create (DiscoId.Create())
+            RemoveMachine           <| Member.create (DiscoId.Create())
+            AddMember               <| mkMember()
+            UpdateMember            <| mkMember()
+            RemoveMember            <| mkMember()
             AddDiscoveredService    <| mkDiscoveredService ()
             UpdateDiscoveredService <| mkDiscoveredService ()
             RemoveDiscoveredService <| mkDiscoveredService ()
@@ -328,8 +343,7 @@ module SerializationTests =
       finish()
 
     test "should serialize/deserialize cue correctly" <| fun finish ->
-      [| for i in 0 .. 20 do
-          yield  mkCue () |]
+      [| for _ in 0 .. 20 ->  mkCue () |]
       |> Array.iter check
       finish()
 
@@ -431,46 +445,49 @@ module SerializationTests =
 
     test "Validate StateMachine Serialization" <| fun finish ->
       [ AddCue                  <| mkCue ()
-      ; UpdateCue               <| mkCue ()
-      ; RemoveCue               <| mkCue ()
-      ; AddCueList              <| mkCueList ()
-      ; UpdateCueList           <| mkCueList ()
-      ; RemoveCueList           <| mkCueList ()
-      ; AddCuePlayer            <| mkCuePlayer ()
-      ; UpdateCuePlayer         <| mkCuePlayer ()
-      ; RemoveCuePlayer         <| mkCuePlayer ()
-      ; AddSession              <| mkSession ()
-      ; UpdateSession           <| mkSession ()
-      ; RemoveSession           <| mkSession ()
-      ; AddUser                 <| mkUser ()
-      ; UpdateUser              <| mkUser ()
-      ; RemoveUser              <| mkUser ()
-      ; AddPinGroup             <| mkPinGroup ()
-      ; UpdatePinGroup          <| mkPinGroup ()
-      ; RemovePinGroup          <| mkPinGroup ()
-      ; AddPinMapping           <| mkPinMapping ()
-      ; UpdatePinMapping        <| mkPinMapping ()
-      ; RemovePinMapping        <| mkPinMapping ()
-      ; AddPinWidget            <| mkPinWidget ()
-      ; UpdatePinWidget         <| mkPinWidget ()
-      ; RemovePinWidget         <| mkPinWidget ()
-      ; AddClient               <| mkClient ()
-      ; UpdateSlices            <| mkSlicesMap ()
-      ; UpdateClient            <| mkClient ()
-      ; RemoveClient            <| mkClient ()
-      ; AddPin                  <| mkPin ()
-      ; UpdatePin               <| mkPin ()
-      ; RemovePin               <| mkPin ()
-      ; AddMember               <| Member.create (DiscoId.Create())
-      ; UpdateMember            <| Member.create (DiscoId.Create())
-      ; RemoveMember            <| Member.create (DiscoId.Create())
-      ; AddDiscoveredService    <| mkDiscoveredService ()
-      ; UpdateDiscoveredService <| mkDiscoveredService ()
-      ; RemoveDiscoveredService <| mkDiscoveredService ()
-      ; DataSnapshot            <| mkState ()
-      ; Command AppCommand.Undo
-      ; LogMsg(Logger.create Debug "bla" "ohai")
-      ; SetLogLevel Warn
+        UpdateCue               <| mkCue ()
+        RemoveCue               <| mkCue ()
+        AddCueList              <| mkCueList ()
+        UpdateCueList           <| mkCueList ()
+        RemoveCueList           <| mkCueList ()
+        AddCuePlayer            <| mkCuePlayer ()
+        UpdateCuePlayer         <| mkCuePlayer ()
+        RemoveCuePlayer         <| mkCuePlayer ()
+        AddSession              <| mkSession ()
+        UpdateSession           <| mkSession ()
+        RemoveSession           <| mkSession ()
+        AddUser                 <| mkUser ()
+        UpdateUser              <| mkUser ()
+        RemoveUser              <| mkUser ()
+        AddPinGroup             <| mkPinGroup ()
+        UpdatePinGroup          <| mkPinGroup ()
+        RemovePinGroup          <| mkPinGroup ()
+        AddPinMapping           <| mkPinMapping ()
+        UpdatePinMapping        <| mkPinMapping ()
+        RemovePinMapping        <| mkPinMapping ()
+        AddPinWidget            <| mkPinWidget ()
+        UpdatePinWidget         <| mkPinWidget ()
+        RemovePinWidget         <| mkPinWidget ()
+        AddClient               <| mkClient ()
+        UpdateSlices            <| mkSlicesMap ()
+        UpdateClient            <| mkClient ()
+        RemoveClient            <| mkClient ()
+        AddPin                  <| mkPin ()
+        UpdatePin               <| mkPin ()
+        RemovePin               <| mkPin ()
+        AddMachine              <| Member.create (DiscoId.Create())
+        UpdateMachine           <| Member.create (DiscoId.Create())
+        RemoveMachine           <| Member.create (DiscoId.Create())
+        AddMember               <| mkMember()
+        UpdateMember            <| mkMember()
+        RemoveMember            <| mkMember()
+        AddDiscoveredService    <| mkDiscoveredService ()
+        UpdateDiscoveredService <| mkDiscoveredService ()
+        RemoveDiscoveredService <| mkDiscoveredService ()
+        DataSnapshot            <| mkState ()
+        Command AppCommand.Undo
+        LogMsg(Logger.create Debug "bla" "ohai")
+        SetLogLevel Warn
       ]
       |> List.iter
         (fun ting ->

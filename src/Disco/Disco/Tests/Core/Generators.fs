@@ -168,7 +168,7 @@ module Generators =
         LogDirectory = logpth
         CollectMetrics = cm
         MetricsHost = mh
-        MetricsPort = mhp 
+        MetricsPort = mhp
         MetricsDb = mdb
         AssetDirectory = assetpth
         AssetFilter = assetFilter
@@ -212,15 +212,8 @@ module Generators =
 
   let raftMemberGen = gen {
       let! id = idGen
-      let! n = nameGen
       let! ip = ipGen
       let! p = portGen
-      let! wp = portGen
-      let! ap = portGen
-      let! hp = portGen
-      let! gp = portGen
-      let! mcst = ipGen
-      let! mp = portGen
       let! voting = boolGen
       let! vfm = boolGen
       let! state = raftStateGen
@@ -229,15 +222,8 @@ module Generators =
       let! midx = indexGen
       return {
         Id               = id
-        HostName         = n
         IpAddress        = ip
-        MulticastAddress = mcst
-        MulticastPort    = mp
         RaftPort         = p
-        HttpPort         = hp
-        WsPort           = wp
-        GitPort          = gp
-        ApiPort          = ap
         Voting           = voting
         VotedForMe       = vfm
         State            = state
@@ -399,7 +385,7 @@ module Generators =
           Clients = clients
           Raft = raft
           Timing = timing
-          Sites = sites }
+          Sites = Array.fold (fun m (site:ClusterConfig) -> Map.add site.Id site m) Map.empty sites }
     }
 
   //  ____            _           _
@@ -1177,9 +1163,12 @@ module Generators =
   let simpleStateMachineGen =
     [ Gen.map UpdateProject           projectGen
       Gen.constant UnloadProject
-      Gen.map AddMember               raftMemberGen
-      Gen.map UpdateMember            raftMemberGen
-      Gen.map RemoveMember            raftMemberGen
+      Gen.map AddMember               clusterMemberGen
+      Gen.map UpdateMember            clusterMemberGen
+      Gen.map RemoveMember            clusterMemberGen
+      Gen.map AddMachine              raftMemberGen
+      Gen.map UpdateMachine           raftMemberGen
+      Gen.map RemoveMachine           raftMemberGen
       Gen.map AddClient               clientGen
       Gen.map UpdateClient            clientGen
       Gen.map RemoveClient            clientGen
@@ -1441,7 +1430,7 @@ module Generators =
   //                                          |___/
 
   let machineArb = Arb.fromGen machineGen
-  
+
   let changeArb = Arb.fromGen changesGen
   let raftRequestArb = Arb.fromGen raftRequestGen
   let raftResponseArb = Arb.fromGen raftResponseGen

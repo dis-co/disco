@@ -252,8 +252,9 @@ module rec RaftServer =
           |> sendRequest peer connections agent
 
         member self.PrepareSnapshot raft =
-          callbacks.PrepareSnapshot ()
-          |> Option.map (DataSnapshot >> Raft.createSnapshot raft)
+          Option.map
+            (DataSnapshot >> Raft.createSnapshot raft)
+            (callbacks.PrepareSnapshot())
 
         member self.RetrieveSnapshot () = callbacks.RetrieveSnapshot()
 
@@ -270,19 +271,19 @@ module rec RaftServer =
           |> agent.Post
 
         member self.MemberAdded mem =
-          AddMember mem
+          AddMachine mem
           |> DiscoEvent.appendRaft
           |> Msg.Notify
           |> agent.Post
 
         member self.MemberUpdated mem =
-          UpdateMember mem
+          UpdateMachine mem
           |> DiscoEvent.appendRaft
           |> Msg.Notify
           |> agent.Post
 
         member self.MemberRemoved mem =
-          RemoveMember mem
+          RemoveMachine mem
           |> DiscoEvent.appendRaft
           |> Msg.Notify
           |> agent.Post
@@ -1538,10 +1539,10 @@ module rec RaftServer =
             // member self.LeaveCluster () =
             //   agent.Post Msg.Leave
 
-            member self.AddMember mem =
+            member self.AddMachine mem =
               mem |> Msg.AddMember |> agent.Post
 
-            member self.RemoveMember id =
+            member self.RemoveMachine id =
               id |> Msg.RemoveMember |> agent.Post
 
             member self.Subscribe (callback: DiscoEvent -> unit) =

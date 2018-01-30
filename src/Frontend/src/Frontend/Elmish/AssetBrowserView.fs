@@ -292,7 +292,7 @@ type AssetBrowserView(props) =
   member this.renderMachineBrowser trees =
     let sites =
       this.props.Model.state
-      |> Option.map (State.sites >> Array.toList)
+      |> Option.map (State.sites >> Map.toList >> List.map snd)
       |> Option.defaultValue List.empty
 
     let members =

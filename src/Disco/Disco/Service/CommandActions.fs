@@ -163,7 +163,7 @@ let getProjectSites machine projectName =
     // TODO: Check username and password?
     return
       state.Project.Config.Sites
-      |> Array.map (fun x -> { Name = x.Name; Id = x.Id })
+      |> Map.map (fun id x -> { Name = x.Name; Id = id })
       |> serializeJson
   }
 

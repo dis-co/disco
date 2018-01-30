@@ -159,6 +159,13 @@ type ApiRequest =
     | Update (RemoveMember mem as cmd) ->
       mem
       |> Binary.toOffset builder
+      |> withPayload ParameterFB.ClusterMemberFB cmd.ApiCommand
+
+    | Update (AddMachine    mem as cmd)
+    | Update (UpdateMachine mem as cmd)
+    | Update (RemoveMachine mem as cmd) ->
+      mem
+      |> Binary.toOffset builder
       |> withPayload ParameterFB.RaftMemberFB cmd.ApiCommand
 
     | Update (AddFsEntry    (id, entry) as cmd)
@@ -516,7 +523,7 @@ type ApiRequest =
             "Empty RaftMemberFB payload"
             |> Error.asParseError "ApiRequest.FromFB"
             |> Either.fail
-        return ApiRequest.Update (AddMember mem)
+        return ApiRequest.Update (AddMachine mem)
       }
     | ApiCommandFB.UpdateFB, ParameterFB.RaftMemberFB ->
       either {
@@ -529,7 +536,7 @@ type ApiRequest =
             "Empty RaftMemberFB payload"
             |> Error.asParseError "ApiRequest.FromFB"
             |> Either.fail
-        return ApiRequest.Update (UpdateMember mem)
+        return ApiRequest.Update (UpdateMachine mem)
       }
     | ApiCommandFB.RemoveFB, ParameterFB.RaftMemberFB ->
       either {
@@ -540,6 +547,51 @@ type ApiRequest =
             RaftMember.FromFB value
           else
             "Empty RaftMemberFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (RemoveMachine mem)
+      }
+
+    //  __  __                _
+    // |  \/  | ___ _ __ ___ | |__   ___ _ __
+    // | |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+    // | |  | |  __/ | | | | | |_) |  __/ |
+    // |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+    | ApiCommandFB.AddFB, ParameterFB.ClusterMemberFB ->
+      either {
+        let! mem =
+          let memish = fb.Parameter<ClusterMemberFB>()
+          if memish.HasValue then
+            let value = memish.Value
+            ClusterMember.FromFB value
+          else
+            "Empty ClusterMemberFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (AddMember mem)
+      }
+    | ApiCommandFB.UpdateFB, ParameterFB.ClusterMemberFB ->
+      either {
+        let! mem =
+          let memish = fb.Parameter<ClusterMemberFB>()
+          if memish.HasValue then
+            let value = memish.Value
+            ClusterMember.FromFB value
+          else
+            "Empty ClusterMemberFB payload"
+            |> Error.asParseError "ApiRequest.FromFB"
+            |> Either.fail
+        return ApiRequest.Update (UpdateMember mem)
+      }
+    | ApiCommandFB.RemoveFB, ParameterFB.ClusterMemberFB ->
+      either {
+        let! mem =
+          let memish = fb.Parameter<ClusterMemberFB>()
+          if memish.HasValue then
+            let value = memish.Value
+            ClusterMember.FromFB value
+          else
+            "Empty ClusterMemberFB payload"
             |> Error.asParseError "ApiRequest.FromFB"
             |> Either.fail
         return ApiRequest.Update (RemoveMember mem)

@@ -24,9 +24,9 @@ module SerializationTests =
 
   let test_binary_machine =
     testCase "DiscoMachine binary serialization should work" <| fun _ ->
-      binaryEncDec<DiscoMachine> 
+      binaryEncDec<DiscoMachine>
       |> Prop.forAll Generators.machineArb
-      |> Check.QuickThrowOnFailure 
+      |> Check.QuickThrowOnFailure
 
   ///  _____    ___        __
   /// |  ___|__|_ _|_ __  / _| ___
