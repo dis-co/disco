@@ -32,9 +32,9 @@ module ProjectTests =
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
 
-        let result = Asset.loadWithMachine (Project.toFilePath project.Path) machine
+        let result = Asset.loadWithMachine project.Path machine
 
         do! expectE "Projects should be equal" true ((=) project) result
       }
@@ -55,7 +55,7 @@ module ProjectTests =
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
         let! repo = Project.repository project
         let! status = Git.Repo.status repo
         let untracked = status.Untracked.Count()
@@ -78,7 +78,7 @@ module ProjectTests =
 
         let path = Path.getRandomFileName()
 
-        let result = Project.create (Project.ofFilePath path) (unwrap path) machine
+        let result = Project.create path (unwrap path) machine
 
         expect "Create should have failed" false Either.isSuccess result
 
@@ -155,10 +155,10 @@ module ProjectTests =
               |]
             Groups = [| groupA; groupB |] }
 
-        let! project = Project.create (Project.ofFilePath path) (unwrap fn) machine
+        let! project = Project.create path (unwrap fn) machine
 
         let updated =
-          Project.updateConfig
+          Project.setConfig
             { project.Config with
                 Raft       = engineCfg
                 Clients    = clientCfg
@@ -218,7 +218,7 @@ module ProjectTests =
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! _ = Project.create (Project.ofFilePath path) name machine
+        let! _ = Project.create path name machine
 
         let loaded = Asset.loadWithMachine path machine
 
@@ -269,7 +269,7 @@ module ProjectTests =
 
         let author1 = "karsten"
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
 
         let updated = { project with Author = Some author1 }
         let! commit = DiscoData.saveWithCommit path User.Admin.Signature updated
@@ -312,10 +312,10 @@ module ProjectTests =
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
         let! (loaded: DiscoProject) = Asset.loadWithMachine path machine
 
-        expect "Project should have correct path" path Project.toFilePath loaded.Path
+        expect "Project should have correct path" path id loaded.Path
 
         let newpath = tmpPath()
 
@@ -323,7 +323,7 @@ module ProjectTests =
 
         let! (loaded: DiscoProject) = Asset.loadWithMachine newpath machine
 
-        expect "Project should have correct path" newpath Project.toFilePath loaded.Path
+        expect "Project should have correct path" newpath id loaded.Path
       }
       |> noError
 
@@ -335,7 +335,7 @@ module ProjectTests =
         let path = tmpPath()
         let fn = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) fn machine
+        let! project = Project.create path fn machine
 
         let user =
           { Id = DiscoId.Create()
@@ -351,7 +351,7 @@ module ProjectTests =
         let! (commit, project) = Project.saveAsset user User.Admin project
 
         let! (loaded: User) =
-          let userpath = Project.toFilePath project.Path </> Asset.path user
+          let userpath = project.Path </> Asset.path user
           File.readText(userpath)
           |> Yaml.decode
 
@@ -366,10 +366,10 @@ module ProjectTests =
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
 
         let! (admin: User) =
-          Project.toFilePath project.Path </> Asset.path User.Admin
+          project.Path </> Asset.path User.Admin
           |> File.readText
           |> Yaml.decode
 

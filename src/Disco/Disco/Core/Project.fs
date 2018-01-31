@@ -2391,22 +2391,15 @@ module Project =
 
   let id = Optic.get DiscoProject.Id_
   let name = Optic.get DiscoProject.Name_
-
+  let config = Optic.get DiscoProject.Config_
+  let path = Optic.get DiscoProject.Path_
 
   // ** setters
 
   let setId = Optic.set DiscoProject.Id_
   let setName = Optic.set DiscoProject.Name_
-
-  // ** toFilePath
-
-  let toFilePath (path: FilePath) =
-    path |> unwrap |> filepath
-
-  // ** ofFilePath
-
-  let ofFilePath (path: FilePath) =
-    path |> unwrap |> filepath
+  let setConfig = Optic.set DiscoProject.Config_
+  let setPath = Optic.set DiscoProject.Path_
 
   // ** repository
 
@@ -2564,7 +2557,7 @@ module Project =
         if Path.isPathRooted filepath then
           filepath
         else
-          toFilePath project.Path </> filepath
+          project.Path </> filepath
       do! Git.Repo.stage repo abspath
       let! commit = Git.Repo.commit repo msg committer
       return commit, project
@@ -2724,39 +2717,25 @@ module Project =
           Config    = Config.create machine  }
 
       do! initRepo project
-      let! _ = DiscoData.saveWithCommit (toFilePath path) User.Admin.Signature project
+      let! _ = DiscoData.saveWithCommit path User.Admin.Signature project
       return project
     }
 
   #endif
-
-  // ** config
-
-  let config (project: DiscoProject) : DiscoConfig = project.Config
-
-  // ** updatePath
-
-  let updatePath (path: FilePath) (project: DiscoProject) : DiscoProject =
-    { project with Path = path }
-
-  // ** updateConfig
-
-  let updateConfig (config: DiscoConfig) (project: DiscoProject) : DiscoProject =
-    { project with Config = config }
 
   // ** updateDataDir
 
   let updateDataDir (raftDir: FilePath) (project: DiscoProject) : DiscoProject =
     { project.Config.Raft with DataDir = raftDir }
     |> flip Config.updateEngine project.Config
-    |> flip updateConfig project
+    |> flip setConfig project
 
   // ** addMember
 
   let addMember (mem: ClusterMember) (project: DiscoProject) : DiscoProject =
     project.Config
     |> Config.addMember mem
-    |> flip updateConfig project
+    |> flip setConfig project
 
   // ** updateMember
 
@@ -2768,7 +2747,7 @@ module Project =
   let removeMember (mem: MemberId) (project: DiscoProject) : DiscoProject =
     project.Config
     |> Config.removeMember mem
-    |> flip updateConfig project
+    |> flip setConfig project
 
   // ** findMember
 
@@ -2788,7 +2767,7 @@ module Project =
         Config.addMember mem config)
       project.Config
       mems
-    |> flip updateConfig project
+    |> flip setConfig project
 
   // ** updateMachine
 

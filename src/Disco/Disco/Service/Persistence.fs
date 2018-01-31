@@ -300,7 +300,7 @@ module Persistence =
 
   let persistSnapshot (state: State) (log: RaftLogEntry) =
     either {
-      let path = Project.toFilePath state.Project.Path
+      let path = state.Project.Path
       do! state.Save(path)
       use! repo = Project.repository state.Project
       do! Git.Repo.stageAll repo

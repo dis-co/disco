@@ -95,7 +95,7 @@ let buildProject (machine: DiscoMachine)
                  (raftDir: FilePath)
                  (mem: ClusterMember) =
   either {
-    let! project = Project.create (Project.ofFilePath path) name machine
+    let! project = Project.create path name machine
 
     let site =
         let def = ClusterConfig.Default
@@ -104,7 +104,7 @@ let buildProject (machine: DiscoMachine)
     let updated =
       project
       |> Project.updateDataDir raftDir
-      |> fun p -> Project.updateConfig (Config.addSiteAndSetActive site p.Config) p
+      |> fun p -> Project.setConfig (Config.addSiteAndSetActive site p.Config) p
 
     let! _ = DiscoData.saveWithCommit path User.Admin.Signature updated
 

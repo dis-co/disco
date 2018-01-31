@@ -1199,7 +1199,7 @@ module State =
   // ** updateConfig
 
   let updateConfig (config: DiscoConfig) (state: State) =
-    { state with Project = Project.updateConfig config state.Project }
+    { state with Project = Project.setConfig config state.Project }
 
   // ** updateProject
 

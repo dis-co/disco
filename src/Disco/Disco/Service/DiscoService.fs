@@ -376,7 +376,6 @@ module DiscoService =
         store.State.AssetService.State
         |> Option.map (fun tree -> [ AddFsTree tree ])
         |> Option.defaultValue List.empty
-
       let batch =
         List.concat [
           mem
@@ -384,13 +383,11 @@ module DiscoService =
           clients
           tree
         ]
-
       /// send a batched state machine command to leader if non-empty
       if not (List.isEmpty batch) then
         (clients.Length,sessions.Length)
         |> String.format "sending batch command with {0} (clients,session) "
         |> Logger.debug (tag "sendLocalData")
-
         batch
         |> CommandBatch.ofList
         |> RaftRequest.AppendEntry
@@ -465,7 +462,7 @@ module DiscoService =
         |> Map.filter (fun id _ -> Array.contains id ids)
         |> flip ClusterConfig.setMembers activeSite
         |> flip Config.updateSite config
-        |> flip Project.updateConfig project
+        |> flip Project.setConfig project
         |> UpdateProject
         |> DiscoEvent.appendService
         |> Pipeline.push pipeline

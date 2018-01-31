@@ -46,11 +46,11 @@ module Common =
         |> Config.addSiteAndSetActive site
         |> Config.setLogLevel (LogLevel.Debug)
 
-      let! project = Project.create (Project.ofFilePath path) name machine
+      let! project = Project.create path name machine
 
       let updated =
         { project with
-            Path = Project.ofFilePath path
+            Path = path
             Author = Some(author1)
             Config = cfg }
 
@@ -61,6 +61,14 @@ module Common =
 
   let mkMember (machine: DiscoMachine) =
     Machine.toClusterMember machine
+
+  let mkSite (members: ClusterMember list) =
+    { ClusterConfig.Default with
+        Name = name "Cool Cluster Yo"
+        Members =
+          members
+          |> List.map (fun mem -> mem.Id, mem)
+          |> Map.ofList }
 
   let mkCluster (num: int) =
     either {
@@ -73,13 +81,7 @@ module Common =
 
       let members = List.map mkMember machines
 
-      let site =
-        { ClusterConfig.Default with
-            Name = name "Cool Cluster Yo"
-            Members =
-              members
-              |> List.map (fun mem -> mem.Id, mem)
-              |> Map.ofList }
+      let site = mkSite members
 
       let project =
         List.fold
@@ -89,7 +91,7 @@ module Common =
               | Right project -> (i + 1, project)
               | Left error -> failwithf "unable to create project: %O" error
             else
-              let path = Project.toFilePath project'.Path
+              let path = project'.Path
               match copyDir path (machine.WorkSpace </> (project'.Name |> unwrap |> filepath)) with
               | Right () -> (i + 1, project')
               | Left error -> failwithf "error copying project: %O" error)

@@ -25,7 +25,7 @@ module PersistenceTests =
       let name = rndstr()
       do! MachineConfig.init (konst "127.0.0.1") None (Some root)
       let machine = MachineConfig.get ()
-      let path = Project.ofFilePath (root </> filepath name)
+      let path = root </> filepath name
       let! project = Project.create path name machine
       return machine, project
     }
@@ -55,7 +55,7 @@ module PersistenceTests =
         let widget = mkPinWidget()
         let! (machine, state) = mkState () |> Either.map (State.addPinWidget widget |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinWidget widget)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
         expect "state should contain PinWidget" true (Map.containsKey widget.Id) state.PinWidgets
         expect "PinWidgets should be the same" state.PinWidgets id loaded.PinWidgets
       }
@@ -69,7 +69,7 @@ module PersistenceTests =
           mkState ()
           |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinMapping mapping)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
         expect "state should contain PinMapping" true (Map.containsKey mapping.Id) state.PinMappings
         expect "PinMappings should be the same" state.PinMappings id loaded.PinMappings
       }
@@ -81,7 +81,7 @@ module PersistenceTests =
         let group = mkPinGroup()
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
 
         expect "state should contain PinGroup"
           true
@@ -98,14 +98,14 @@ module PersistenceTests =
         let widget = mkPinWidget()
         let! (machine, state) = mkState () |> Either.map (State.addPinWidget widget |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinWidget widget)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
 
         expect "state should contain PinWidget" true (Map.containsKey widget.Id) state.PinWidgets
         expect "PinWidgets should be the same" state.PinWidgets id loaded.PinWidgets
 
         let updated = State.removePinWidget widget loaded
         let! _ = Persistence.persistEntry state (RemovePinWidget widget)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
+        let! loaded = Asset.loadWithMachine updated.Project.Path machine
 
         expect "state should contain PinWidget" true (Map.containsKey widget.Id >> not)  updated.PinWidgets
         expect "PinWidgets should be the same" updated.PinWidgets id loaded.PinWidgets
@@ -120,14 +120,14 @@ module PersistenceTests =
           mkState ()
           |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinMapping mapping)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
 
         expect "state should contain PinMapping" true (Map.containsKey mapping.Id) state.PinMappings
         expect "PinMappings should be the same" state.PinMappings id loaded.PinMappings
 
         let updated = State.removePinMapping mapping loaded
         let! _ = Persistence.persistEntry state (RemovePinMapping mapping)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
+        let! loaded = Asset.loadWithMachine updated.Project.Path machine
 
         expect "state should contain PinMapping"
           true
@@ -144,7 +144,7 @@ module PersistenceTests =
         let group = mkPinGroup()
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
 
         expect "state should contain PinGroup"
           true
@@ -155,7 +155,7 @@ module PersistenceTests =
 
         let updated = State.removePinGroup group loaded
         let! _ = Persistence.persistEntry state (RemovePinGroup group)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
+        let! loaded = Asset.loadWithMachine updated.Project.Path machine
 
         expect "state should contain PinGroup"
           true
@@ -218,7 +218,7 @@ module PersistenceTests =
 
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
 
         expect "state should contain PinGroup"
           true
@@ -229,7 +229,7 @@ module PersistenceTests =
 
         let updated = State.addPin pin state
         let! _ = Persistence.persistEntry updated (AddPin pin)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
+        let! loaded = Asset.loadWithMachine updated.Project.Path machine
 
         expect "state should contain Pin"
           true
@@ -256,7 +256,7 @@ module PersistenceTests =
 
         let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath state.Project.Path) machine
+        let! loaded = Asset.loadWithMachine state.Project.Path machine
 
         expect "state should contain PinGroup"
           true
@@ -267,7 +267,7 @@ module PersistenceTests =
 
         let updated = State.addPin pin state
         let! _ = Persistence.persistEntry updated (AddPin pin)
-        let! loaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
+        let! loaded = Asset.loadWithMachine updated.Project.Path machine
 
         expect "state should contain Pin"
           true
@@ -278,7 +278,7 @@ module PersistenceTests =
 
         let updated = State.removePin pin updated
         let! _ = Persistence.persistEntry updated (RemovePin pin)
-        let! reloaded = Asset.loadWithMachine (Project.toFilePath updated.Project.Path) machine
+        let! reloaded = Asset.loadWithMachine updated.Project.Path machine
 
         expect "state should not contain Pin"
           true

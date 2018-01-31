@@ -365,18 +365,6 @@ module RaftIntegrationTests =
         do! waitFor "configured" configured
       }
       |> noError
-  //                       _ _
-  //  _ __   ___ _ __   __| (_)_ __   __ _
-  // | '_ \ / _ \ '_ \ / _` | | '_ \ / _` |
-  // | |_) |  __/ | | | (_| | | | | | (_| |
-  // | .__/ \___|_| |_|\__,_|_|_| |_|\__, |
-  // |_|                             |___/
-
-  let test_follower_join_should_fail_on_duplicate_raftid =
-    pending "follower join should fail on duplicate raftid"
-
-  let test_all_rafts_should_share_a_common_distributed_event_log =
-    pending "all rafts should share a common distributed event log"
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
@@ -386,17 +374,9 @@ module RaftIntegrationTests =
 
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
-      // raft
       test_validate_correct_req_socket_tracking
       test_validate_raft_service_bind_correct_port
       test_validate_follower_joins_leader_after_startup
-
-      // db
       test_log_snapshotting_should_clean_all_logs
-
-      // cluster changes
       test_validate_add_member_works
-
-      // test_follower_join_should_fail_on_duplicate_raftid
-      // test_all_rafts_should_share_a_common_distributed_event_log
     ] |> testSequenced

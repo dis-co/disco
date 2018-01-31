@@ -401,7 +401,7 @@ module TestData =
 
   let mkLog _ : Either<DiscoError,RaftLog> =
     either {
-      let! state = mkTmpDir() |> Project.ofFilePath |> mkState
+      let! state = mkTmpDir() |> mkState
       return
         LogEntry(DiscoId.Create(), index 7, term 1, DataSnapshot(state),
           Some <| LogEntry(DiscoId.Create(), index 6, term 1, DataSnapshot(state),

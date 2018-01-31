@@ -174,7 +174,6 @@ module RaftTestUtils =
 
   let defSM =
     mkTmpDir()
-    |> Project.ofFilePath
     |> mkState
     |> Either.get
     |> StateMachine.DataSnapshot
