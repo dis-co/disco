@@ -106,6 +106,11 @@ const ENTER_KEY = 13;
 const RIGHT_BUTTON = 2;
 const DECIMAL_DIGITS = 2;
 
+function precisionRound(number, precision) {
+  var factor = Math.pow(10, precision);
+  return Math.round(number * factor) / factor;
+}
+
 function startDragging(posY, index, min, max, precision, value, updater) {
   // console.log("Input drag start", index, posY)
   $(document)
@@ -114,7 +119,7 @@ function startDragging(posY, index, min, max, precision, value, updater) {
     })
     .on("mousemove.drag", e => {
       var diff = posY - e.clientY
-      let updated = value + diff
+      let updated = precisionRound(value + diff * (1 / (10 ** precision)), precision)
       if((min == 0 && max == 0) || (min < max && updated >= min && updated <= max)) {
         // console.log("Input drag mouse Y diff: ", diff);
         value = updated

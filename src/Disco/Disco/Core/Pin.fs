@@ -1327,6 +1327,11 @@ module Pin =
         Values     = [| false |]
       }
 
+  // ** setPrecision
+  let setPrecision prec = function
+    | NumberPin data -> NumberPin { data with Precision = prec }
+    | pin -> pin
+
   // ** setVecSize
 
   let setVecSize vecSize = function
@@ -1656,7 +1661,7 @@ type NumberPinD =
     /// value array.
     VecSize: VecSize
 
-    /// String labels for each of the slices
+    /// String labels for each of the slices  
     Labels: string array
 
     /// Minimum value for this number pin
