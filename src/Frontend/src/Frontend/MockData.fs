@@ -59,6 +59,20 @@ let rndColor () =
 
 let pins groupId =
   let clientId = ClientId.Create()
+  let intPin = 
+    Pin.Sink.number (PinId.Create()) (name "Int") groupId clientId [| 666. |]
+    |> Pin.setPrecision 0u
+  let real1Pin = 
+    Pin.Sink.number (PinId.Create()) (name "Float1") groupId clientId [| 666. |]
+    |> Pin.setPrecision 1u
+  let real2Pin = 
+    Pin.Sink.number (PinId.Create()) (name "Float2") groupId clientId [| 666. |]
+    |> Pin.setPrecision 2u
+  let real3Pin = 
+    Pin.Sink.number (PinId.Create()) (name "Float3") groupId clientId [| 666. |]
+    |> Pin.setPrecision 3u
+  let real4Pin = 
+    Pin.Sink.number (PinId.Create()) (name "Float4") groupId clientId [| 666. |]    
   [ Pin.Sink.bang      (PinId.Create()) (name "Bang")      groupId clientId [| false |]
     Pin.Sink.toggle    (PinId.Create()) (name "Toggle")    groupId clientId [| true  |]
     Pin.Sink.fileName  (PinId.Create()) (name "FileName")  groupId clientId [| "/dev/null"      |]
@@ -67,10 +81,14 @@ let pins groupId =
     Pin.Sink.url       (PinId.Create()) (name "URL")       groupId clientId [| "ftp://dev.null" |]
     Pin.Sink.string    (PinId.Create()) (name "String")    groupId clientId [| "Hello!" |]
     Pin.Sink.multiLine (PinId.Create()) (name "MultiLine") groupId clientId [| text |]
-    Pin.Sink.number    (PinId.Create()) (name "Number")    groupId clientId [| 666. |]
     Pin.Sink.bytes     (PinId.Create()) (name "Bytes")     groupId clientId [| image |]
     Pin.Sink.color     (PinId.Create()) (name "Color")     groupId clientId [| rndColor() |]
-    Pin.Sink.enum      (PinId.Create()) (name "Enum")      groupId clientId props [| props.[0] |] ]
+    Pin.Sink.enum      (PinId.Create()) (name "Enum")      groupId clientId props [| props.[0] |] 
+    intPin
+    real1Pin
+    real2Pin
+    real3Pin
+    real4Pin ]
   |> List.map (fun pin -> pin.Id, pin)
   |> Map.ofList
 
