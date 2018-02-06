@@ -112,6 +112,9 @@
     <Compile Include="..\..\Disco\Tests\Core\Disco\ClonesFromLeader.fs">
       <Link>ClonesFromLeader.fs</Link>
     </Compile>
+    <Compile Include="..\..\Disco\Tests\Core\Disco\AddPreviousMemberShouldPull.fs">
+      <Link>AddPreviousMemberShouldPull.fs</Link>
+    </Compile>
     <Compile Include="..\..\Disco\Tests\Core\Disco\RemoveMemberShouldSplitCluster.fs">
       <Link>RemoveMemberShouldSplitCluster.fs</Link>
     </Compile>

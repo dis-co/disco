@@ -682,7 +682,7 @@ module ServerTests =
           ; LastLogTerm = term 1
           }
         let! resp = Raft.receiveVoteRequest peer.Id request
-        expect "Should be granted" true Vote.granted resp
+        expect "Should be granted" true VoteResponse.granted resp
       }
       |> runWithDefaults
       |> noError
@@ -703,7 +703,7 @@ module ServerTests =
           ; LastLogTerm = term 1
           }
         let! resp = Raft.receiveVoteRequest peer.Id request
-        expect "Vote should be granted" true Vote.granted resp
+        expect "Vote should be granted" true VoteResponse.granted resp
         do! expectM "Timeout Elapsed should be reset" 0<ms> Raft.timeoutElapsed
       }
       |> runWithDefaults
@@ -751,7 +751,7 @@ module ServerTests =
           }
         let! resp = Raft.receiveVoteRequest other.Id request
         do! expectM "Should have added mem" None (Raft.getMember other.Id)
-        expect "Should not have granted vote" false Vote.granted resp
+        expect "Should not have granted vote" false VoteResponse.granted resp
       }
       |> runWithDefaults
       |> noError
@@ -779,7 +779,7 @@ module ServerTests =
         let req1 = { request with Candidate = raft'.Member }
 
         let! result = Raft.receiveVoteRequest peer2.Id req1
-        expect "Should not have granted vote" false Vote.granted result
+        expect "Should not have granted vote" false VoteResponse.granted result
       }
       |> runWithDefaults
       |> noError
@@ -874,7 +874,7 @@ module ServerTests =
         do! Raft.setTermM (term 2)
 
         let! resp = Raft.receiveVoteRequest peer.Id { vote with Term = term 2; LastLogTerm = term 3; }
-        expect "Should be granted" true Vote.granted resp
+        expect "Should be granted" true VoteResponse.granted resp
       }
       |> runWithDefaults
       |> noError
@@ -976,7 +976,7 @@ module ServerTests =
         do! Raft.addPeerM peer
         do! Raft.voteFor (Some raft'.Member)
         let! resp = Raft.receiveVoteRequest peer.Id vote
-        expect "Should have failed" true Vote.declined resp
+        expect "Should have failed" true VoteResponse.declined resp
       }
       |> runWithDefaults
       |> noError
@@ -1017,10 +1017,10 @@ module ServerTests =
 
         let vote = List.head (!sender.Outbox) |> getVote
 
-        expect "should have last log index be 3" (index 3) Vote.lastLogIndex vote
-        expect "should have last term be 5" (term 5) Vote.term vote
-        expect "should have last log term be 3" (term 3) Vote.lastLogTerm vote
-        expect "should have candidate id be me" self Vote.candidate vote
+        expect "should have last log index be 3" (index 3) VoteRequest.lastLogIndex vote
+        expect "should have last term be 5" (term 5) VoteRequest.term vote
+        expect "should have last log term be 3" (term 3) VoteRequest.lastLogTerm vote
+        expect "should have candidate id be me" self VoteRequest.candidate vote
       }
       |> runWithRaft raft' cbs
       |> noError
@@ -1614,8 +1614,8 @@ module ServerTests =
 
         do! Raft.sendAllAppendEntriesM ()
 
-        expect "Should have prevLogIdx 4" (index 4) AppendRequest.prevLogIdx (!appendReq |> Option.get)
-        expect "Should have prevLogTerm 4" (term 4) AppendRequest.prevLogTerm (!appendReq |> Option.get)
+        expect "Should have prevLogIdx 4" (index 4) AppendEntries.prevLogIdx (!appendReq |> Option.get)
+        expect "Should have prevLogTerm 4" (term 4) AppendEntries.prevLogTerm (!appendReq |> Option.get)
 
         let! trm = Raft.currentTermM ()
         do! Raft.receiveAppendEntriesResponse peer.Id { response with Term = trm; Success = false; CurrentIndex = index 1 }
@@ -1626,8 +1626,8 @@ module ServerTests =
 
         do! Raft.sendAllAppendEntriesM ()
 
-        expect "Should have prevLogIdx 1" (index 1) AppendRequest.prevLogIdx (!appendReq |> Option.get)
-        expect "Should have prevLogTerm 1" (term 1) AppendRequest.prevLogTerm  (!appendReq |> Option.get)
+        expect "Should have prevLogIdx 1" (index 1) AppendEntries.prevLogIdx (!appendReq |> Option.get)
+        expect "Should have prevLogTerm 1" (term 1) AppendEntries.prevLogTerm  (!appendReq |> Option.get)
       }
       |> runWithCBS cbs
       |> noError
@@ -1809,8 +1809,8 @@ module ServerTests =
         let! committed = Raft.responseCommitted response
 
         expect "Should not have committed entry" false id committed
-        expect "Should have term 1" (term 1) Entry.term response
-        expect "Should have index 1" (index 1) Entry.index response
+        expect "Should have term 1" (term 1) EntryResponse.term response
+        expect "Should have index 1" (index 1) EntryResponse.index response
 
         do! expectM "(1) Should have current idx 1" (index 1) Raft.currentIndex
         do! expectM "Should have commit idx 0" (index 0) Raft.commitIndex
@@ -2073,7 +2073,7 @@ module ServerTests =
         do! Raft.receiveVoteResponse peer1.Id resp
         do! expectM "Should be leader" Leader Raft.getState
         let! resp = Raft.receiveVoteRequest peer2.Id vote
-        expect "Should have declined vote" true Vote.declined resp
+        expect "Should have declined vote" true VoteResponse.declined resp
       }
       |> runWithDefaults
       |> noError

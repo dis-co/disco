@@ -359,45 +359,40 @@ module DiscoService =
   /// replicated to the leader once connected. IF those clients/sessions already exist, they
   /// will simply be ignored.
   let private sendLocalData (socket: ITcpClient) (store: IAgentStore<DiscoState>) =
-    if (store.State.SocketServer.Sessions.Count + store.State.ApiServer.Clients.Count) > 0 then
-      let mem =
-        match Config.getActiveMember store.State.Store.State.Project.Config with
-        | Some clusterMem -> [ AddMember clusterMem ]
-        | None -> List.empty
-      let sessions =
-        store.State.SocketServer.Sessions
-        |> Map.toList
-        |> List.map (snd >> AddSession)
-      let clients =
-        store.State.ApiServer.Clients
-        |> Map.toList
-        |> List.map (snd >> AddClient)
-      let tree =
-        store.State.AssetService.State
-        |> Option.map (fun tree -> [ AddFsTree tree ])
-        |> Option.defaultValue List.empty
-      let batch =
-        List.concat [
-          mem
-          sessions
-          clients
-          tree
-        ]
-      /// send a batched state machine command to leader if non-empty
-      if not (List.isEmpty batch) then
-        (clients.Length,sessions.Length)
-        |> String.format "sending batch command with {0} (clients,session) "
-        |> Logger.debug (tag "sendLocalData")
-        batch
-        |> CommandBatch.ofList
-        |> RaftRequest.AppendEntry
-        |> Binary.encode
-        |> Request.create (Guid.ofId socket.ClientId)
-        |> socket.Request
-    else
-      store.State.RaftServer.RaftState
-      |> String.format "Nothing to send ({0})"
+    let mem =
+      match Config.getActiveMember store.State.Store.State.Project.Config with
+      | Some clusterMem -> [ AddMember clusterMem ]
+      | None -> List.empty
+    let sessions =
+      store.State.SocketServer.Sessions
+      |> Map.toList
+      |> List.map (snd >> AddSession)
+    let clients =
+      store.State.ApiServer.Clients
+      |> Map.toList
+      |> List.map (snd >> AddClient)
+    let tree =
+      store.State.AssetService.State
+      |> Option.map (fun tree -> [ AddFsTree tree ])
+      |> Option.defaultValue List.empty
+    let batch =
+      List.concat [
+        mem
+        sessions
+        clients
+        tree
+      ]
+    /// send a batched state machine command to leader if non-empty
+    if not (List.isEmpty batch) then
+      (clients.Length,sessions.Length)
+      |> String.format "sending batch command with {0} (clients,session) "
       |> Logger.debug (tag "sendLocalData")
+      batch
+      |> CommandBatch.ofList
+      |> RaftRequest.AppendEntry
+      |> Binary.encode
+      |> Request.create (Guid.ofId socket.ClientId)
+      |> socket.Request
 
   // ** handleLeaderEvents
 
@@ -405,7 +400,7 @@ module DiscoService =
   /// command to append the locally connected clients and browser sessions to the leader.
   let private handleLeaderEvents socket store = function
     | TcpClientEvent.Connected _ -> sendLocalData socket store
-    | _ -> ()
+    | e -> ()
 
   // ** makeLeader
 
@@ -477,10 +472,12 @@ module DiscoService =
       |> Logger.debug (tag "processEvent")
 
     | DiscoEvent.LeaderChanged leader ->
+      printfn "[DISCO]: leader changed! %A" leader
       leader
       |> String.format "Leader changed to {0}"
       |> Logger.debug (tag "leaderChanged")
 
+      printfn "disposing old leader socket"
       Option.iter dispose store.State.Leader
 
       let newLeader =

@@ -344,10 +344,9 @@ module rec Raft =
     if inJointConsensus state then
         // take the old peers as seed and apply the new peers on top
       match state.OldPeers with
-        | Some peers -> Map.fold (fun m k n -> Map.add k n m) peers state.Peers
-        | _ -> state.Peers
-    else
-      state.Peers
+      | Some peers -> Map.fold (fun m k n -> Map.add k n m) peers state.Peers
+      | _ -> state.Peers
+    else state.Peers
 
   // ** logicalPeersM
 
@@ -1158,14 +1157,16 @@ module rec Raft =
     |> applyChanges changes
     |> setOldPeers (Some old)
 
-  // ** appendEntry
+  // ** updateLog
 
-  //                                   _ _____       _
-  //   __ _ _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __ _   _
-  //  / _` | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| | | |
-  // | (_| | |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |_| |
-  //  \__,_| .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|   \__, |
-  //       |_|   |_|                                          |___/
+  let updateLog log state = { state with Log = log }
+
+  // ** updateLogM
+
+  let updateLogM log =
+    get >>= (updateLog log >> put)
+
+  // ** appendEntry
 
   let private appendEntry (log: RaftLogEntry) =
     raft {
@@ -1173,7 +1174,7 @@ module rec Raft =
 
       // create the new log by appending
       let newlog = Log.append log state.Log
-      do! put { state with Log = newlog }
+      do! updateLogM newlog
 
       // get back the entries just added
       // (with correct monotonic idx's)
@@ -1206,11 +1207,6 @@ module rec Raft =
       let log = LogEntry(DiscoId.Create(),index 0,state.CurrentTerm,entry,None)
       return! appendEntryM log
     }
-
-  // ** updateLog
-
-  let updateLog (log: RaftLog) (state: RaftState) =
-    { state with Log = log }
 
   // ** updateLogEntries
 
@@ -1511,6 +1507,8 @@ module rec Raft =
             do! msg.PrevLogIdx
                 |> String.format "Failed. No log at (prev-log-idx: {0})"
                 |> error "receiveAppendEntries"
+            let! state = get
+            do printfn "state: %A" state
             return resp
         else
           return! processEntry nid msg resp
@@ -1754,12 +1752,12 @@ module rec Raft =
               do! sendInstallSnapshot mem
 
         do! updateCommitIdx |> modify
-
-        return! currentTermM () >>= fun term ->
-                  returnM { resp with
-                              Id = LogEntry.getId appended
-                              Term = term
-                              Index = LogEntry.getIndex appended }
+        let! term = currentTermM ()
+        return
+          { resp with
+              Id = LogEntry.getId appended
+              Term = term
+              Index = LogEntry.getIndex appended }
       | _ ->
         return!
           "Append Entry failed"
@@ -1769,17 +1767,10 @@ module rec Raft =
 
   // ** receiveEntry
 
-  ///                    _           _____       _
-  ///  _ __ ___  ___ ___(_)_   _____| ____|_ __ | |_ _ __ _   _
-  /// | '__/ _ \/ __/ _ \ \ \ / / _ \  _| | '_ \| __| '__| | | |
-  /// | | |  __/ (_|  __/ |\ V /  __/ |___| | | | |_| |  | |_| |
-  /// |_|  \___|\___\___|_| \_/ \___|_____|_| |_|\__|_|   \__, |
-  ///                                                     |___/
-
   let receiveEntry (entry : RaftLogEntry) =
     raft {
       let! state = get
-      let resp = { Id = DiscoId.Create(); Term = term 0; Index = index 0 }
+      let response = EntryResponse.create 0<term> 0<index>
 
       if LogEntry.isConfigChange entry && Option.isSome state.ConfigChangeEntry then
         do! debug "receiveEntry" "Error: UnexpectedVotingChange"
@@ -1799,15 +1790,15 @@ module rec Raft =
         match entry with
         | LogEntry(id,_,_,data,_) ->
           let log = LogEntry(id, index 0, term, data, None)
-          return! handleLog log resp
+          return! handleLog log response
 
         | Configuration(id,_,_,mems,_) ->
           let log = Configuration(id, index 0, term, mems, None)
-          return! handleLog log resp
+          return! handleLog log response
 
         | JointConsensus(id,_,_,changes,_) ->
           let log = JointConsensus(id, index 0, term, changes, None)
-          return! handleLog log resp
+          return! handleLog log response
 
         | _ ->
           return!
@@ -2243,105 +2234,105 @@ module rec Raft =
 
   let receiveVoteResponse (nid : MemberId) (vote : VoteResponse) =
     raft {
-        let! state = get
+      let! state = get
 
-        do! (if vote.Granted then "granted" else "not granted")
-            |> sprintf "%O responded to vote request with: %s" nid
+      do! (if vote.Granted then "granted" else "not granted")
+          |> sprintf "%O responded to vote request with: %s" nid
+          |> debug "receiveVoteResponse"
+
+      /// The term must not be bigger than current raft term,
+      /// otherwise set term to vote term become follower.
+      if vote.Term > state.CurrentTerm then
+        do! sprintf "(vote term: %d) > (current term: %d). Setting to %d."
+              vote.Term
+              state.CurrentTerm
+              state.CurrentTerm
             |> debug "receiveVoteResponse"
+        do! setTermM vote.Term
+        do! setLeaderM (Some nid)
+        do! becomeFollower ()
 
-        /// The term must not be bigger than current raft term,
-        /// otherwise set term to vote term become follower.
-        if vote.Term > state.CurrentTerm then
-          do! sprintf "(vote term: %d) > (current term: %d). Setting to %d."
-                vote.Term
-                state.CurrentTerm
-                state.CurrentTerm
-              |> debug "receiveVoteResponse"
-          do! setTermM vote.Term
-          do! setLeaderM (Some nid)
-          do! becomeFollower ()
+      /// If the vote term is smaller than current term it is considered an
+      /// error and the client will be notified.
+      elif vote.Term < state.CurrentTerm then
+        do! sprintf "Failed: (vote term: %d) < (current term: %d). VoteTermMismatch."
+              vote.Term
+              state.CurrentTerm
+            |> debug "receiveVoteResponse"
+        return!
+          "Vote Term Mismatch"
+          |> Error.asRaftError (tag "receiveVoteResponse")
+          |> failM
 
-        /// If the vote term is smaller than current term it is considered an
-        /// error and the client will be notified.
-        elif vote.Term < state.CurrentTerm then
-          do! sprintf "Failed: (vote term: %d) < (current term: %d). VoteTermMismatch."
-                vote.Term
-                state.CurrentTerm
-              |> debug "receiveVoteResponse"
+      /// Process the vote if current state of our Raft must be candidate..
+      else
+        match state.State with
+        | Leader -> return ()
+        | Follower ->
+          /// ...otherwise we respond with the respective RaftError.
+          do! debug "receiveVoteResponse" "Failed: NotCandidate"
           return!
-            "Vote Term Mismatch"
+            "Not Candidate"
             |> Error.asRaftError (tag "receiveVoteResponse")
             |> failM
+        | Candidate ->
+          if vote.Granted then
+            let! mem = getMemberM nid
+            match mem with
+            // Could not find the mem in current configuration(s)
+            | None ->
+              do! debug "receiveVoteResponse" "Failed: vote granted but NoMember"
+              return!
+                "No Node"
+                |> Error.asRaftError (tag "receiveVoteResponse")
+                |> failM
+            // found the mem
+            | Some mem ->
+              do! setVotingM mem true
 
-        /// Process the vote if current state of our Raft must be candidate..
-        else
-          match state.State with
-          | Leader -> return ()
-          | Follower ->
-            /// ...otherwise we respond with the respective RaftError.
-            do! debug "receiveVoteResponse" "Failed: NotCandidate"
-            return!
-              "Not Candidate"
-              |> Error.asRaftError (tag "receiveVoteResponse")
-              |> failM
-          | Candidate ->
-            if vote.Granted then
-              let! mem = getMemberM nid
-              match mem with
-              // Could not find the mem in current configuration(s)
-              | None ->
-                do! debug "receiveVoteResponse" "Failed: vote granted but NoMember"
-                return!
-                  "No Node"
-                  |> Error.asRaftError (tag "receiveVoteResponse")
-                  |> failM
-              // found the mem
-              | Some mem ->
-                do! setVotingM mem true
+              let! transitioning = inJointConsensusM ()
 
-                let! transitioning = inJointConsensusM ()
+              // in joint consensus
+              if transitioning then
+                //      _       _       _
+                //     | | ___ (_)_ __ | |_
+                //  _  | |/ _ \| | '_ \| __|
+                // | |_| | (_) | | | | | |_
+                //  \___/ \___/|_|_| |_|\__| consensus.
+                //
+                // we probe for a majority in both configurations
+                let! newConfig =
+                  numVotesForMeM () >>= regularMajorityM
 
-                // in joint consensus
-                if transitioning then
-                  //      _       _       _
-                  //     | | ___ (_)_ __ | |_
-                  //  _  | |/ _ \| | '_ \| __|
-                  // | |_| | (_) | | | | | |_
-                  //  \___/ \___/|_|_| |_|\__| consensus.
-                  //
-                  // we probe for a majority in both configurations
-                  let! newConfig =
-                    numVotesForMeM () >>= regularMajorityM
+                let! oldConfig =
+                  numVotesForMeOldConfigM () >>= oldConfigMajorityM
 
-                  let! oldConfig =
-                    numVotesForMeOldConfigM () >>= oldConfigMajorityM
+                do! sprintf "In JointConsensus (majority new config: %b) (majority old config: %b)"
+                      newConfig
+                      oldConfig
+                    |> debug "receiveVoteResponse"
 
-                  do! sprintf "In JointConsensus (majority new config: %b) (majority old config: %b)"
-                        newConfig
-                        oldConfig
-                      |> debug "receiveVoteResponse"
+                // and finally, become leader if we have a majority in either
+                // configuration
+                if newConfig || oldConfig then
+                  do! becomeLeader ()
+              else
+                //  ____                  _
+                // |  _ \ ___  __ _ _   _| | __ _ _ __
+                // | |_) / _ \/ _` | | | | |/ _` | '__|
+                // |  _ <  __/ (_| | |_| | | (_| | |
+                // |_| \_\___|\__, |\__,_|_|\__,_|_| configuration.
+                //            |___/
+                // the base case: we are not in joint consensus so we just use
+                // regular configuration functions
+                let! majority =
+                  numVotesForMeM () >>= regularMajorityM
 
-                  // and finally, become leader if we have a majority in either
-                  // configuration
-                  if newConfig || oldConfig then
-                    do! becomeLeader ()
-                else
-                  //  ____                  _
-                  // |  _ \ ___  __ _ _   _| | __ _ _ __
-                  // | |_) / _ \/ _` | | | | |/ _` | '__|
-                  // |  _ <  __/ (_| | |_| | | (_| | |
-                  // |_| \_\___|\__, |\__,_|_|\__,_|_| configuration.
-                  //            |___/
-                  // the base case: we are not in joint consensus so we just use
-                  // regular configuration functions
-                  let! majority =
-                    numVotesForMeM () >>= regularMajorityM
+                do! sprintf "(majority for config: %b)" majority
+                    |> debug "receiveVoteResponse"
 
-                  do! sprintf "(majority for config: %b)" majority
-                      |> debug "receiveVoteResponse"
-
-                  if majority then
-                    do! becomeLeader ()
+                if majority then
+                  do! becomeLeader ()
       }
 
   // ** sendVoteRequest
@@ -2573,13 +2564,15 @@ module rec Raft =
         let! timedout = requestTimedOutM ()
 
         if consensus then
-          let! waiting = hasNonVotingMembersM () // check if any mems are still marked non-voting/Joining
-          if not waiting then                    // are mems are voting and have caught up
+          // check if any mems are still marked non-voting/Joining
+          // are mems are voting and have caught up
+          let! waiting = hasNonVotingMembersM ()
+          if not waiting then
             let! term = currentTermM ()
-            let resp = { Id = DiscoId.Create(); Term = term; Index = index 0 }
+            let response = EntryResponse.create term 0<index>
             let! mems = getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
-            let log = Configuration(resp.Id, index 0, term, mems, None)
-            do! handleLog log resp >>= ignoreM
+            let log = Configuration(response.Id, index 0, term, mems, None)
+            do! handleLog log response >>= ignoreM
           else
             do! sendAllAppendEntriesM ()
         // the regular case is we need to ping our followers so as to not provoke an election
