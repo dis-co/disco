@@ -43,11 +43,11 @@ module Persistence =
       let state =
         mem
         |> ClusterMember.toRaftMember
-        |> Raft.create
-        |> Raft.addMembers (Map.map (fun _ -> ClusterMember.toRaftMember) mems)
-        |> Raft.setMaxLogDepth options.Raft.MaxLogDepth
-        |> Raft.setRequestTimeout options.Raft.RequestTimeout
-        |> Raft.setElectionTimeout options.Raft.ElectionTimeout
+        |> RaftState.create
+        |> RaftState.addMembers (Map.map (fun _ -> ClusterMember.toRaftMember) mems)
+        |> RaftState.setMaxLogDepth options.Raft.MaxLogDepth
+        |> RaftState.setRequestTimeout options.Raft.RequestTimeout
+        |> RaftState.setElectionTimeout options.Raft.ElectionTimeout
       return state
     }
 
@@ -298,7 +298,7 @@ module Persistence =
 
   // ** persistSnapshot
 
-  let persistSnapshot (state: State) (log: RaftLogEntry) =
+  let persistSnapshot (state: State) (log: Disco.Raft.LogEntry) =
     either {
       let path = state.Project.Path
       do! state.Save(path)

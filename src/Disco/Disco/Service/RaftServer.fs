@@ -357,7 +357,7 @@ module rec RaftServer =
 
   // ** appendEntry
 
-  let private appendEntry (state: RaftServerState) (entry: RaftLogEntry) =
+  let private appendEntry (state: RaftServerState) (entry: LogEntry) =
     let result =
       entry
       |> Raft.receiveEntry

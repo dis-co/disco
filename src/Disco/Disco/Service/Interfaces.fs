@@ -109,7 +109,7 @@ type IFsWatcher =
 
 type IRaftSnapshotCallbacks =
   abstract PrepareSnapshot: unit -> State option
-  abstract RetrieveSnapshot: unit -> RaftLogEntry option
+  abstract RetrieveSnapshot: unit -> LogEntry option
 
 // * IRaftServer
 

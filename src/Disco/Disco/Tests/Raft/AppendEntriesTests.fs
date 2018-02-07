@@ -130,7 +130,7 @@ module AppendEntries =
         expect "Should be a success" true AppendResponse.succeeded response
         do! expectM "Should have log count 1" 1 Raft.numLogs
         let! entry = Raft.getEntryAtM (index 1)
-        expect "Should have term 2" (term 2) (Option.get >> LogEntry.getTerm) entry
+        expect "Should have term 2" (term 2) (Option.get >> LogEntry.term) entry
       }
       |> runWithDefaults
       |> ignore

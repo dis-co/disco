@@ -12,13 +12,9 @@ open System
 open System.Net
 open Disco.Core
 open Disco.Serialization
+open Aether
+open Aether.Operators
 open FlatBuffers
-
-#if !FABLE_COMPILER && !DISCO_NODES
-
-open SharpYaml.Serialization
-
-#endif
 
 // * EntryResponse
 
@@ -77,7 +73,6 @@ type EntryResponse =
 
 [<RequireQualifiedAccess>]
 module EntryResponse =
-  open Aether
 
   // ** getting
 
@@ -164,7 +159,6 @@ type VoteRequest =
 // * VoteRequest module
 
 module VoteRequest =
-  open Aether
 
   // ** getters
 
@@ -242,8 +236,6 @@ type VoteResponse =
 [<RequireQualifiedAccess>]
 module VoteResponse =
 
-  open Aether
-
   // ** getters
 
   let term = Optic.get VoteResponse.Term_
@@ -279,7 +271,7 @@ type AppendEntries =
     PrevLogIdx   : Index
     PrevLogTerm  : Term
     LeaderCommit : Index
-    Entries      : RaftLogEntry option }
+    Entries      : LogEntry option }
 
   // ** optics
 
@@ -316,7 +308,7 @@ type AppendEntries =
             let entry = fb.Entries(i)
             if entry.HasValue then
               raw.[i] <- entry.Value
-          RaftLogEntry.FromFB raw
+          LogEntry.FromFB raw
 
       return { Term         = term  fb.Term
                PrevLogIdx   = index fb.PrevLogIdx
@@ -330,7 +322,7 @@ type AppendEntries =
   member self.ToOffset(builder: FlatBufferBuilder) =
     let entries =
       Option.map
-        (fun (entries: RaftLogEntry) ->
+        (fun (entries: LogEntry) ->
           let offsets = entries.ToOffset(builder)
           AppendEntriesFB.CreateEntriesVector(builder, offsets))
         self.Entries
@@ -349,7 +341,6 @@ type AppendEntries =
 // * AppendRequest module
 
 module AppendEntries =
-  open Aether
 
   // ** getters
 
@@ -434,8 +425,6 @@ type AppendResponse =
 
 module AppendResponse =
 
-  open Aether
-
   // ** getters
 
   let term  = Optic.get AppendResponse.Term_
@@ -472,7 +461,7 @@ type InstallSnapshot =
     LeaderId:  MemberId
     LastIndex: Index
     LastTerm:  Term
-    Data:      RaftLogEntry }
+    Data:      LogEntry }
 
   // ** optics
 
@@ -520,7 +509,7 @@ type InstallSnapshot =
             let data = fb.Data(i)
             if data.HasValue then
               raw.[i] <- data.Value
-          RaftLogEntry.FromFB raw
+          LogEntry.FromFB raw
         else
           "Invalid InstallSnapshot (no log data)"
           |> Error.asParseError "InstallSnapshot.FromFB"
@@ -546,7 +535,6 @@ type InstallSnapshot =
 // * InstallSnapshot module
 
 module InstallSnapshot =
-  open Aether
 
   // ** getters
 
@@ -563,294 +551,3 @@ module InstallSnapshot =
   let setLastIndex = Optic.set InstallSnapshot.LastIndex_
   let setLastTerm = Optic.set InstallSnapshot.LastTerm_
   let setData = Optic.set InstallSnapshot.Data_
-
-// * Callback Interface
-
-type IRaftCallbacks =
-
-  /// Request a vote from given Raft server
-  abstract member SendRequestVote: peer:RaftMember -> request:VoteRequest -> unit
-
-  /// Send AppendEntries message to given server
-  abstract member SendAppendEntries: peer:RaftMember -> request:AppendEntries -> unit
-
-  /// Send InstallSnapshot command to given serve
-  abstract member SendInstallSnapshot: peer:RaftMember -> request:InstallSnapshot -> unit
-
-  /// given the current state of Raft, prepare and return a snapshot value of
-  /// current application state
-  abstract member PrepareSnapshot: current:RaftState -> RaftLog option
-
-  /// perist the given Snapshot value to disk. For safety reasons this MUST
-  /// flush all changes to disk.
-  abstract member PersistSnapshot: snapshot:RaftLogEntry -> unit
-
-  /// attempt to load a snapshot from disk. return None if no snapshot was found
-  abstract member RetrieveSnapshot: unit  -> RaftLogEntry option
-
-  /// apply the given command to state machine
-  abstract member ApplyLog: command:StateMachine -> unit
-
-  /// a new server was added to the configuration
-  abstract member MemberAdded: peer:RaftMember -> unit
-
-  /// a new server was added to the configuration
-  abstract member MemberUpdated: peer:RaftMember -> unit
-
-  /// a server was removed from the configuration
-  abstract member MemberRemoved: peer:RaftMember -> unit
-
-  /// a cluster configuration transition was successfully applied
-  abstract member Configured: members:RaftMember array  -> unit
-
-  /// a cluster configuration transition was successfully applied
-  abstract member JointConsensus: changes:ConfigChange array  -> unit
-
-  /// the state of Raft itself has changed from old state to new given state
-  abstract member StateChanged: oldstate:MemberState -> newstate:MemberState -> unit
-
-  /// the leader node changed
-  abstract member LeaderChanged: leader:MemberId option -> unit
-
-  /// persist vote data to disk. For safety reasons this callback MUST flush
-  /// the change to disk.
-  abstract member PersistVote: peer:RaftMember option -> unit
-
-  /// persist term data to disk. For safety reasons this callback MUST flush
-  /// the change to disk>
-  abstract member PersistTerm: term:Term -> unit
-
-  /// persist an entry added to the log to disk. For safety reasons this
-  /// callback MUST flush the change to disk.
-  abstract member PersistLog: log:RaftLogEntry -> unit
-
-  /// persist the removal of the passed entry from the log to disk. For safety
-  /// reasons this callback MUST flush the change to disk.
-  abstract member DeleteLog: log:RaftLogEntry -> unit
-
-// * RaftStateYaml
-
-type RaftStateYaml() =
-  [<DefaultValue>] val mutable Member          : string
-  [<DefaultValue>] val mutable Term            : Term
-  [<DefaultValue>] val mutable Leader          : string
-  [<DefaultValue>] val mutable VotedFor        : string
-  [<DefaultValue>] val mutable ElectionTimeout : int
-  [<DefaultValue>] val mutable RequestTimeout  : int
-  [<DefaultValue>] val mutable MaxLogDepth     : int
-
-// * RaftState
-
-type RaftState =
-  { /// this server's own RaftMember information
-    Member            : RaftMember
-    /// this server's current Raft state, i.e. follower, leader or candidate
-    State             : MemberState
-    /// the server's current term, a monotonic counter for election cycles
-    CurrentTerm       : Term
-    /// tracks the current Leader Id, or None if there isn't currently a leader
-    CurrentLeader     : MemberId option
-    /// map of all known members in the cluster
-    Peers             : Map<MemberId,RaftMember>
-    /// map of the previous cluster configuration. set if currently in a configuration change
-    OldPeers          : Map<MemberId,RaftMember> option
-    /// count of all members in the cluster
-    NumMembers        : int
-    /// the candidate this server voted for in its current term or None if it hasn't voted for any
-    /// other member yet
-    VotedFor          : MemberId option
-    /// the replicated state machine command log
-    Log               : RaftLog
-    /// index of latest log entry known to be committed
-    CommitIndex       : Index
-    /// index of latest log entry applied to state machine
-    LastAppliedIdx    : Index
-    /// amount of time left until a new election will be called
-    TimeoutElapsed    : Timeout
-    /// amount of time that needs to pass before a new election is called
-    ElectionTimeout   : Timeout
-    /// amount of time to pass until we consider requests to be failed
-    RequestTimeout    : Timeout
-    /// maximum log depth to reach before automatic snapshotting triggers
-    MaxLogDepth       : int
-    /// the log entry which has a voting configuration change, otherwise None
-    ConfigChangeEntry : RaftLogEntry option }
-
-  // ** optics
-
-  static member Member_ =
-    (fun (rs:RaftState) -> rs.Member),
-    (fun mem (rs:RaftState) -> { rs with Member = mem })
-
-  static member State_ =
-    (fun (rs:RaftState) -> rs.State),
-    (fun state (rs:RaftState) -> { rs with State = state })
-
-  static member CurrentTerm_ =
-    (fun (rs:RaftState) -> rs.CurrentTerm),
-    (fun currentTerm (rs:RaftState) -> { rs with CurrentTerm = currentTerm })
-
-  static member CurrentLeader_ =
-    (fun (rs:RaftState) -> rs.CurrentLeader),
-    (fun currentLeader (rs:RaftState) -> { rs with CurrentLeader = currentLeader })
-
-  static member Peers_ =
-    (fun (rs:RaftState) -> rs.Peers),
-    (fun peers (rs:RaftState) -> { rs with Peers = peers })
-
-  static member OldPeers_ =
-    (fun (rs:RaftState) -> rs.OldPeers),
-    (fun oldPeers (rs:RaftState) -> { rs with OldPeers = oldPeers })
-
-  static member NumMembers_ =
-    (fun (rs:RaftState) -> rs.NumMembers),
-    (fun numMembers (rs:RaftState) -> { rs with NumMembers = numMembers })
-
-  static member VotedFor_ =
-    (fun (rs:RaftState) -> rs.VotedFor),
-    (fun votedFor (rs:RaftState) -> { rs with VotedFor = votedFor })
-
-  static member Log_ =
-    (fun (rs:RaftState) -> rs.Log),
-    (fun log (rs:RaftState) -> { rs with Log = log })
-
-  static member CommitIndex_ =
-    (fun (rs:RaftState) -> rs.CommitIndex),
-    (fun commitIndex (rs:RaftState) -> { rs with CommitIndex = commitIndex })
-
-  static member LastAppliedIdx_ =
-    (fun (rs:RaftState) -> rs.LastAppliedIdx),
-    (fun lastAppliedIdx (rs:RaftState) -> { rs with LastAppliedIdx = lastAppliedIdx })
-
-  static member TimeoutElapsed_ =
-    (fun (rs:RaftState) -> rs.TimeoutElapsed),
-    (fun timeoutElapsed (rs:RaftState) -> { rs with TimeoutElapsed = timeoutElapsed })
-
-  static member ElectionTimeout_ =
-    (fun (rs:RaftState) -> rs.ElectionTimeout),
-    (fun electionTimeout (rs:RaftState) -> { rs with ElectionTimeout = electionTimeout })
-
-  static member RequestTimeout_ =
-    (fun (rs:RaftState) -> rs.RequestTimeout),
-    (fun requestTimeout (rs:RaftState) -> { rs with RequestTimeout = requestTimeout })
-
-  static member MaxLogDepth_ =
-    (fun (rs:RaftState) -> rs.MaxLogDepth),
-    (fun maxLogDepth (rs:RaftState) -> { rs with MaxLogDepth = maxLogDepth })
-
-  static member ConfigChangeEntry_ =
-    (fun (rs:RaftState) -> rs.ConfigChangeEntry),
-    (fun configChangeEntry (rs:RaftState) -> { rs with ConfigChangeEntry = configChangeEntry })
-
-  // ** ToString
-
-  override self.ToString() =
-    sprintf "Member              = %s
-State             = %A
-CurrentTerm       = %A
-CurrentLeader     = %A
-NumMembers          = %A
-VotedFor          = %A
-MaxLogDepth       = %A
-CommitIndex       = %A
-LastAppliedIdx    = %A
-TimeoutElapsed    = %A
-ElectionTimeout   = %A
-RequestTimeout    = %A
-ConfigChangeEntry = %s
-"
-      (self.Member.ToString())
-      self.State
-      self.CurrentTerm
-      self.CurrentLeader
-      self.NumMembers
-      self.VotedFor
-      self.MaxLogDepth
-      self.CommitIndex
-      self.LastAppliedIdx
-      self.TimeoutElapsed
-      self.ElectionTimeout
-      self.RequestTimeout
-      (if Option.isSome self.ConfigChangeEntry then
-        Option.get self.ConfigChangeEntry |> string
-       else Constants.EMPTY)
-
-  // ** IsLeader
-
-  member self.IsLeader =
-    match self.CurrentLeader with
-    | Some lid -> self.Member.Id = lid
-    | _ -> false
-
-  // ** ToYaml
-
-  #if !FABLE_COMPILER && !DISCO_NODES
-
-  member self.ToYaml() =
-    let yaml = RaftStateYaml()
-    yaml.Member <- string self.Member.Id
-    yaml.Term <- self.CurrentTerm
-
-    Option.map
-      (fun leader -> yaml.Leader <- string leader)
-      self.CurrentLeader
-    |> ignore
-
-    Option.map
-      (fun voted -> yaml.VotedFor <- string voted)
-      self.VotedFor
-    |> ignore
-
-    yaml.ElectionTimeout <- int self.ElectionTimeout
-    yaml.RequestTimeout <- int self.RequestTimeout
-    yaml.MaxLogDepth <- self.MaxLogDepth
-    yaml
-
-  // ** FromYaml
-
-  static member FromYaml (yaml: RaftStateYaml) : Either<DiscoError, RaftState> =
-    either {
-      let! id = DiscoId.TryParse yaml.Member
-
-      let! leader =
-        if isNull yaml.Leader
-        then Right None
-        else DiscoId.TryParse yaml.Leader |> Either.map Some
-
-      let! votedfor =
-        if isNull yaml.VotedFor
-        then Right None
-        else DiscoId.TryParse yaml.VotedFor |> Either.map Some
-
-      return {
-        Member            = Member.create id
-        State             = Follower
-        CurrentTerm       = yaml.Term
-        CurrentLeader     = leader
-        Peers             = Map.empty
-        OldPeers          = None
-        NumMembers        = 0
-        VotedFor          = votedfor
-        Log               = Log.empty
-        CommitIndex       = index 0
-        LastAppliedIdx    = index 0
-        TimeoutElapsed    = 0<ms>
-        ElectionTimeout   = yaml.ElectionTimeout * 1<ms>
-        RequestTimeout    = yaml.RequestTimeout * 1<ms>
-        MaxLogDepth       = yaml.MaxLogDepth
-        ConfigChangeEntry = None
-      }
-    }
-
-  #endif
-
-// * RaftMonad
-
-[<NoComparison;NoEquality>]
-type RaftMonad<'Env,'State,'T,'Error> =
-  MkRM of ('Env -> 'State -> Either<'Error * 'State,'T * 'State>)
-
-// * RaftM
-
-type RaftM<'t,'err> =
-  RaftMonad<IRaftCallbacks, RaftState, 't, 'err>

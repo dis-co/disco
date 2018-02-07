@@ -1252,17 +1252,15 @@ module Generators =
       let! lidx = indexGen
       let! ltrm = termGen
       let! entry =
-        Gen.oneof [ Gen.map (fun (mems, prev) -> RaftLogEntry.Configuration(id, idx, trm, mems, prev))
-                            (Gen.zip raftMemArr prev)
-
-                    Gen.map (fun (chs, prev) -> RaftLogEntry.JointConsensus(id, idx, trm, chs, prev))
-                            (Gen.zip changeArr prev)
-
-                    Gen.map (fun (data, prev) -> RaftLogEntry.LogEntry(id, idx, trm, data, prev))
-                            (Gen.zip stateMachineGen prev)
-
-                    Gen.map (fun (mems, data) -> RaftLogEntry.Snapshot(id, idx, trm, lidx, ltrm, mems, data))
-                            (Gen.zip raftMemArr stateMachineGen) ]
+        Gen.oneof [
+          Gen.map (fun (mems, prev) -> LogEntry.Configuration(id, idx, trm, mems, prev))
+                  (Gen.zip raftMemArr prev)
+          Gen.map (fun (chs, prev) -> LogEntry.JointConsensus(id, idx, trm, chs, prev))
+                  (Gen.zip changeArr prev)
+          Gen.map (fun (data, prev) -> LogEntry.LogEntry(id, idx, trm, data, prev))
+                  (Gen.zip stateMachineGen prev)
+          Gen.map (fun (mems, data) -> LogEntry.Snapshot(id, idx, trm, lidx, ltrm, mems, data))
+                  (Gen.zip raftMemArr stateMachineGen) ]
       return entry
     }
 

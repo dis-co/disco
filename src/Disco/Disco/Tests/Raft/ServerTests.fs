@@ -1283,8 +1283,8 @@ module ServerTests =
         |> getAppendEntries
         |> assume "Should have PrevLogIdx 0" (index 0) (fun ae -> ae.PrevLogIdx)
         |> assume "Should have one entry" 1 (fun ae -> ae.Entries |> Option.get |> LogEntry.depth)
-        |> assume "Should have entry with correct id" (LogEntry.getId log) (fun ae -> ae.Entries |> Option.get |> LogEntry.getId)
-        |> expect "Should have entry with term" (term 2) (fun ae -> ae.Entries |> Option.get |> LogEntry.getTerm)
+        |> assume "Should have entry with correct id" (LogEntry.id log) (fun ae -> ae.Entries |> Option.get |> LogEntry.id)
+        |> expect "Should have entry with term" (term 2) (fun ae -> ae.Entries |> Option.get |> LogEntry.term)
 
         sender.Outbox := List.empty // reset outbox
 
@@ -2303,7 +2303,7 @@ module ServerTests =
 
       let init = defaultServer ()
 
-      let cb l = count := LogEntry.getId l :: !count
+      let cb l = count := LogEntry.id l :: !count
 
       let cbs =
         { Callbacks.Create (ref defSM) with
@@ -2317,7 +2317,7 @@ module ServerTests =
 
         let ids =
           [ log3; log2; log1; ]
-          |> List.map LogEntry.getId
+          |> List.map LogEntry.id
 
         do! Raft.setStateM Leader
 
@@ -2341,7 +2341,7 @@ module ServerTests =
       let init = defaultServer ()
 
       let cb l =
-        let fltr l r = LogEntry.getId l <> LogEntry.getId r
+        let fltr l r = LogEntry.id l <> LogEntry.id r
         in count := List.filter (fltr l) !count
 
       let cbs =

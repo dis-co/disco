@@ -26,7 +26,7 @@ module Log =
 
   let log_new_log_is_empty =
     testCase "When create, a log should be empty" <| fun _ ->
-      let log : RaftLog = Log.empty
+      let log: Log = Log.empty
       expect "Should be zero" 0 Log.length log
 
   let log_is_non_empty =
@@ -44,15 +44,15 @@ module Log =
     testCase "When I add an entry, it should have the correct index" <| fun _ ->
       Log.empty
       |> Log.append (Log.make (term 1) defSM)
-      |> assume "Should have currentIndex 1" (index 1) Log.getIndex
-      |> assume "Should have currentTerm 1" (term 1) Log.getTerm
+      |> assume "Should have currentIndex 1" (index 1) Log.index
+      |> assume "Should have currentTerm 1" (term 1) Log.term
       |> assume "Should have no lastTerm" None Log.prevTerm
       |> assume "Should have no lastIndex" None Log.prevIndex
 
       |> Log.append (Log.make (term 1) defSM)
 
-      |> assume "Should have currentIndex 2" (index 2) Log.getIndex
-      |> assume "Should have currentTerm 1" (term 1) Log.getTerm
+      |> assume "Should have currentIndex 2" (index 2) Log.index
+      |> assume "Should have currentTerm 1" (term 1) Log.term
       |> assume "Should have lastTerm 1" (Some (term 1)) Log.prevTerm
       |> assume "Should have lastIndex 1" (Some (index 1)) Log.prevIndex
       |> ignore
@@ -71,15 +71,15 @@ module Log =
         |> Log.append (LogEntry(id3, index 0, term 1, defSM, None))
 
       Log.at (index 1) log
-      |> assume "Should be correct one" id1 (LogEntry.getId << Option.get)
+      |> assume "Should be correct one" id1 (LogEntry.id << Option.get)
       |> ignore
 
       Log.at (index 2) log
-      |> assume "Should also be correct one" id2 (LogEntry.getId << Option.get)
+      |> assume "Should also be correct one" id2 (LogEntry.id << Option.get)
       |> ignore
 
       Log.at (index 3) log
-      |> assume "Should also be correct one" id3 (LogEntry.getId << Option.get)
+      |> assume "Should also be correct one" id3 (LogEntry.id << Option.get)
       |> ignore
 
       expect "Should find none at invalid index" None (Log.at (index 8)) log
@@ -97,15 +97,15 @@ module Log =
         |> Log.append (LogEntry(id3, index 0, term 1, defSM, None))
 
       Log.find id1 log
-      |> assume "Should be correct one" id1 (LogEntry.getId << Option.get)
+      |> assume "Should be correct one" id1 (LogEntry.id << Option.get)
       |> ignore
 
       Log.find id2 log
-      |> assume "Should also be correct one" id2 (LogEntry.getId << Option.get)
+      |> assume "Should also be correct one" id2 (LogEntry.id << Option.get)
       |> ignore
 
       Log.find id3 log
-      |> assume "Should also be correct one" id3 (LogEntry.getId << Option.get)
+      |> assume "Should also be correct one" id3 (LogEntry.id << Option.get)
       |> ignore
 
       Log.find (DiscoId.Create()) log
@@ -133,7 +133,7 @@ module Log =
         |> Log.append (Log.make (term 1) sm)
         |> Log.append (Log.make (term 1) defSM)
 
-      let folder (m: int) (log: RaftLogEntry) : Continue<int> =
+      let folder (m: int) (log: LogEntry) : Continue<int> =
         let value = (LogEntry.data >> Option.get) log
         if value = sm
         then LogEntry.finish (m + 9)
@@ -164,7 +164,7 @@ module Log =
     testCase "Should have monotonic index" <| fun _ ->
       let isMonotonic log =
         let __mono (last,ret) _log =
-          let i = LogEntry.getIndex _log
+          let i = LogEntry.index _log
           if ret then (i, i = (last + index 1)) else (i, ret)
         Log.foldLogR __mono (index 0,true) log
 
@@ -268,7 +268,7 @@ module Log =
 
       Log.append newer log
       |> assume "Should have length 3" 3 Log.length
-      |> expect "Should have proper id" id3 (Log.entries >> Option.get >> LogEntry.getId)
+      |> expect "Should have proper id" id3 (Log.entries >> Option.get >> LogEntry.id)
 
 
   let log_snapshot_remembers_last_state =
@@ -288,7 +288,7 @@ module Log =
 
       Log.snapshot mems (DataSnapshot(State.Empty)) log
       |> assume "Should have correct lastTerm" (Some term) Log.lastTerm
-      |> expect "Should have correct lastIndex" (Some <| Log.getIndex log) Log.lastIndex
+      |> expect "Should have correct lastIndex" (Some <| Log.index log) Log.lastIndex
 
   let log_untilExcluding_should_return_expected_enries =
     testCase "untilExcluding should return expected enries" <| fun _ ->
@@ -302,7 +302,7 @@ module Log =
           } ]
       |> List.fold (fun m s -> Log.append (Log.make (term 0) s) m) Log.empty
       |> assume "Should be at correct index" num Log.length
-      |> assume "Should pick correct item"  (index 16) (Log.untilExcluding (index 15) >> Option.get >> LogEntry.last >> LogEntry.getIndex)
+      |> assume "Should pick correct item"  (index 16) (Log.untilExcluding (index 15) >> Option.get >> LogEntry.last >> LogEntry.index)
       |> assume "Should have correct index" (AddCue { Id = id; Name = name "16"; Slices = [| |] } |> Some) (Log.untilExcluding (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
       |> assume "Should have correct index" (AddCue { Id = id; Name = name "15"; Slices = [| |] } |> Some) (Log.until (index 15) >> Option.get >> LogEntry.last >> LogEntry.data)
       |> ignore

@@ -15,20 +15,33 @@ open FlatBuffers
 open Disco.Core
 open Disco.Serialization
 
-// * RaftLog
+// * Log
 
-//  ____        __ _   _
-// |  _ \ __ _ / _| |_| |    ___   __ _
-// | |_) / _` | |_| __| |   / _ \ / _` |
-// |  _ < (_| |  _| |_| |__| (_) | (_| |
-// |_| \_\__,_|_|  \__|_____\___/ \__, |
-//                                |___/
+//  _
+// | |    ___   __ _
+// | |   / _ \ / _` |
+// | |__| (_) | (_| |
+// |_____\___/ \__, |
+//             |___/
 
-type RaftLog =
-  { Data  : RaftLogEntry option
-  ; Depth : int
-  ; Index : Index
-  }
+type Log =
+  { Data:  LogEntry option
+    Depth: int
+    Index: Index }
+
+  // ** optics
+
+  static member Data_ =
+    (fun (log:Log) -> log.Data),
+    (fun data (log:Log) -> { log with Data = data })
+
+  static member Depth_ =
+    (fun (log:Log) -> log.Depth),
+    (fun depth (log:Log) -> { log with Depth = depth })
+
+  static member Index_ =
+    (fun (log:Log) -> log.Index),
+    (fun index (log:Log) -> { log with Index = index })
 
   // ** ToString
 
@@ -82,14 +95,14 @@ type RaftLog =
   /// - logs: LogFB array
   ///
   /// Returns: Either<DiscoError, RaftLog>
-  static member FromFB (logs: LogFB array) : Either<DiscoError, RaftLog> =
+  static member FromFB (logs: LogFB array) : Either<DiscoError, Log> =
     either {
-      let! entries = RaftLogEntry.FromFB logs
+      let! entries = LogEntry.FromFB logs
       match entries with
       | Some entries as value ->
         return { Data  = value
                  Depth = LogEntry.depth entries
-                 Index = LogEntry.getIndex entries }
+                 Index = LogEntry.index entries }
       | _ ->
         return { Data  = None
                  Depth = 0
@@ -108,18 +121,33 @@ type RaftLog =
 [<RequireQualifiedAccess>]
 module Log =
 
-  // ** Log.empty
+  open Aether
+
+  // ** getters
+
+  let depth = Optic.get Log.Depth_
+  let data = Optic.get Log.Data_
+  let index = Optic.get Log.Index_
+
+  // ** setters
+
+  let setDepth = Optic.set Log.Depth_
+  let setData = Optic.set Log.Data_
+  let setIndex = Optic.set Log.Index_
+
+  // ** empty
 
   /// ## Construct an empty log.
   ///
   /// Build a new, empty log data structure.
   ///
   /// Returns: RaftLog
-  let empty = { Depth = 0
-              ; Index = index 0
-              ; Data  = None }
+  let empty =
+    { Depth = 0
+      Index = 0<index>
+      Data  = None }
 
-  // ** Log.fromEntries
+  // ** fromEntries
 
   /// ## Construct a new log value from entries
   ///
@@ -129,12 +157,12 @@ module Log =
   /// - entries: LogEntry's to construct RaftLog from
   ///
   /// Returns: RaftLog
-  let fromEntries (entries: RaftLogEntry) =
+  let fromEntries (entries: LogEntry) =
     { Depth = LogEntry.depth entries
-    ; Index = LogEntry.getIndex entries
-    ; Data  = Some entries }
+      Index = LogEntry.index entries
+      Data  = Some entries }
 
-  // ** Log.length
+  // ** length
 
   /// ## Length of logg
   ///
@@ -146,19 +174,7 @@ module Log =
   /// Returns: Long
   let length log = log.Depth
 
-  // ** Log.index
-
-  /// ## Return the current Index in the log
-  ///
-  /// Return the current index in the RaftLog value
-  ///
-  /// ### Signature:
-  /// - log: RaftLog to get index for
-  ///
-  /// Returns: Long
-  let getIndex log = log.Index
-
-  // ** Log.prevIndex
+  // ** prevIndex
 
   /// ## Return the index of the previous element
   ///
@@ -171,7 +187,7 @@ module Log =
   let prevIndex log =
     Option.bind LogEntry.prevIndex log.Data
 
-  // ** Log.term
+  // ** term
 
   /// ## Return the Term of the latest log entry
   ///
@@ -181,12 +197,12 @@ module Log =
   /// - log: RaftLog to return term for
   ///
   /// Returns: Long
-  let getTerm log =
+  let term log =
     match log.Data with
-    | Some entries -> LogEntry.getTerm entries
+    | Some entries -> LogEntry.term entries
     | _            -> term 0
 
-  // ** Log.prevTerm
+  // ** prevTerm
 
   /// ## Return the Term of the previous entry
   ///
@@ -199,7 +215,7 @@ module Log =
   let prevTerm log =
     Option.bind LogEntry.prevTerm log.Data
 
-  // ** Log.previous
+  // ** previous
 
   /// Return the last Entry, if it exists
   ///
@@ -210,75 +226,75 @@ module Log =
       match LogEntry.prevEntry entries with
       | Some entry ->
         { Depth = LogEntry.depth entry
-        ; Index = LogEntry.getIndex entry
+        ; Index = LogEntry.index entry
         ; Data  = Some entry }
         |> Some
       | _ -> None
     | _ -> None
 
-  // ** Log.prevEntry
+  // ** prevEntry
 
   let prevEntry log =
     Option.bind (LogEntry.prevEntry) log.Data
 
-  // ** Log.foldLogL
+  // ** foldLogL
 
   let foldLogL f m log =
     match log.Data with
     | Some entries -> LogEntry.foldl f m entries
     | _            -> m
 
-  // ** Log.foldLogR
+  // ** foldLogR
 
   let foldLogR f m log =
     match log.Data with
     | Some entries -> LogEntry.foldr f m entries
     | _            -> m
 
-  // ** Log.at
+  // ** at
 
   let at idx log =
     Option.bind (LogEntry.at idx) log.Data
 
-  // ** Log.until
+  // ** until
 
   let until idx log =
     Option.bind (LogEntry.until idx) log.Data
 
-  // ** Log.untilExcluding
+  // ** untilExcluding
 
   let untilExcluding idx log =
     Option.bind (LogEntry.untilExcluding idx) log.Data
 
-  // ** Log.append
+  // ** append
 
-  let append newentries log : RaftLog =
+  let append newentries log: Log =
     match log.Data with
     | Some entries ->
       let newlog = LogEntry.append newentries entries
-      { Index = LogEntry.getIndex newlog
+      { Index = LogEntry.index newlog
         Depth = LogEntry.depth newlog
         Data  = Some           newlog }
     | _ ->
       let entries = LogEntry.rewrite newentries
-      { Index = LogEntry.getIndex entries
+      { Index = LogEntry.index entries
         Depth = LogEntry.depth entries
         Data  = Some           entries }
 
-  // ** Log.find
+  // ** find
 
   let find id log =
     Option.bind (LogEntry.find id) log.Data
 
-  // ** Log.make
+  // ** make
 
   let make term data = LogEntry.make term data
 
-  // ** Log.mkConfig
+  // ** mkConfig
 
   let mkConfig term nodes = LogEntry.mkConfig term nodes
 
-  // ** Log.mkConfigChange
+  // ** mkConfigChange
 
   let mkConfigChange term changes =
     LogEntry.mkConfigChange term changes
@@ -286,74 +302,74 @@ module Log =
   let calculateChanges oldnodes newnodes =
     LogEntry.calculateChanges oldnodes newnodes
 
-  // ** Log.entries
+  // ** entries
 
   let entries log = log.Data
 
-  // ** Log.aggregate
+  // ** aggregate
 
   let aggregate f m log =
     Option.map (LogEntry.aggregate f m) log.Data
 
-  // ** Log.snapshot
+  // ** snapshot
 
   let snapshot nodes data log =
     match log.Data with
       | Some entries ->
         let snapshot = LogEntry.snapshot nodes data entries
-        { Index = LogEntry.getIndex snapshot
+        { Index = LogEntry.index snapshot
           Depth = 1
           Data = Some snapshot }
       | _ -> log
 
-  // ** Log.head
+  // ** head
 
   let head log =
     Option.map LogEntry.head log.Data
 
-  // ** Log.lastTerm
+  // ** lastTerm
 
   let lastTerm log =
     Option.bind LogEntry.lastTerm log.Data
 
-  // ** Log.lastTerm
+  // ** lastTerm
 
   let lastIndex log =
     Option.bind LogEntry.lastIndex log.Data
 
-  // ** Log.last
+  // ** last
 
   /// Return the last entry in the chain of logs.
   let last log =
     Option.map LogEntry.last log.Data
 
-  // ** Log.iter
+  // ** iter
 
   /// Iterate over log entries, in order of newsest to oldest.
   let iter f log =
     Option.map (LogEntry.iter f) log.Data
     |> ignore
 
-  // ** Log.firstIndex
+  // ** firstIndex
 
   /// Retrieve the index of the first log entry for the given term. Return None
   /// if no result was found;
   let firstIndex term log =
     Option.bind (LogEntry.firstIndex term) log.Data
 
-  // ** Log.getn
+  // ** getn
 
   let getn count log =
     Option.bind (LogEntry.getn count) log.Data
 
-  // ** Log.contains
+  // ** contains
 
-  let contains (f: RaftLogEntry -> bool) log : bool =
+  let contains (f: LogEntry -> bool) log : bool =
     match Option.map (LogEntry.contains f) log.Data with
     | Some result -> result
     | _           -> false
 
-  // ** Log.map
+  // ** map
 
   let map f log =
     Option.map (LogEntry.map f) log.Data

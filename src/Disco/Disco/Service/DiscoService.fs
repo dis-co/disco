@@ -666,7 +666,7 @@ module DiscoService =
 
   // ** persistSnapshot
 
-  let private persistSnapshot (state: DiscoState) (log: RaftLogEntry) =
+  let private persistSnapshot (state: DiscoState) (log: LogEntry) =
     match Persistence.persistSnapshot state.Store.State log with
     | Left error -> Logger.err (tag "persistSnapshot") (string error)
     | _ -> ()

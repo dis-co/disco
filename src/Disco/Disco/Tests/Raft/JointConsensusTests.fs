@@ -276,7 +276,7 @@ module JointConsensus =
         do! expectM "(1) Should still have correct mem count for new configuration" (n / 2) Raft.numPeers
         do! expectM "(1) Should still have correct logical mem count" n Raft.numLogicalPeers
         do! expectM "(1) Should still have correct mem count for old configuration" n Raft.numOldPeers
-        do! expectM "(1) Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! expectM "(1) Should have JointConsensus entry as ConfigChange" (LogEntry.id entry) (Raft.lastConfigChange >> Option.get >> LogEntry.id)
 
         //       _           _   _               ____
         //   ___| | ___  ___| |_(_) ___  _ __   |___ \
@@ -423,7 +423,7 @@ module JointConsensus =
         do! expectM "(2) Should still have correct mem count for new configuration 2" n Raft.numPeers
         do! expectM "(2) Should still have correct logical mem count 2" n Raft.numLogicalPeers
         do! expectM "(2) Should still have correct mem count for old configuration 2" (n / 2) Raft.numOldPeers
-        do! expectM "(2) Should have JointConsensus entry as ConfigChange 2" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! expectM "(2) Should have JointConsensus entry as ConfigChange 2" (LogEntry.id entry) (Raft.lastConfigChange >> Option.get >> LogEntry.id)
 
         //       _           _   _               ____
         //   ___| | ___  ___| |_(_) ___  _ __   | ___|
@@ -606,7 +606,7 @@ module JointConsensus =
         do! expectM "Should still have correct mem count for new configuration" (n / 2) Raft.numPeers
         do! expectM "Should still have correct logical mem count" n Raft.numLogicalPeers
         do! expectM "Should still have correct mem count for old configuration" n Raft.numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.id entry) (Raft.lastConfigChange >> Option.get >> LogEntry.id)
         do! expectM "Should be found in joint consensus configuration myself" true (Raft.getMember self.Id >> Option.isSome)
 
         //                                  __ _                       _   _
@@ -704,7 +704,7 @@ module JointConsensus =
         do! expectM "Should still have correct mem count for new configuration" n Raft.numPeers
         do! expectM "Should still have correct logical mem count" n Raft.numLogicalPeers
         do! expectM "Should still have correct mem count for old configuration" 1 Raft.numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.id entry) (Raft.lastConfigChange >> Option.get >> LogEntry.id)
         do! expectM "Should be in joint consensus configuration" true Raft.inJointConsensus
 
         let! t = Raft.currentTermM ()
@@ -769,7 +769,7 @@ module JointConsensus =
         do! expectM "Should still have correct mem count for new configuration" n Raft.numPeers
         do! expectM "Should still have correct logical mem count" n Raft.numLogicalPeers
         do! expectM "Should still have correct mem count for old configuration" 1 Raft.numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.id entry) (Raft.lastConfigChange >> Option.get >> LogEntry.id)
         do! expectM "Should be in joint consensus configuration" true Raft.inJointConsensus
 
         let! peers = Raft.getMembersM () >>= (Map.toArray >> Array.map snd >> returnM)
@@ -874,7 +874,7 @@ module JointConsensus =
         do! expectM "(1) Should still have correct mem count for new configuration" (n / 2) Raft.numPeers
         do! expectM "(1) Should still have correct logical mem count" n Raft.numLogicalPeers
         do! expectM "(1) Should still have correct mem count for old configuration" n Raft.numOldPeers
-        do! expectM "(1) Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! expectM "(1) Should have JointConsensus entry as ConfigChange" (LogEntry.id entry) (Raft.lastConfigChange >> Option.get >> LogEntry.id)
         do! expectM "(1) Should be in joint consensus configuration" true Raft.inJointConsensus
 
         let! committed = Raft.responseCommitted response
@@ -946,7 +946,7 @@ module JointConsensus =
         do! expectM "Should still have correct mem count for new configuration" n Raft.numPeers
         do! expectM "Should still have correct logical mem count" n Raft.numLogicalPeers
         do! expectM "Should still have correct mem count for old configuration" (n / 2) Raft.numOldPeers
-        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.getId entry) (Raft.lastConfigChange >> Option.get >> LogEntry.getId)
+        do! expectM "Should have JointConsensus entry as ConfigChange" (LogEntry.id entry) (Raft.lastConfigChange >> Option.get >> LogEntry.id)
 
         let! result = Raft.responseCommitted response
         do! expectM "Should be committed" true (konst result)

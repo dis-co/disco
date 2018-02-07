@@ -399,7 +399,7 @@ module TestData =
     [| for _ in 0 .. n do
         yield mkChange () |]
 
-  let mkLog _ : Either<DiscoError,RaftLog> =
+  let mkLog _ : Either<DiscoError,Log> =
     either {
       let! state = mkTmpDir() |> mkState
       return

@@ -103,7 +103,7 @@ type DiscoEvent =
   | EnterJointConsensus of changes:ConfigChange array
   | LeaderChanged       of leader:MemberId option
   | StateChanged        of oldstate:MemberState * newstate:MemberState
-  | PersistSnapshot     of log:RaftLogEntry
+  | PersistSnapshot     of log:LogEntry
   | RaftError           of error:DiscoError
   | Status              of ServiceStatus
   | GitPull             of remote:IpAddress
