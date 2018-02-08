@@ -653,3 +653,97 @@ module RaftMonad =
         for KeyValue(_,peer) in peers do
           do env.MemberUpdated peer
     }
+
+  // ** appendEntry
+
+  let appendEntry (entry: LogEntry) =
+    raft {
+      let! current = log ()
+
+      // create the new log by appending
+      let newlog = Log.append entry current
+      do! setLog newlog
+
+      // get back the entries just added
+      // (with correct monotonic idx's)
+      let result = Log.getn (LogEntry.depth entry) newlog
+
+      match result with
+      | Some entries -> do! persistLog entries
+      | _ -> ()
+
+      return result
+    }
+
+  // ** createEntry
+
+  let createEntry (entry: StateMachine) =
+    raft {
+      let! term = currentTerm ()
+      let log = LogEntry.create 0<index> term entry
+      return! appendEntry log
+    }
+
+  // ** removeEntry
+
+  /// Delete a log entry at the index specified. Returns the original value if
+  /// the record is not found.
+
+  let removeEntry idx =
+    raft {
+      let! env = read
+      let! current = log ()
+      match Log.at idx current with
+      | Some log ->
+        match LogEntry.pop log with
+        | Some newlog ->
+          // fire delete log callback for all removed items
+          match Log.until idx current with
+          | Some items -> LogEntry.iter (fun _ entry -> do env.DeleteLog entry) items
+          | _ -> ()
+          // save the modified log to state
+          do! modify (updateLogEntries newlog)
+        | _ ->
+          do env.DeleteLog log
+          do! modify (RaftState.setLog Log.empty)
+      | _ -> ()
+    }
+
+  // ** updateLogEntries
+
+  let updateLogEntries (entries: LogEntry) (state: RaftState) =
+    { state with
+        Log = { Index = LogEntry.index entries
+                Depth = LogEntry.depth entries
+                Data  = Some entries } }
+
+  // ** updateCommitIndex
+
+  let updateCommitIndex () = modify RaftState.updateCommitIndex
+
+  // ** regularMajority
+
+  /// Determine whether a vote count constitutes a majority in the *regular*
+  /// configuration (does not cover the joint consensus state).
+
+  let regularMajority votes =
+    raft {
+      let! num = votingMembers ()
+      return RaftState.majority num votes
+    }
+
+  // ** oldConfigMajority
+
+  let oldConfigMajority votes =
+    raft {
+      let! num = votingMembersForOldConfig ()
+      return RaftState.majority num votes
+    }
+
+  // ** numVotesForMe
+
+  let numVotesForMe () = zoom RaftState.numVotesForMe
+
+  // ** numVotesForMeOldConfig
+
+  let numVotesForMeOldConfig () = zoom RaftState.numVotesForMeOldConfig

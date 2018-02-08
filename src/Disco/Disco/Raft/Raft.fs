@@ -35,11 +35,13 @@ module rec Raft =
       |> not
 
     let peers =
-      if parting then // we have been kicked out of the configuration
-        [| (state.Member.Id, state.Member) |]
-        |> Map.ofArray
-      else            // we are still part of the new cluster configuration
-        Array.map toPair mems
+      if parting
+      // we have been kicked out of the configuration
+      then Map [(state.Member.Id, state.Member)]
+      // we are still part of the new cluster configuration
+      else
+        mems
+        |> Array.map toPair
         |> Map.ofArray
 
     state
@@ -49,93 +51,20 @@ module rec Raft =
   // ** handleJointConsensus
 
   let private handleJointConsensus (changes) (state:RaftState) =
-    let old = state.Peers
     state
     |> RaftState.applyChanges changes
-    |> RaftState.setOldPeers (Some old)
+    |> RaftState.setOldPeers (Some state.Peers)
 
-  // ** appendEntry
-
-  let appendEntry (entry: LogEntry) =
-    raft {
-      let! current = log ()
-
-      // create the new log by appending
-      let newlog = Log.append entry current
-      do! setLog newlog
-
-      // get back the entries just added
-      // (with correct monotonic idx's)
-      let result = Log.getn (LogEntry.depth entry) newlog
-
-      match result with
-      | Some entries -> do! persistLog entries
-      | _ -> ()
-
-      return result
-    }
-
-  // ** createEntry
-
-  let createEntry (entry: StateMachine) =
-    raft {
-      let! term = currentTerm ()
-      let log = LogEntry.create 0<index> term entry
-      return! appendEntry log
-    }
-
-  // ** updateLogEntries
-
-  let updateLogEntries (entries: LogEntry) (state: RaftState) =
-    { state with
-        Log = { Index = LogEntry.index entries
-                Depth = LogEntry.depth entries
-                Data  = Some entries } }
-
-  // ** removeEntry
-
-  /// Delete a log entry at the index specified. Returns the original value if
-  /// the record is not found.
-
-  let removeEntry idx =
-    raft {
-      let! env = read
-      let! current = log ()
-      match Log.at idx current with
-      | Some log ->
-        match LogEntry.pop log with
-        | Some newlog ->
-          // fire delete log callback for all removed items
-          match Log.until idx current with
-          | Some items -> LogEntry.iter (fun _ entry -> do env.DeleteLog entry) items
-          | _ -> ()
-          // save the modified log to state
-          do! modify (updateLogEntries newlog)
-        | _ ->
-          do env.DeleteLog log
-          do! modify (RaftState.setLog Log.empty)
-      | _ -> ()
-    }
-
-  // ** makeResponse
-
-  /////////////////////////////////////////////////////////////////////////////
-  //     _    Receive                    _ _____       _        _            //
-  //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___  //
-  //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __| //
-  //  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \ //
-  // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/ //
-  //         |_|   |_|                                                       //
-  /////////////////////////////////////////////////////////////////////////////
+  // ** createResponse
 
   /// Preliminary Checks on the AppendEntry value
-  let private makeResponse (nid: MemberId option) (msg: AppendEntries) =
-    raft {
-      let! state = get
 
+  let private createResponse (nid: MemberId option) (msg: AppendEntries) =
+    raft {
       let! term = currentTerm ()
       let! current = currentIndex ()
       let! first = firstIndex term >>= (Option.defaultValue 0<index> >> returnM)
+
 
       let resp: AppendResponse =
         { Term         = term
@@ -181,9 +110,10 @@ module rec Raft =
   // If an existing entry conflicts with a new one (same index
   // but different terms), delete the existing entry and all that
   // follow it (§5.3)
+
   let private handleConflicts (request: AppendEntries) =
     raft {
-      let idx = request.PrevLogIdx + index 1
+      let idx = request.PrevLogIdx + 1<index>
       let! local = entryAt idx
 
       match request.Entries with
@@ -224,11 +154,11 @@ module rec Raft =
       | _ -> return resp
     }
 
-  // ** maybeSetCommitIdx
+  // ** requestSetCommitIndex
 
   /// If leaderCommit > commitIndex, set commitIndex =
   /// min(leaderCommit, index of most recent entry)
-  let private maybeSetCommitIdx (msg : AppendEntries) =
+  let private requestSetCommitIndex (msg : AppendEntries) =
     raft {
       let! state = get
       let! cmmtidx = commitIndex ()
@@ -246,7 +176,7 @@ module rec Raft =
     raft {
       do! handleConflicts msg
       let! response = applyRemainder msg resp
-      do! maybeSetCommitIdx msg
+      do! requestSetCommitIndex msg
       do! setLeader nid
       return AppendResponse.setSuccess true resp
     }
@@ -255,6 +185,7 @@ module rec Raft =
 
   ///  2. Reply false if log doesn't contain an entry at prevLogIndex whose
   /// term matches prevLogTerm (§5.3)
+
   let private checkAndProcess entry nid msg resp =
     raft {
       let! current = currentIndex ()
@@ -273,30 +204,20 @@ module rec Raft =
                   current
                   msg.PrevLogIdx
               |> error "receiveAppendEntries"
-          let response = { resp with CurrentIndex = msg.PrevLogIdx - index 1 }
           do! removeEntry msg.PrevLogIdx
-          return response
+          return AppendResponse.setCurrentIndex (msg.PrevLogIdx - 1<index>) resp
         else
           return! processEntry nid msg resp
     }
 
   // ** updateMemberIndices
 
-  /////////////////////////////////////////////////////////////////////////////
-  //     _                               _ _____       _        _            //
-  //    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___  //
-  //   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __| //
-  //  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \ //
-  // /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/ //
-  //         |_|   |_|                                                       //
-  /////////////////////////////////////////////////////////////////////////////
-
   let private updateMemberIndices (resp : AppendResponse) (mem : RaftMember) =
     raft {
       let peer =
-        { mem with
-            NextIndex  = resp.CurrentIndex + index 1
-            MatchIndex = resp.CurrentIndex }
+        mem
+        |> Member.setNextIndex (resp.CurrentIndex + 1<index>)
+        |> Member.setMatchIndex resp.CurrentIndex
 
       let! current = currentIndex ()
 
@@ -314,16 +235,16 @@ module rec Raft =
   // ** shouldCommit
 
   let private shouldCommit peers state resp =
-    let folder (votes : int) nid (mem : RaftMember) =
-      if nid = state.Member.Id || not (Member.isVoting mem) then
-        votes
+    let folder (votes: int) nid (mem: RaftMember) =
+      if nid = state.Member.Id || not (Member.isVoting mem)
+      then votes
       elif mem.MatchIndex > 0<index> then
         match RaftState.entryAt mem.MatchIndex state with
-          | Some entry ->
-            if LogEntry.term entry = state.CurrentTerm && resp.CurrentIndex <= mem.MatchIndex
-            then votes + 1
-            else votes
-          | _ -> votes
+        | Some entry ->
+          if LogEntry.term entry = state.CurrentTerm && resp.CurrentIndex <= mem.MatchIndex
+          then votes + 1
+          else votes
+        | _ -> votes
       else votes
 
     let commit = RaftState.commitIndex state
@@ -332,12 +253,11 @@ module rec Raft =
 
     (num / 2) < votes && commit < resp.CurrentIndex
 
-  // ** updateCommitIndex
+  // ** responseSetCommitIndex
 
-  let private updateCommitIndex (resp : AppendResponse) =
+  let private responseSetCommitIndex (resp: AppendResponse) =
     raft {
       let! state = get
-
       let! inConsensus = inJointConsensus ()
       let commitOk =
         if inConsensus then
@@ -351,7 +271,6 @@ module rec Raft =
         else
           // the base case, not in joint consensus
           shouldCommit state.Peers state resp
-
       if commitOk then
         do! setCommitIndex resp.CurrentIndex
     }
@@ -365,23 +284,23 @@ module rec Raft =
       // log this if any entries are to be processed
       if Option.isSome msg.Entries then
         let! current = currentIndex ()
-        let str =
-          sprintf "from: %A term: %d (ci: %d) (lc-idx: %d) (pli: %d) (plt: %d) (entries: %d)"
-                     nid
-                     msg.Term
-                     current
-                     msg.LeaderCommit
-                     msg.PrevLogIdx
-                     msg.PrevLogTerm
-                     (Option.get msg.Entries |> LogEntry.depth)    // let the world know
-        do! debug "receiveAppendEntries" str
 
-      let! result = makeResponse nid msg  // check terms et al match, fail otherwise
+        do! sprintf "from: %A term: %d (ci: %d) (lc-idx: %d) (pli: %d) (plt: %d) (entries: %d)"
+              nid
+              msg.Term
+              current
+              msg.LeaderCommit
+              msg.PrevLogIdx
+              msg.PrevLogTerm
+              (Option.get msg.Entries |> LogEntry.depth)    // let the world know
+            |> debug "receiveAppendEntries"
+
+      let! result = createResponse nid msg  // check terms et al match, fail otherwise
 
       match result with
       | Right resp ->
         // this is not the first AppendEntry we're receiving
-        if msg.PrevLogIdx > index 0 then
+        if msg.PrevLogIdx > 0<index> then
           let! entry = entryAt msg.PrevLogIdx
           match entry with
           | Some log ->
@@ -416,21 +335,20 @@ module rec Raft =
           |> failM
       | Some peer ->
         if resp.CurrentIndex <> index 0 && resp.CurrentIndex < peer.MatchIndex then
-          let str = sprintf "Failed: peer not up to date yet (ci: %d) (match idx: %d)"
-                        resp.CurrentIndex
-                        peer.MatchIndex
-          do! error "receiveAppendEntriesResponse" str
+          do! sprintf "Failed: peer not up to date yet (ci: %d) (match idx: %d)"
+                resp.CurrentIndex
+                peer.MatchIndex
+              |> error "receiveAppendEntriesResponse"
           // set to current index at follower and try again
-          do! updateMember { peer with
-                               NextIndex = resp.CurrentIndex + 1<index>
-                               MatchIndex = resp.CurrentIndex }
-          return ()
+          do! peer
+              |> Member.setNextIndex (resp.CurrentIndex + 1<index>)
+              |> Member.setMatchIndex resp.CurrentIndex
+              |> updateMember
         else
-          let! state = get
-
+          let! leader = isLeader ()
           // we only process this if we are indeed the leader of the pack
-          if RaftState.isLeader state then
-            let term = RaftState.currentTerm state
+          if leader then
+            let! term = currentTerm ()
             //  If response contains term T > currentTerm: set currentTerm = T
             //  and convert to follower (§5.3)
             if term < resp.Term then
@@ -466,7 +384,7 @@ module rec Raft =
                 do! setMatchIndex peer.Id (nextIndex - index 1)
             else
               do! updateMemberIndices resp peer
-              do! updateCommitIndex resp
+              do! responseSetCommitIndex resp
           else
             return!
               "Not Leader"
@@ -521,26 +439,16 @@ module rec Raft =
     raft {
       let! self = self ()
       let! peers = logicalPeers ()
-
       for KeyValue(id,peer) in peers do
         if id <> self.Id then
           do! sendAppendEntry peer
-
       do! setTimeoutElapsed 0<ms>
     }
 
   // ** createSnapshot
 
-  ///////////////////////////////////////////////////
-  //  ____                        _           _    //
-  // / ___| _ __   __ _ _ __  ___| |__   ___ | |_  //
-  // \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __| //
-  //  ___) | | | | (_| | |_) \__ \ | | | (_) | |_  //
-  // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__| //
-  //                   |_|                         //
-  ///////////////////////////////////////////////////
-
   /// utiltity to create a snapshot for the current application and raft state
+
   let createSnapshot (state: RaftState) (data: StateMachine) =
     let peers = Map.toArray state.Peers |> Array.map snd
     Log.snapshot peers data state.Log
@@ -549,60 +457,42 @@ module rec Raft =
 
   let sendInstallSnapshot mem =
     raft {
-      let! state = get
-      let! cbs = read
-
-      match cbs.RetrieveSnapshot () with
+      let! env = read
+      let! term = currentTerm()
+      let! leader = self () >>= (Member.id >> returnM)
+      match env.RetrieveSnapshot () with
       | Some (Snapshot(_,idx,term,_,_,_,_) as snapshot) ->
-        let is =
-          { Term      = state.CurrentTerm
-          ; LeaderId  = state.Member.Id
-          ; LastIndex = idx
-          ; LastTerm  = term
-          ; Data      = snapshot
-          }
-        cbs.SendInstallSnapshot mem is
+        env.SendInstallSnapshot mem {
+          Term      = term
+          LeaderId  = leader
+          LastIndex = idx
+          LastTerm  = term
+          Data      = snapshot
+        }
       | _ -> ()
     }
 
   // ** responseCommitted
 
-  ///////////////////////////////////////////////////////////////////
-  //  ____               _             _____       _               //
-  // |  _ \ ___  ___ ___(_)_   _____  | ____|_ __ | |_ _ __ _   _  //
-  // | |_) / _ \/ __/ _ \ \ \ / / _ \ |  _| | '_ \| __| '__| | | | //
-  // |  _ <  __/ (_|  __/ |\ V /  __/ | |___| | | | |_| |  | |_| | //
-  // |_| \_\___|\___\___|_| \_/ \___| |_____|_| |_|\__|_|   \__, | //
-  //                                                        |___/  //
-  ///////////////////////////////////////////////////////////////////
-
   /// Check if an entry corresponding to a receiveEntry result has actually been
   /// committed to the state machine.
+
   let responseCommitted (resp : EntryResponse) =
     raft {
       let! entry = entryAt resp.Index
       match entry with
-        | None -> return false
-        | Some entry ->
-          if resp.Term <> LogEntry.term entry then
-            return!
-              "Entry Invalidated"
-              |> Error.asRaftError (tag "responseCommitted")
-              |> failM
-          else
-            let! cidx = commitIndex ()
-            return resp.Index <= cidx
+      | None -> return false
+      | Some entry ->
+        if resp.Term <> LogEntry.term entry
+        then
+          return!
+            "Entry Invalidated"
+            |> Error.asRaftError (tag "responseCommitted")
+            |> failM
+        else
+          let! cidx = commitIndex ()
+          return resp.Index <= cidx
     }
-
-  // ** updateCommitIdx
-
-  let private updateCommitIdx (state: RaftState) =
-    let idx =
-      if state.NumMembers = 1 then
-        RaftState.currentIndex state
-      else
-        state.CommitIndex
-    { state with CommitIndex = idx }
 
   // ** handleLog
 
@@ -612,13 +502,14 @@ module rec Raft =
 
       match result with
       | Some appended ->
-        let! state = get
+        let! selfId = self () >>= (Member.id >> returnM)
+        let! maxDepth = maxLogDepth ()
         let! peers = logicalPeers ()
 
         // iterate through all peers and call sendAppendEntries to each
         for peer in peers do
           let mem = peer.Value
-          if mem.Id <> state.Member.Id then
+          if mem.Id <> selfId then
             let nxtidx = Member.nextIndex mem
             let! cidx = currentIndex ()
 
@@ -628,7 +519,7 @@ module rec Raft =
               let d = cidx - nxtidx
               if d < 0<index> then 0<index> else d
 
-            if difference <= (index (int state.MaxLogDepth) + 1<index>) then
+            if difference <= (index (int maxDepth) + 1<index>) then
               // Only send new entries. Don't send the entry to peers who are
               // behind, to prevent them from becoming congested.
               do! sendAppendEntry mem
@@ -637,7 +528,7 @@ module rec Raft =
               // with a snapshot
               do! sendInstallSnapshot mem
 
-        do! updateCommitIdx |> modify
+        do! updateCommitIndex ()
         let! term = currentTerm ()
         return
           { resp with
@@ -655,23 +546,26 @@ module rec Raft =
 
   let receiveEntry (entry: LogEntry) =
     raft {
-      let! state = get
-      let response = EntryResponse.create 0<term> 0<index>
+      let! leader = isLeader ()
+      let! configChange = configChangeEntry()
 
-      if LogEntry.isConfigChange entry && Option.isSome state.ConfigChangeEntry then
+      if LogEntry.isConfigChange entry && Option.isSome configChange then
         do! debug "receiveEntry" "Error: UnexpectedVotingChange"
         return!
           "Unexpected Voting Change"
           |> Error.asRaftError (tag "receiveEntry")
           |> failM
-      elif RaftState.isLeader state then
-        do! state.CurrentTerm
+      elif leader then
+        let! term = currentTerm()
+        let! idx = log () >>= (Log.index >> returnM)
+
+        do! term
             |> sprintf "(id: %A) (idx: %d) (term: %d)"
               (LogEntry.id entry)
-              (Log.index state.Log + 1<index>)
+              (idx + 1<index>)
             |> debug "receiveEntry"
 
-        let! term = currentTerm ()
+        let response = EntryResponse.create 0<term> 0<index>
 
         match entry with
         | LogEntry(id,_,_,data,_) ->
@@ -697,34 +591,6 @@ module rec Raft =
           |> Error.asRaftError (tag "receiveEntry")
           |> failM
     }
-
-  // ** calculateChanges
-
-  ////////////////////////////////////////////////////////////////
-  //     _                _         _____       _               //
-  //    / \   _ __  _ __ | |_   _  | ____|_ __ | |_ _ __ _   _  //
-  //   / _ \ | '_ \| '_ \| | | | | |  _| | '_ \| __| '__| | | | //
-  //  / ___ \| |_) | |_) | | |_| | | |___| | | | |_| |  | |_| | //
-  // /_/   \_\ .__/| .__/|_|\__, | |_____|_| |_|\__|_|   \__, | //
-  //         |_|   |_|      |___/                        |___/  //
-  ////////////////////////////////////////////////////////////////
-  let calculateChanges (oldPeers: Map<MemberId,RaftMember>) (newPeers: Map<MemberId,RaftMember>) =
-    let oldmems = Map.toArray oldPeers |> Array.map snd
-    let newmems = Map.toArray newPeers |> Array.map snd
-
-    let additions =
-      Array.fold
-        (fun lst (newmem: RaftMember) ->
-          match Array.tryFind (Member.id >> (=) newmem.Id) oldmems with
-            | Some _ -> lst
-            |      _ -> MemberAdded(newmem) :: lst) [] newmems
-
-    Array.fold
-      (fun lst (oldmem: RaftMember) ->
-        match Array.tryFind (Member.id >> (=) oldmem.Id) newmems with
-          | Some _ -> lst
-          | _ -> MemberRemoved(oldmem) :: lst) additions oldmems
-    |> List.toArray
 
   // ** notifyChange
 
@@ -774,7 +640,7 @@ module rec Raft =
                   let newstate = handleConfiguration mems state
                   // when a new configuration is added, under certain circumstances a mem change
                   // might not have been applied yet, so calculate those dangling changes
-                  let changes = calculateChanges state.Peers newstate.Peers
+                  let changes = RaftState.calculateChanges state.Peers newstate.Peers
                   // apply dangling changes
                   do Array.iter (notifyChange cbs) changes
                   // apply the entry by calling the callback
@@ -833,28 +699,14 @@ module rec Raft =
   // ** receiveInstallSnapshot
 
   (*
-   *  ____               _
-   * |  _ \ ___  ___ ___(_)_   _____
-   * | |_) / _ \/ __/ _ \ \ \ / / _ \
-   * |  _ <  __/ (_|  __/ |\ V /  __/
-   * |_| \_\___|\___\___|_| \_/ \___|
-   *
-   *  ___           _        _ _ ____                        _           _
-   * |_ _|_ __  ___| |_ __ _| | / ___| _ __   __ _ _ __  ___| |__   ___ | |_
-   *  | || '_ \/ __| __/ _` | | \___ \| '_ \ / _` | '_ \/ __| '_ \ / _ \| __|
-   *  | || | | \__ \ || (_| | | |___) | | | | (_| | |_) \__ \ | | | (_) | |_
-   * |___|_| |_|___/\__\__,_|_|_|____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
-   *                                              |_|
-   * +-------------------------------------------------------------------------------------------------------------------------------+
-   * | 1. Reply immediately if term < currentTerm                                                                                    |
-   * | 2. Create new snapshot file if first chunk (offset is 0)                                                                      |
-   * | 3. Write data into snapshot file at given offset                                                                              |
-   * | 4. Reply and wait for more data chunks if done is false                                                                       |
-   * | 5. Save snapshot file, discard any existing or partial snapshot with a smaller index                                          |
-   * | 6. If existing log entry has same index and term as snapshot’s last included entry, retain log entries following it and reply |
-   * | 7. Discard the entire log                                                                                                     |
-   * | 8. Reset state machine using snapshot contents (and load snapshot’s cluster configuration)                                    |
-   * +-------------------------------------------------------------------------------------------------------------------------------+
+   *  1. Reply immediately if term < currentTerm
+   *  2. Create new snapshot file if first chunk (offset is 0)
+   *  3. Write data into snapshot file at given offset
+   *  4. Reply and wait for more data chunks if done is false
+   *  5. Save snapshot file, discard any existing or partial snapshot with a smaller index
+   *  6. If existing log entry has same index and term as snapshot’s last included entry, retain log entries following it and reply
+   *  7. Discard the entire log
+   *  8. Reset state machine using snapshot contents (and load snapshot’s cluster configuration)
    *)
   let receiveInstallSnapshot (is: InstallSnapshot) =
     raft {
@@ -873,7 +725,7 @@ module rec Raft =
       | Snapshot(_,idx,_,_,_,mems, _) as snapshot ->
 
         // IMPROVEMENT: implementent chunked transmission as per paper
-        cbs.PersistSnapshot snapshot
+        do cbs.PersistSnapshot snapshot
 
         let! state = get
 
@@ -902,10 +754,11 @@ module rec Raft =
 
         // apply all entries in the new log
         let! state = get
+
         match state.Log.Data with
-          | Some data ->
-            LogEntry.foldr (fun _ entry -> applyEntry cbs entry) () data
-          | _ -> failwith "Fatal. Snapshot applied, but log is empty. Aborting."
+        | Some data ->
+          LogEntry.foldr (fun _ entry -> applyEntry cbs entry) () data
+        | _ -> failwith "Fatal. Snapshot applied, but log is empty. Aborting."
 
         // reset the counters,to apply all entries in the log
         do! setLastAppliedIndex (Log.index state.Log)
@@ -914,17 +767,14 @@ module rec Raft =
         // construct reply
         let! term = currentTerm ()
         let! ci = currentIndex ()
-        let! fi = firstIndex term
+        let! fi = firstIndex term >>= (Option.defaultValue 0<index> >> returnM)
 
-        let ar : AppendResponse =
-          { Term         = term
-            Success      = true
-            CurrentIndex = ci
-            FirstIndex   = match fi with
-                            | Some i -> i
-                            | _      -> index 0 }
-
-        return ar
+        return {
+          Term         = term
+          Success      = true
+          CurrentIndex = ci
+          FirstIndex   = fi
+        }
       | _ ->
         return!
           "Snapshot Format Error"
@@ -956,95 +806,7 @@ module rec Raft =
         do! doSnapshot ()
     }
 
-  // ** majority
-
-  ///////////////////////////////////////////////
-  //  _____ _           _   _                  //
-  // | ____| | ___  ___| |_(_) ___  _ __  ___  //
-  // |  _| | |/ _ \/ __| __| |/ _ \| '_ \/ __| //
-  // | |___| |  __/ (__| |_| | (_) | | | \__ \ //
-  // |_____|_|\___|\___|\__|_|\___/|_| |_|___/ //
-  ///////////////////////////////////////////////
-
-  /// ## majority
-  ///
-  /// Determine the majority from a total number of eligible voters and their respective votes. This
-  /// function is generic and should expect any numeric types.
-  ///
-  /// Turning off the warning about the cast due to sufficiently constrained requirements on the
-  /// input type (op_Explicit, comparison and division).
-  ///
-  /// ### Signature:
-  /// - total: the total number of votes cast
-  /// - yays: the number of yays in this election
-  ///
-  /// Returns: boolean
-  let majority total yays =
-    if total = 0 || yays = 0 then
-      false
-    elif yays > total then
-      false
-    else
-      yays > (total / 2)
-
-  // ** regularMajorityM
-
-  /// Determine whether a vote count constitutes a majority in the *regular*
-  /// configuration (does not cover the joint consensus state).
-  let regularMajorityM votes =
-    votingMembers () >>= fun num ->
-      majority num votes |> returnM
-
-  // ** oldConfigMajorityM
-
-  let oldConfigMajorityM votes =
-    votingMembersForOldConfig () >>= fun num ->
-      majority num votes |> returnM
-
-  // ** numVotesForConfig
-
-  let numVotesForConfig (self: RaftMember) (votedFor: MemberId option) peers =
-    let counter m _ (peer : RaftMember) =
-        if (peer.Id <> self.Id) && Member.canVote peer
-          then m + 1
-          else m
-
-    let start =
-      match votedFor with
-        | Some(nid) -> if nid = self.Id then 1 else 0
-        | _         -> 0
-
-    Map.fold counter start peers
-
-  // ** numVotesForMe
-
-  let numVotesForMe (state: RaftState) =
-    numVotesForConfig state.Member state.VotedFor state.Peers
-
-  // ** numVotesForMeM
-
-  let numVotesForMeM _ = zoom numVotesForMe
-
-  // ** numVotesForMeOldConfig
-
-  let numVotesForMeOldConfig (state: RaftState) =
-    match state.OldPeers with
-      | Some peers -> numVotesForConfig state.Member state.VotedFor peers
-      |      _     -> 0
-
-  // ** numVotesForMeOldConfigM
-
-  let numVotesForMeOldConfigM _ = zoom numVotesForMeOldConfig
-
   // ** maybeSetIndex
-
-  /////////////////////////////////////////////////////////////////////////////
-  //  ____                                  _                   _            //
-  // | __ )  ___  ___ ___  _ __ ___   ___  | |    ___  __ _  __| | ___ _ __  //
-  // |  _ \ / _ \/ __/ _ \| '_ ` _ \ / _ \ | |   / _ \/ _` |/ _` |/ _ \ '__| //
-  // | |_) |  __/ (_| (_) | | | | | |  __/ | |__|  __/ (_| | (_| |  __/ |    //
-  // |____/ \___|\___\___/|_| |_| |_|\___| |_____\___|\__,_|\__,_|\___|_|    //
-  /////////////////////////////////////////////////////////////////////////////
 
   let private maybeSetIndex nid nextIdx matchIdx =
     updateMembers $ fun peer ->
@@ -1188,11 +950,8 @@ module rec Raft =
                 //  \___/ \___/|_|_| |_|\__| consensus.
                 //
                 // we probe for a majority in both configurations
-                let! newConfig =
-                  numVotesForMeM () >>= regularMajorityM
-
-                let! oldConfig =
-                  numVotesForMeOldConfigM () >>= oldConfigMajorityM
+                let! newConfig = numVotesForMe () >>= regularMajority
+                let! oldConfig = numVotesForMeOldConfig () >>= oldConfigMajority
 
                 do! sprintf "In JointConsensus (majority new config: %b) (majority old config: %b)"
                       newConfig
@@ -1212,8 +971,7 @@ module rec Raft =
                 //            |___/
                 // the base case: we are not in joint consensus so we just use
                 // regular configuration functions
-                let! majority =
-                  numVotesForMeM () >>= regularMajorityM
+                let! majority = numVotesForMe () >>= regularMajority
 
                 do! sprintf "(majority for config: %b)" majority
                     |> debug "receiveVoteResponse"
@@ -1227,20 +985,19 @@ module rec Raft =
   /// Request a from a given peer
   let sendVoteRequest (mem : RaftMember) =
     raft {
-      let! state = get
+      let! term = currentTerm()
+      let! self = self()
+      let! log = log()
       let! cbs = read
-
-      let vote =
-        { Term         = state.CurrentTerm
-          Candidate    = state.Member
-          LastLogIndex = Log.index state.Log
-          LastLogTerm  = Log.term state.Log }
-
       do! mem.Status
           |> sprintf "(to: %s) (state: %A)" (string mem.Id)
           |> debug "sendVoteRequest"
-
-      cbs.SendRequestVote mem vote
+      do cbs.SendRequestVote mem {
+        Term         = term
+        Candidate    = self
+        LastLogIndex = Log.index log
+        LastLogTerm  = Log.term log
+      }
     }
 
   // ** requestAllVotes
@@ -1361,31 +1118,31 @@ module rec Raft =
     raft {
       let! result = shouldGrantVote vote
       match result with
-        | (true,_) ->
-          let! leader = isLeader ()
-          let! candidate = isCandidate ()
-          if not leader && not candidate then
-            do! voteForId vote.Candidate.Id
-            do! setTimeoutElapsed 0<ms>
-            let! term = currentTerm ()
-            return {
-              Term    = term
-              Granted = true
-              Reason  = None
-            }
-          else
-            do! debug "processVoteRequest" "vote request denied: NotVotingState"
-            return!
-              "Not Voting State"
-              |> Error.asRaftError (tag "processVoteRequest")
-              |> failM
-        | (false, err) ->
+      | (true,_) ->
+        let! leader = isLeader ()
+        let! candidate = isCandidate ()
+        if not leader && not candidate then
+          do! voteForId vote.Candidate.Id
+          do! setTimeoutElapsed 0<ms>
           let! term = currentTerm ()
           return {
             Term    = term
-            Granted = false
-            Reason  = Some err
+            Granted = true
+            Reason  = None
           }
+        else
+          do! debug "processVoteRequest" "vote request denied: NotVotingState"
+          return!
+            "Not Voting State"
+            |> Error.asRaftError (tag "processVoteRequest")
+            |> failM
+      | (false, err) ->
+        let! term = currentTerm ()
+        return {
+          Term    = term
+          Granted = false
+          Reason  = Some err
+        }
     }
 
   // ** receiveVoteRequest
@@ -1402,7 +1159,6 @@ module rec Raft =
                     (string nid)
                     result.Granted
         do! RaftMonad.info "receiveVoteRequest" str
-
         return result
       | _ ->
         do! RaftMonad.info "receiveVoteRequest" <| sprintf "requested denied. NoMember %s" (string nid)
@@ -1452,10 +1208,11 @@ module rec Raft =
 
   let periodic (elapsed : Timeout) =
     raft {
-      let! state = get
-      do! setTimeoutElapsed (state.TimeoutElapsed + elapsed)
+      let! state = state()
+      let! currentlyElapsed = timeoutElapsed ()
+      do! setTimeoutElapsed (currentlyElapsed + elapsed)
 
-      match state.State with
+      match state with
       | Leader ->
         // if in JointConsensus
         let! consensus = inJointConsensus ()

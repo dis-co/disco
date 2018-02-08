@@ -709,3 +709,79 @@ module RaftState =
   // ** entriesUntilExcluding
 
   let entriesUntilExcluding idx = log >> Log.untilExcluding idx
+
+  // ** updateCommitIndex
+
+  let updateCommitIndex (state: RaftState) =
+    setCommitIndex
+      $ if state.NumMembers = 1
+        then currentIndex state
+        else commitIndex state
+      $ state
+
+  // ** calculateChanges
+
+  let calculateChanges (oldPeers: Map<MemberId,RaftMember>) (newPeers: Map<MemberId,RaftMember>) =
+    let oldmems = Map.toArray oldPeers |> Array.map snd
+    let newmems = Map.toArray newPeers |> Array.map snd
+
+    let additions =
+      Array.fold
+        (fun lst (newmem: RaftMember) ->
+          match Array.tryFind (Member.id >> (=) newmem.Id) oldmems with
+            | Some _ -> lst
+            |      _ -> MemberAdded(newmem) :: lst) [] newmems
+
+    Array.fold
+      (fun lst (oldmem: RaftMember) ->
+        match Array.tryFind (Member.id >> (=) oldmem.Id) newmems with
+          | Some _ -> lst
+          | _ -> MemberRemoved(oldmem) :: lst) additions oldmems
+    |> List.toArray
+
+  // ** majority
+
+  /// Determine the majority from a total number of eligible voters and their respective votes. This
+  /// function is generic and should expect any numeric types.
+  ///
+  /// Turning off the warning about the cast due to sufficiently constrained requirements on the
+  /// input type (op_Explicit, comparison and division).
+  ///
+  /// ### Signature:
+  /// - total: the total number of votes cast
+  /// - yays: the number of yays in this election
+
+  let majority total yays =
+    if total = 0 || yays = 0 then
+      false
+    elif yays > total then
+      false
+    else
+      yays > (total / 2)
+
+  // ** numVotesForConfig
+
+  let numVotesForConfig (self: RaftMember) (votedFor: MemberId option) peers =
+    let counter m _ (peer : RaftMember) =
+      if (peer.Id <> self.Id) && Member.canVote peer
+        then m + 1
+        else m
+
+    let start =
+      match votedFor with
+      | Some(nid) -> if nid = self.Id then 1 else 0
+      | _         -> 0
+
+    Map.fold counter start peers
+
+  // ** numVotesForMe
+
+  let numVotesForMe (state: RaftState) =
+    numVotesForConfig state.Member state.VotedFor state.Peers
+
+  // ** numVotesForMeOldConfig
+
+  let numVotesForMeOldConfig (state: RaftState) =
+    match state.OldPeers with
+    | Some peers -> numVotesForConfig state.Member state.VotedFor peers
+    |      _     -> 0

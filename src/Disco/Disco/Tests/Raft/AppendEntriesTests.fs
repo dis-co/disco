@@ -158,7 +158,7 @@ module AppendEntries =
   let _entries_for_conflict_tests (payload : StateMachine array) =
     raft {
       for t in payload do
-        do! Raft.createEntry t >>= ignoreM
+        do! createEntry t >>= ignoreM
     }
 
   let follower_recv_appendentries_delete_entries_if_conflict_with_new_entries =
@@ -394,13 +394,13 @@ module AppendEntries =
       raft {
         do! addMember peer
         do! setCurrentTerm 1<term>
-        do! Raft.appendEntry (log (DiscoId.Create())) >>= ignoreM
+        do! appendEntry (log (DiscoId.Create())) >>= ignoreM
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
 
         expect "Should not be successful" true AppendResponse.failed response
         expect "Should have current index 1" (index 1) AppendResponse.currentIndex response
 
-        do! Raft.appendEntry (log (DiscoId.Create())) >>= ignoreM
+        do! appendEntry (log (DiscoId.Create())) >>= ignoreM
         let! response = Raft.receiveAppendEntries (Some peer.Id) msg
         expect "Should not be successful" true AppendResponse.failed response
         expect "Should have current index 2" (index 2) AppendResponse.currentIndex response
