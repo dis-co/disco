@@ -517,8 +517,8 @@ module Member =
       State      = Follower
       Voting     = true
       VotedForMe = false
-      NextIndex  = index 1
-      MatchIndex = index 0 }
+      NextIndex  = 1<index>
+      MatchIndex = 0<index> }
 
   // ** isVoting
 

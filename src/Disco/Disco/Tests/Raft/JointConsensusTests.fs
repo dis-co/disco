@@ -31,9 +31,9 @@ module JointConsensus =
       let mem2 = Member.create (DiscoId.Create())
 
       let log =
-        JointConsensus(DiscoId.Create(), index 3, term 0, [| MemberAdded mem2 |],
-                Some <| JointConsensus(DiscoId.Create(), index 2, term 0, [| MemberRemoved mem1 |],
-                           Some <| JointConsensus(DiscoId.Create(), index 1, term 0, [| MemberAdded mem1 |], None)))
+        JointConsensus(DiscoId.Create(), 3<index>, 0<term>, [| MemberAdded mem2 |],
+                Some <| JointConsensus(DiscoId.Create(),2<index>,0<term>, [| MemberRemoved mem1 |],
+                           Some <| JointConsensus(DiscoId.Create(),1<index>,0<term>, [| MemberAdded mem1 |], None)))
 
       let getstuff r =
         Map.toList r.Peers
@@ -59,12 +59,12 @@ module JointConsensus =
       let mem = Member.create nid2
 
       let mkjc term =
-        JointConsensus(DiscoId.Create(), index 1, term, [| MemberAdded(mem) |] , None)
+        JointConsensus(DiscoId.Create(),1<index>, term, [| MemberAdded(mem) |] , None)
 
       let mkcnf term mems =
-        Configuration(DiscoId.Create(), index 1, term, mems , None)
+        Configuration(DiscoId.Create(),1<index>, term, mems , None)
 
-      let ci = ref (index 0)
+      let ci = ref 0<index>
       let state = defaultServer()
       let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
@@ -72,12 +72,12 @@ module JointConsensus =
         { Term = term 0
           Success = true
           CurrentIndex = !ci
-          FirstIndex = index 1 }
+          FirstIndex = 1<index> }
 
       raft {
         do! setElectionTimeout 1000<ms>
         do! Raft.becomeLeader ()
-        do! expectM "Should have commit idx of zero" (index 0) RaftState.commitIndex
+        do! expectM "Should have commit idx of zero" 0<index> RaftState.commitIndex
         do! expectM "Should have mem count of one" 1 RaftState.numMembers
         let! term = currentTerm ()
 
@@ -155,7 +155,7 @@ module JointConsensus =
 
         // call periodic to ensure these are applied
         let! idx = currentIndex ()
-        ci := idx + index 1
+        ci := idx + 1<index>
         do! Raft.periodic 1000<ms>
 
         let! peers = getMembers () >>= (Map.toArray >> Array.map snd >> returnM)
@@ -189,7 +189,7 @@ module JointConsensus =
             let nid = DiscoId.Create()
             yield (nid, Member.create nid) |] // create mem in the Raft state
 
-      let ci = ref (index 0)
+      let ci = ref 0<index>
       let trm = ref (term 1)
 
       let lokk = new System.Object()
@@ -201,7 +201,7 @@ module JointConsensus =
         { Term = !trm
           Success = true
           CurrentIndex = !ci
-          FirstIndex = index 1 }
+          FirstIndex = 1<index> }
 
       raft {
         let me = snd mems.[0]
@@ -516,7 +516,7 @@ module JointConsensus =
     testCase "should revert to follower state on config change removal" <| fun _ ->
       let n = 10                      // we want ten mems overall
 
-      let ci = ref (index 0)
+      let ci = ref 0<index>
       let trm = ref (term 1)
       let lokk = new System.Object()
 
@@ -533,7 +533,7 @@ module JointConsensus =
         { Term = !trm
           Success = true
           CurrentIndex = !ci
-          FirstIndex = index 1 }
+          FirstIndex = 1<index> }
 
       raft {
         let self = snd mems.[0]        //
@@ -649,14 +649,14 @@ module JointConsensus =
     testCase "should send appendentries to all servers in joint consensus" <| fun _ ->
       let lokk = new System.Object()
       let count = ref 0
-      let ci = ref (index 0)
+      let ci = ref 0<index>
       let trm = ref (term 1)
       let init = defaultServer()
       let cbs = { Callbacks.Create (ref defSM)
                     with SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
                 :> IRaftCallbacks
 
-      // let response = Some { Success = true; Term = !trm; CurrentIndex = !ci; FirstIndex = index 1 } }
+      // let response = Some { Success = true; Term = !trm; CurrentIndex = !ci; FirstIndex = 1<index> } }
 
       let n = 10                       // we want ten mems overall
 
@@ -795,7 +795,7 @@ module JointConsensus =
 
       let self = snd mems.[0]
       let lokk = new System.Object()
-      let ci = ref (index 0)
+      let ci = ref 0<index>
       let trm = ref (term 1)
       let count = ref 0
       let init = RaftState.create self
@@ -808,7 +808,7 @@ module JointConsensus =
         { Success = true
           Term = !trm
           CurrentIndex = !ci
-          FirstIndex = index 1 }
+          FirstIndex = 1<index> }
 
       raft {
         do! setPeers (mems |> Map.ofArray)

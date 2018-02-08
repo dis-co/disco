@@ -106,7 +106,7 @@ type Log =
       | _ ->
         return { Data  = None
                  Depth = 0
-                 Index = index 0 }
+                 Index = 0<index> }
     }
 
 // * Log Module

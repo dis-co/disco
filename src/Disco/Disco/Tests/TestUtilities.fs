@@ -403,11 +403,11 @@ module TestData =
     either {
       let! state = mkTmpDir() |> mkState
       return
-        LogEntry(DiscoId.Create(), index 7, term 1, DataSnapshot(state),
-          Some <| LogEntry(DiscoId.Create(), index 6, term 1, DataSnapshot(state),
-            Some <| Configuration(DiscoId.Create(), index 5, term 1, [| mkMember () |],
-              Some <| JointConsensus(DiscoId.Create(), index 4, term 1, mkChanges (),
-                Some <| Snapshot(DiscoId.Create(), index 3, term 1, index 2, term 1, mkMembers (), DataSnapshot(state))))))
+        LogEntry(DiscoId.Create(),7<index>,1<term>, DataSnapshot(state),
+          Some <| LogEntry(DiscoId.Create(),6<index>,1<term>, DataSnapshot(state),
+            Some <| Configuration(DiscoId.Create(),5<index>,1<term>, [| mkMember () |],
+              Some <| JointConsensus(DiscoId.Create(), 4<index>, 1<term>, mkChanges (),
+                Some <| Snapshot(DiscoId.Create(), 3<index>, 1<term>, 2<index>, 1<term>, mkMembers (), DataSnapshot(state))))))
         |> Log.fromEntries
     }
 

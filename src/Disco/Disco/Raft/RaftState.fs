@@ -303,8 +303,8 @@ ConfigChangeEntry = %s
         NumMembers        = 0
         VotedFor          = votedfor
         Log               = Log.empty
-        CommitIndex       = index 0
-        LastAppliedIdx    = index 0
+        CommitIndex       = 0<index>
+        LastAppliedIdx    = 0<index>
         TimeoutElapsed    = 0<ms>
         ElectionTimeout   = yaml.ElectionTimeout * 1<ms>
         RequestTimeout    = yaml.RequestTimeout * 1<ms>
@@ -523,7 +523,7 @@ module RaftState =
 
   let setNextIndex (nid : MemberId) idx (state: RaftState) =
     let mem = getMember nid state
-    let nextIdx = if idx < index 1 then index 1 else idx
+    let nextIdx = if idx < 1<index> then 1<index> else idx
     match mem with
     | Some mem ->
       mem

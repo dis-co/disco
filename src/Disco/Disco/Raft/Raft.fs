@@ -165,7 +165,7 @@ module rec Raft =
       let ldridx = msg.LeaderCommit
       if cmmtidx < ldridx then
         let! current = currentIndex ()
-        let lastLogIdx = max current (index 1)
+        let lastLogIdx = max current 1<index>
         let newIndex = min lastLogIdx msg.LeaderCommit
         do! setCommitIndex newIndex
     }
@@ -223,7 +223,7 @@ module rec Raft =
 
       let notVoting = not (Member.isVoting peer)
       let notLogs   = not (Member.hasSufficientLogs peer)
-      let idxOk     = current <= resp.CurrentIndex + index 1
+      let idxOk     = current <= resp.CurrentIndex + 1<index>
 
       if notVoting && idxOk && notLogs then
         let updated = Member.setHasSufficientLogs peer
@@ -334,7 +334,7 @@ module rec Raft =
           |> Error.asRaftError (tag "receiveAppendEntriesResponse")
           |> failM
       | Some peer ->
-        if resp.CurrentIndex <> index 0 && resp.CurrentIndex < peer.MatchIndex then
+        if resp.CurrentIndex <> 0<index> && resp.CurrentIndex < peer.MatchIndex then
           do! sprintf "Failed: peer not up to date yet (ci: %d) (match idx: %d)"
                 resp.CurrentIndex
                 peer.MatchIndex
@@ -374,14 +374,14 @@ module rec Raft =
                 do! setNextIndex peer.Id nextIndex
                 do! setMatchIndex peer.Id (nextIndex - 1<index>)
               else
-                let nextIndex = peer.NextIndex - index 1
+                let nextIndex = peer.NextIndex - 1<index>
 
                 do! nextIndex
                     |> sprintf "Failed: cidx >= nxtidx. setting nextIndex for %O to %d" peer.Id
                     |> error "receiveAppendEntriesResponse"
 
                 do! setNextIndex peer.Id nextIndex
-                do! setMatchIndex peer.Id (nextIndex - index 1)
+                do! setMatchIndex peer.Id (nextIndex - 1<index>)
             else
               do! updateMemberIndices resp peer
               do! responseSetCommitIndex resp
@@ -401,12 +401,12 @@ module rec Raft =
 
       let request: AppendEntries =
         { Term         = state.CurrentTerm
-          PrevLogIdx   = index 0
+          PrevLogIdx   = 0<index>
           PrevLogTerm  = term 0
           LeaderCommit = state.CommitIndex
           Entries      = entries }
 
-      if peer.NextIndex > index 1 then
+      if peer.NextIndex > 1<index> then
         let! result = entryAt (peer.NextIndex - 1<index>)
         let request =
           { request with
@@ -569,15 +569,15 @@ module rec Raft =
 
         match entry with
         | LogEntry(id,_,_,data,_) ->
-          let log = LogEntry(id, index 0, term, data, None)
+          let log = LogEntry(id, 0<index>, term, data, None)
           return! handleLog log response
 
         | Configuration(id,_,_,mems,_) ->
-          let log = Configuration(id, index 0, term, mems, None)
+          let log = Configuration(id, 0<index>, term, mems, None)
           return! handleLog log response
 
         | JointConsensus(id,_,_,changes,_) ->
-          let log = JointConsensus(id, index 0, term, changes, None)
+          let log = JointConsensus(id, 0<index>, term, changes, None)
           return! handleLog log response
 
         | _ ->
@@ -826,7 +826,7 @@ module rec Raft =
       let! current = currentIndex ()
       do! setState Leader
       do! setLeader (Some state.Member.Id)
-      do! maybeSetIndex state.Member.Id (current + 1<index>) (index 0)
+      do! maybeSetIndex state.Member.Id (current + 1<index>) 0<index>
       do! sendAllAppendEntries ()
     }
 
@@ -1053,7 +1053,7 @@ module rec Raft =
 
   let private validateCurrentIdx state =
     let err = RaftError (tag "shouldGrantVote","Invalid Current Index")
-    (RaftState.currentIndex state = index 0, err)
+    (RaftState.currentIndex state = 0<index>, err)
 
   // ** validateCandiate
 
@@ -1226,7 +1226,7 @@ module rec Raft =
             let! term = currentTerm ()
             let response = EntryResponse.create term 0<index>
             let! mems = getMembers () >>= (Map.toArray >> Array.map snd >> returnM)
-            let log = Configuration(response.Id, index 0, term, mems, None)
+            let log = Configuration(response.Id, 0<index>, term, mems, None)
             do! handleLog log response >>= ignoreM
           else
             do! sendAllAppendEntries ()
