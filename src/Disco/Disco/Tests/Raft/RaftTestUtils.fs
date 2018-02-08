@@ -161,7 +161,7 @@ module RaftTestUtils =
   let defaultServer () =
     DiscoId.Create()
     |> Member.create
-    |> Raft.create
+    |> RaftState.create
 
   let runWithCBS cbs action =
     let raft = defaultServer()

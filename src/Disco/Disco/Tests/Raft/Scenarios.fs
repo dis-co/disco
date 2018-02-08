@@ -84,7 +84,7 @@ module Scenarios =
       raft {
         match msg with
           | RequestVote(sid,req) ->
-            let! peer = Raft.getMemberM sid
+            let! peer = getMember sid
             if Option.isSome peer
             then
               let sender = Option.get peer
@@ -92,7 +92,7 @@ module Scenarios =
               let! response = Raft.receiveVoteRequest sid req
 
               let! raft' = get
-              let receiver = Raft.self raft'
+              let receiver = RaftState.self raft'
               if not response.Granted then
                 __logg <| sprintf "(1) result was not granted"
                 let updated = { response with Term = raft'.CurrentTerm }
@@ -110,8 +110,8 @@ module Scenarios =
             if not response.Success then
               __logg "(2) result was Fail"
             let! raft' = get
-            let sender = Raft.self raft'
-            let! peer = Raft.getMemberM sid
+            let sender = RaftState.self raft'
+            let! peer = getMember sid
             match peer with
               | Some receiver ->
                 let msg = AppendEntriesResponse(sender.Id, response)
@@ -197,9 +197,9 @@ module Scenarios =
               } :> IRaftCallbacks
 
             let raft =
-              Raft.create peers.[int n]
-              |> Raft.setElectionTimeout 500<ms>
-              |> Raft.addMembers (Array.map toPair peers |> Map.ofArray)
+              RaftState.create peers.[int n]
+              |> RaftState.setElectionTimeout 500<ms>
+              |> RaftState.addMembers (Array.map toPair peers |> Map.ofArray)
 
             yield (raft,callbacks) |]
 
@@ -209,7 +209,7 @@ module Scenarios =
       |> fun result ->
         Array.set servers 0 (result, snd servers.[0])
 
-      expect "Should be candidate now" Candidate Raft.getState (fst servers.[0])
+      expect "Should be candidate now" Candidate RaftState.state (fst servers.[0])
 
       for j in 0..19  do
         Map.fold totalMsgs 0 senders
@@ -233,7 +233,7 @@ module Scenarios =
           |> fun r -> Array.set servers (int n) (r, snd srv)
 
       let __fldr result raft =
-        if Raft.isLeader raft then result + 1 else result
+        if RaftState.isLeader raft then result + 1 else result
 
       let leaders = Array.map fst servers |> Array.fold __fldr 0
       Expect.equal leaders 1 "System should have have one leader"

@@ -124,34 +124,15 @@ module rec RaftServer =
 
   // ** getMember
 
-  /// ## getMember
-  ///
-  /// Return the current mem.
-  ///
-  /// ### Signature:
-  /// - context: RaftServerState
-  ///
-  /// Returns: RaftMember
-  let private getMember (context: RaftServerState) =
-    context
-    |> getRaft
-    |> Raft.getSelf
+  /// Return the current RaftMember.
+
+  let private getMember = getRaft >> RaftState.self
 
   // ** getMemberId
 
-  /// ## getMemberId
-  ///
-  /// Return the current mem Id.
-  ///
-  /// ### Signature:
-  /// - context: RaftServerState
-  ///
-  /// Returns: Id
-  let private getMemberId (context: RaftServerState) =
-    context
-    |> getRaft
-    |> Raft.getSelf
-    |> Member.id
+  /// Return the current RaftMember Id.
+
+  let private getMemberId = getMember >> Member.id
 
   // ** updateRaft
 
@@ -412,7 +393,7 @@ module rec RaftServer =
   ///
   /// Returns: Either<RaftError * RaftValue, unit * Raft, EntryResponse * RaftValue>
   let private addMembers (state: RaftServerState) (mems: RaftMember array) =
-    if Raft.isLeader state.Raft then
+    if RaftState.isLeader state.Raft then
       mems
       |> Array.map ConfigChange.MemberAdded
       |> Log.mkConfigChange state.Raft.CurrentTerm
@@ -447,14 +428,13 @@ module rec RaftServer =
   // ** removeMember
 
   let private removeMember (state: RaftServerState) (id: MemberId) =
-    if Raft.isLeader state.Raft then
+    if RaftState.isLeader state.Raft then
       string id
       |> sprintf "attempting to remove members with id %A"
       |> Logger.debug (tag "removeMember")
 
       let potentialChange =
-        state.Raft
-        |> Raft.getMember id
+        RaftState.getMember id state.Raft
 
       match potentialChange with
       | Some mem -> removeMembers state [| mem |]
@@ -501,7 +481,7 @@ module rec RaftServer =
                                  (cmd: StateMachine)
                                  (raw: Request)
                                  (agent: RaftAgent) =
-    if Raft.isLeader state.Raft then  // I'm leader, so I try to append command
+    if RaftState.isLeader state.Raft then  // I'm leader, so I try to append command
       match appendCommand state cmd with
       | Right (entry, newstate) ->     // command was appended, now queue a message and the later
         entry                         // response to check its committed status, eventually
@@ -519,7 +499,7 @@ module rec RaftServer =
         |> state.Server.Respond
         newstate
     else
-      match Raft.getLeader state.Raft with // redirect to known leader or fail
+      match RaftState.getLeader state.Raft with // redirect to known leader or fail
       | Some mem ->
         mem
         |> Redirect
@@ -594,7 +574,7 @@ module rec RaftServer =
   ///
   /// Returns: Either<DiscoError,RaftResponse>
   let private doRedirect (state: RaftServerState) (raw: Request) =
-    match Raft.getLeader state.Raft with
+    match RaftState.getLeader state.Raft with
     | Some mem ->
       mem
       |> Redirect
@@ -627,7 +607,7 @@ module rec RaftServer =
   /// Returns: RaftResponse
   let private processHandshake (state: RaftServerState) (mem: RaftMember) (raw: RawRequest) (agent: RaftAgent) =
     Tracing.trace (tag "processHandshake") <| fun () ->
-      if Raft.isLeader state.Raft then
+      if RaftState.isLeader state.Raft then
         match addMembers state [| mem |] with
         | Right (entry, newstate) ->
             let response =                  // response to check its committed status, eventually
@@ -656,7 +636,7 @@ module rec RaftServer =
 
   let private processHandwaive (state: RaftServerState) (mem: RaftMember) (raw: RawRequest) (agent: RaftAgent) =
     Tracing.trace (tag "processHandwaive") <| fun () ->
-      if Raft.isLeader state.Raft then
+      if RaftState.isLeader state.Raft then
         match removeMember state mem.Id with
         | Right (entry, newstate) ->
             let response =                  // response to check its committed status, eventually
@@ -837,7 +817,7 @@ module rec RaftServer =
           sprintf "Reached leader:  %A Adding to mems." leader.Id
           |> Logger.info (tag "tryJoinCluster")
 
-          do! Raft.addMemberM leader
+          do! addMember leader
           do! Raft.becomeFollower ()
 
         | Left err ->
@@ -937,10 +917,10 @@ module rec RaftServer =
 
         do! Raft.becomeFollower ()
 
-        let! peers = Raft.getMembersM ()
+        let! peers = getMembers ()
 
         for kv in peers do
-          do! Raft.removeMemberM kv.Value
+          do! Raft.removeMember kv.Value
 
       }
       |> runRaft state.Raft state.Callbacks
@@ -950,24 +930,17 @@ module rec RaftServer =
 
   let private forceElection (state: RaftServerState) =
     raft {
-      let! timeout = Raft.electionTimeoutM ()
-      do! Raft.setTimeoutElapsedM timeout
+      let! timeout = electionTimeout ()
+      do! setTimeoutElapsed timeout
       do! Raft.periodic timeout
     }
     |> runRaft state.Raft state.Callbacks
 
   // ** startPeriodic
 
-  /// ## startPeriodic
-  ///
   /// Starts an asynchronous loop to run Raft's `periodic` function. Returns a token, with which the
   /// loop can be cancelled at a later time.
-  ///
-  /// ### Signature:
-  /// - timeout: interval at which the loop runs
-  /// - appState: current RaftServerState TVar
-  ///
-  /// Returns: CancellationTokenSource
+
   let private startPeriodic (interval: int) (agent: RaftAgent) : IDisposable =
     Periodically.run interval <| fun () ->
       agent.Post(Msg.Periodic)
@@ -1273,13 +1246,11 @@ module rec RaftServer =
 
   // ** handleClientState
 
-  let private handleClientState (state: RaftServerState)
-                                (id: MemberId)
-                                raftState =
+  let private handleClientState (state: RaftServerState) (id: MemberId) raftState =
     raft {
-      let! peer = Raft.getMemberM id
+      let! peer = RaftMonad.getMember id
       match peer with
-      | Some mem -> do! Raft.updateMemberM { mem with Status = raftState }
+      | Some mem -> do! RaftMonad.updateMember { mem with Status = raftState }
       | None -> ()
     }
     |> runRaft state.Raft state.Callbacks
@@ -1338,16 +1309,16 @@ module rec RaftServer =
     let rand = System.Random()
     raft {
       let term = term 0
-      do! Raft.setTermM term
-      let! num = Raft.numMembersM ()
+      do! setCurrentTerm term
+      let! num = RaftMonad.numMembers ()
 
       if num = 1 then
-        do! Raft.setTimeoutElapsedM 0<ms>
+        do! RaftMonad.setTimeoutElapsed 0<ms>
         do! Raft.becomeLeader ()
       else
         // set the timeout to something random, to prevent split votes
         let timeout = 1<ms> * rand.Next(0, int state.ElectionTimeout)
-        do! Raft.setTimeoutElapsedM timeout
+        do! RaftMonad.setTimeoutElapsed timeout
         do! Raft.becomeFollower ()
     }
     |> runRaft state callbacks
@@ -1552,13 +1523,13 @@ module rec RaftServer =
               with get () = store.State.Connections
 
             member self.IsLeader
-              with get () = Raft.isLeader store.State.Raft
+              with get () = RaftState.isLeader store.State.Raft
 
             member self.RaftState
               with get () = store.State.Raft.State
 
             member self.Leader
-              with get () = Raft.getLeader store.State.Raft
+              with get () = RaftState.getLeader store.State.Raft
 
             member self.Dispose () =
               if not (Service.isDisposed store.State.Status) then

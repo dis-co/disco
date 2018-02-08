@@ -531,6 +531,10 @@ module Functional =
 
   let cons (xs: 'a list) (x: 'a) = x::xs
 
+  // ** ($)
+
+  let ($) = (<|)                         /// $ rules!
+
 // * Tuple
 
 module Tuple =

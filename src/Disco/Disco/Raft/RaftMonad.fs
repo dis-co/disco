@@ -199,29 +199,28 @@ module RaftMonad =
 
   let private tag (str: string) = String.Format("Raft.{0}",str)
 
-  // ** log
+  // ** logMsg
 
-  let log site level message =
+  let logMsg site level message =
     message
     |> Logger.log level (tag site)
     |> returnM
 
   // ** debug
 
-  let debug site str = log site Debug str
+  let debug site str = logMsg site Debug str
 
   // ** info
 
-  let info site str = log site Info str
+  let info site str = logMsg site Info str
 
   // ** warn
 
-  let warn site str = log site Warn str
+  let warn site str = logMsg site Warn str
 
   // ** error
 
-  let error site str = log site Err str
-
+  let error site str = logMsg site Err str
 
   // ** currentIndex
 
@@ -283,13 +282,17 @@ module RaftMonad =
 
   let getMembers () = zoom RaftState.peers
 
-  // ** member
+  // ** self
 
-  let ``member`` () = zoom RaftState.``member``
+  let self () = zoom RaftState.self
 
-  // ** lastConfigChange
+  // ** setSelf
 
-  let lastConfigChange () = zoom RaftState.configChangeEntry
+  let setSelf self = modify (RaftState.setSelf self)
+
+  // ** configChangeEntry
+
+  let configChangeEntry () = zoom RaftState.configChangeEntry
 
   // ** persistVote
 
@@ -607,11 +610,11 @@ module RaftMonad =
 
   // ** lastAppliedIndex
 
-  let lastAppliedIndex () = zoom RaftState.lastAppliedIdx
+  let lastAppliedIndex () = zoom RaftState.lastAppliedIndex
 
   // ** setLastAppliedIndex
 
-  let setLastAppliedIndex index = modify (RaftState.setLastAppliedIdx index)
+  let setLastAppliedIndex index = modify (RaftState.setLastAppliedIndex index)
 
   // ** lastLogTerm
 
@@ -629,6 +632,24 @@ module RaftMonad =
 
   let entriesUntilExcluding idx = zoom (RaftState.entriesUntilExcluding idx)
 
+  // ** log
+
+  let log () = zoom RaftState.log
+
   // ** setLog
 
   let setLog log = modify (RaftState.setLog log)
+
+  // ** updateMembers
+
+  let updateMembers f =
+    raft {
+      let! state = get
+      let updated, state = RaftState.updateMembers f state
+      do! put state
+      if updated then
+        let! env = read
+        let! peers = logicalPeers()
+        for KeyValue(_,peer) in peers do
+          do env.MemberUpdated peer
+    }

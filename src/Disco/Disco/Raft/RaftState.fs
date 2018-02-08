@@ -187,7 +187,7 @@ type RaftState =
     (fun (rs:RaftState) -> rs.CommitIndex),
     (fun commitIndex (rs:RaftState) -> { rs with CommitIndex = commitIndex })
 
-  static member LastAppliedIdx_ =
+  static member LastAppliedIndex_ =
     (fun (rs:RaftState) -> rs.LastAppliedIdx),
     (fun lastAppliedIdx (rs:RaftState) -> { rs with LastAppliedIdx = lastAppliedIdx })
 
@@ -325,7 +325,7 @@ module RaftState =
 
   // ** getters
 
-  let ``member`` = Optic.get RaftState.Member_
+  let self = Optic.get RaftState.Member_
   let state = Optic.get RaftState.State_
   let currentTerm = Optic.get RaftState.CurrentTerm_
   let currentLeader = Optic.get RaftState.CurrentLeader_
@@ -335,7 +335,7 @@ module RaftState =
   let votedFor = Optic.get RaftState.VotedFor_
   let log = Optic.get RaftState.Log_
   let commitIndex = Optic.get RaftState.CommitIndex_
-  let lastAppliedIdx = Optic.get RaftState.LastAppliedIdx_
+  let lastAppliedIndex = Optic.get RaftState.LastAppliedIndex_
   let timeoutElapsed = Optic.get RaftState.TimeoutElapsed_
   let electionTimeout = Optic.get RaftState.ElectionTimeout_
   let requestTimeout = Optic.get RaftState.RequestTimeout_
@@ -344,7 +344,7 @@ module RaftState =
 
   // ** setters
 
-  let setMember = Optic.set RaftState.Member_
+  let setSelf = Optic.set RaftState.Member_
   let setState = Optic.set RaftState.State_
   let setCurrentTerm = Optic.set RaftState.CurrentTerm_
   let setCurrentLeader = Optic.set RaftState.CurrentLeader_
@@ -354,7 +354,7 @@ module RaftState =
   let setVotedFor = Optic.set RaftState.VotedFor_
   let setLog = Optic.set RaftState.Log_
   let setCommitIndex = Optic.set RaftState.CommitIndex_
-  let setLastAppliedIdx = Optic.set RaftState.LastAppliedIdx_
+  let setLastAppliedIndex = Optic.set RaftState.LastAppliedIndex_
   let setTimeoutElapsed = Optic.set RaftState.TimeoutElapsed_
   let setElectionTimeout = Optic.set RaftState.ElectionTimeout_
   let setRequestTimeout = Optic.set RaftState.RequestTimeout_
@@ -506,6 +506,17 @@ module RaftState =
         | _ -> false, members
       peersUpdated, setPeers peers state
 
+  // ** updateMembers
+
+  let updateMembers (f: RaftMember -> RaftMember) state =
+    state
+    |> logicalPeers
+    |> Map.fold
+      (fun (current, state') _ mem ->
+        let updated, state'' = updateMember (f mem) state'
+        current || updated, state'')
+      (false, state)
+
   // ** setNextIndex
 
   /// Set the nextIndex field on Member corresponding to supplied Id (should it exist, that is).
@@ -562,7 +573,7 @@ module RaftState =
 
   // ** setVoting
 
-  let setVoting (mem : RaftMember) (vote : bool) =
+  let setVoting (mem: RaftMember) (vote: bool) =
     mem
     |> Member.setVotedForMe vote
     |> updateMember

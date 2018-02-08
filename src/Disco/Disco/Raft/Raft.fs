@@ -56,44 +56,32 @@ module rec Raft =
 
   // ** appendEntry
 
-  let private appendEntry (log: LogEntry) =
+  let appendEntry (entry: LogEntry) =
     raft {
-      let! state = get
+      let! current = log ()
 
       // create the new log by appending
-      let newlog = Log.append log state.Log
+      let newlog = Log.append entry current
       do! setLog newlog
 
       // get back the entries just added
       // (with correct monotonic idx's)
-      return Log.getn (LogEntry.depth log) newlog
-    }
+      let result = Log.getn (LogEntry.depth entry) newlog
 
-  // ** appendEntryM
-
-  let appendEntryM (log: LogEntry) =
-    raft {
-      let! result = appendEntry log
       match result with
       | Some entries -> do! persistLog entries
       | _ -> ()
+
       return result
     }
 
-  // ** createEntryM
+  // ** createEntry
 
-  //                      _       _____       _
-  //   ___ _ __ ___  __ _| |_ ___| ____|_ __ | |_ _ __ _   _
-  //  / __| '__/ _ \/ _` | __/ _ \  _| | '_ \| __| '__| | | |
-  // | (__| | |  __/ (_| | ||  __/ |___| | | | |_| |  | |_| |
-  //  \___|_|  \___|\__,_|\__\___|_____|_| |_|\__|_|   \__, |
-  //                                                   |___/
-
-  let createEntryM (entry: StateMachine) =
+  let createEntry (entry: StateMachine) =
     raft {
-      let! state = get
-      let log = LogEntry(DiscoId.Create(),index 0,state.CurrentTerm,entry,None)
-      return! appendEntryM log
+      let! term = currentTerm ()
+      let log = LogEntry.create 0<index> term entry
+      return! appendEntry log
     }
 
   // ** updateLogEntries
@@ -108,26 +96,25 @@ module rec Raft =
 
   /// Delete a log entry at the index specified. Returns the original value if
   /// the record is not found.
-  let private removeEntry idx (cbs: IRaftCallbacks) state =
-    match Log.at idx state.Log with
-    | Some log ->
-      match LogEntry.pop log with
-      | Some newlog ->
-        match Log.until idx state.Log with
-          | Some items -> LogEntry.iter (fun _ entry -> cbs.DeleteLog entry) items
-          | _ -> ()
-        updateLogEntries newlog state
-      | _ ->
-        cbs.DeleteLog log
-        RaftState.setLog Log.empty state
-    | _ -> state
 
-  // ** removeEntryM
-
-  let removeEntryM idx =
+  let removeEntry idx =
     raft {
       let! env = read
-      do! removeEntry idx env |> modify
+      let! current = log ()
+      match Log.at idx current with
+      | Some log ->
+        match LogEntry.pop log with
+        | Some newlog ->
+          // fire delete log callback for all removed items
+          match Log.until idx current with
+          | Some items -> LogEntry.iter (fun _ entry -> do env.DeleteLog entry) items
+          | _ -> ()
+          // save the modified log to state
+          do! modify (updateLogEntries newlog)
+        | _ ->
+          do env.DeleteLog log
+          do! modify (RaftState.setLog Log.empty)
+      | _ -> ()
     }
 
   // ** makeResponse
@@ -208,11 +195,11 @@ module rec Raft =
         | Some entry ->
           if LogEntry.term entry <> LogEntry.term remote then
             // removes entry at idx (and all following entries)
-            do! removeEntryM idx
+            do! removeEntry idx
         | _ -> ()
       | _ ->
         if Option.isSome local then
-          do! removeEntryM idx
+          do! removeEntry idx
     }
 
   // ** applyRemainder
@@ -221,7 +208,7 @@ module rec Raft =
     raft {
       match msg.Entries with
       | Some entries ->
-        let! result = appendEntryM entries
+        let! result = appendEntry entries
         match result with
         | Some log ->
           let! fst = currentTerm () >>= firstIndex
@@ -287,7 +274,7 @@ module rec Raft =
                   msg.PrevLogIdx
               |> error "receiveAppendEntries"
           let response = { resp with CurrentIndex = msg.PrevLogIdx - index 1 }
-          do! removeEntryM msg.PrevLogIdx
+          do! removeEntry msg.PrevLogIdx
           return response
         else
           return! processEntry nid msg resp
@@ -528,11 +515,11 @@ module rec Raft =
       | _ -> return ()
     }
 
-  // ** sendAllAppendEntriesM
+  // ** sendAllAppendEntries
 
-  let sendAllAppendEntriesM () =
+  let sendAllAppendEntries () =
     raft {
-      let! self = ``member``()
+      let! self = self ()
       let! peers = logicalPeers ()
 
       for KeyValue(id,peer) in peers do
@@ -621,7 +608,7 @@ module rec Raft =
 
   let private handleLog entry resp =
     raft {
-      let! result = appendEntryM entry
+      let! result = appendEntry entry
 
       match result with
       | Some appended ->
@@ -1060,11 +1047,12 @@ module rec Raft =
   /////////////////////////////////////////////////////////////////////////////
 
   let private maybeSetIndex nid nextIdx matchIdx =
-    let mapper peer =
-      if Member.isVoting peer && peer.Id <> nid
-      then { peer with NextIndex = nextIdx; MatchIndex = matchIdx }
+    updateMembers $ fun peer ->
+      if Member.isVoting peer && peer.Id <> nid then
+        peer
+        |> Member.setNextIndex nextIdx
+        |> Member.setMatchIndex matchIdx
       else peer
-    updateMembers mapper
 
   // ** becomeLeader
 
@@ -1077,7 +1065,7 @@ module rec Raft =
       do! setState Leader
       do! setLeader (Some state.Member.Id)
       do! maybeSetIndex state.Member.Id (current + 1<index>) (index 0)
-      do! sendAllAppendEntriesM ()
+      do! sendAllAppendEntries ()
     }
 
   // ** becomeFollower
@@ -1259,7 +1247,7 @@ module rec Raft =
 
   let requestAllVotes () =
     raft {
-        let! self = ``member`` ()
+        let! self = self ()
         let! peers = logicalPeers ()
         do! RaftMonad.info "requestAllVotes" "requesting all votes"
         for peer in peers do
@@ -1484,10 +1472,10 @@ module rec Raft =
             let log = Configuration(response.Id, index 0, term, mems, None)
             do! handleLog log response >>= ignoreM
           else
-            do! sendAllAppendEntriesM ()
+            do! sendAllAppendEntries ()
         // the regular case is we need to ping our followers so as to not provoke an election
         elif timedout then
-          do! sendAllAppendEntriesM ()
+          do! sendAllAppendEntries ()
 
       | _ ->
         // have to double check the code here to ensure new elections are really only called when

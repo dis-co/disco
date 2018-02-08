@@ -625,10 +625,6 @@ module LogEntry =
 
   open Aether
 
-  // ** ($)
-
-  let private ($) = (<|)
-
   // ** getters
 
   let id = Optic.get LogEntry.Id_
@@ -640,6 +636,10 @@ module LogEntry =
   let setId = Optic.set LogEntry.Id_
   let setIndex = Optic.set LogEntry.Index_
   let setTerm = Optic.set LogEntry.Term_
+
+  // ** create
+
+  let create index term entry = LogEntry(DiscoId.Create(),index,term,entry,None)
 
   // ** isConfigChange
 
