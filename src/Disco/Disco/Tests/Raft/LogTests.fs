@@ -32,28 +32,28 @@ module Log =
   let log_is_non_empty =
     testCase "When create, a log should not be empty" <| fun _ ->
       Log.empty
-      |> Log.append (Log.make (term 1) defSM)
+      |> Log.append (Log.make 1<term> defSM)
       |> assume "Should be one"  1  Log.length
-      |> Log.append (Log.make (term 1) defSM)
+      |> Log.append (Log.make 1<term> defSM)
       |> assume "Should be two" 2 Log.length
-      |> Log.append (Log.make (term 1) defSM)
+      |> Log.append (Log.make 1<term> defSM)
       |> assume "Should be three" 3 Log.length
       |> ignore
 
   let log_have_correct_index =
     testCase "When I add an entry, it should have the correct index" <| fun _ ->
       Log.empty
-      |> Log.append (Log.make (term 1) defSM)
+      |> Log.append (Log.make 1<term> defSM)
       |> assume "Should have currentIndex 1" 1<index> Log.index
-      |> assume "Should have currentTerm 1" (term 1) Log.term
+      |> assume "Should have currentTerm 1" 1<term> Log.term
       |> assume "Should have no lastTerm" None Log.prevTerm
       |> assume "Should have no lastIndex" None Log.prevIndex
 
-      |> Log.append (Log.make (term 1) defSM)
+      |> Log.append (Log.make 1<term> defSM)
 
       |> assume "Should have currentIndex 2" 2<index> Log.index
-      |> assume "Should have currentTerm 1" (term 1) Log.term
-      |> assume "Should have lastTerm 1" (Some (term 1)) Log.prevTerm
+      |> assume "Should have currentTerm 1" 1<term> Log.term
+      |> assume "Should have lastTerm 1" (Some 1<term>) Log.prevTerm
       |> assume "Should have lastIndex 1" (Some 1<index>) Log.prevIndex
       |> ignore
 
@@ -66,9 +66,9 @@ module Log =
 
       let log =
         Log.empty
-        |> Log.append (LogEntry(id1, 0<index>, term 1, defSM, None))
-        |> Log.append (LogEntry(id2, 0<index>, term 1, defSM, None))
-        |> Log.append (LogEntry(id3, 0<index>, term 1, defSM, None))
+        |> Log.append (LogEntry(id1, 0<index>, 1<term>, defSM, None))
+        |> Log.append (LogEntry(id2, 0<index>, 1<term>, defSM, None))
+        |> Log.append (LogEntry(id3, 0<index>, 1<term>, defSM, None))
 
       Log.at 1<index> log
       |> assume "Should be correct one" id1 (LogEntry.id << Option.get)
@@ -92,9 +92,9 @@ module Log =
 
       let log =
         Log.empty
-        |> Log.append (LogEntry(id1, 0<index>, term 1, defSM, None))
-        |> Log.append (LogEntry(id2, 0<index>, term 1, defSM, None))
-        |> Log.append (LogEntry(id3, 0<index>, term 1, defSM, None))
+        |> Log.append (LogEntry(id1, 0<index>, 1<term>, defSM, None))
+        |> Log.append (LogEntry(id2, 0<index>, 1<term>, defSM, None))
+        |> Log.append (LogEntry(id3, 0<index>, 1<term>, defSM, None))
 
       Log.find id1 log
       |> assume "Should be correct one" id1 (LogEntry.id << Option.get)
@@ -115,12 +115,12 @@ module Log =
   let log_depth_test =
     testCase "Should have the correct log depth" <| fun _ ->
       Log.empty
-      |> Log.append (Log.make (term 1) defSM)
-      |> Log.append (Log.make (term 1) defSM)
-      |> Log.append (Log.make (term 1) defSM)
+      |> Log.append (Log.make 1<term> defSM)
+      |> Log.append (Log.make 1<term> defSM)
+      |> Log.append (Log.make 1<term> defSM)
       |> assume "Should have length 3" 3 Log.length
-      |> Log.append (Log.make (term 1) defSM)
-      |> Log.append (Log.make (term 1) defSM)
+      |> Log.append (Log.make 1<term> defSM)
+      |> Log.append (Log.make 1<term> defSM)
       |> assume "Should have depth 5" 5 Log.length
       |> ignore
 
@@ -129,9 +129,9 @@ module Log =
       let sm = AddCue { Id = DiscoId.Create(); Name = name "Wonderful"; Slices = [| |] }
       let log =
         Log.empty
-        |> Log.append (Log.make (term 1) defSM)
-        |> Log.append (Log.make (term 1) sm)
-        |> Log.append (Log.make (term 1) defSM)
+        |> Log.append (Log.make 1<term> defSM)
+        |> Log.append (Log.make 1<term> sm)
+        |> Log.append (Log.make 1<term> defSM)
 
       let folder (m: int) (log: LogEntry) : Continue<int> =
         let value = (LogEntry.data >> Option.get) log
@@ -149,14 +149,14 @@ module Log =
     testCase "Should have correct length" <| fun _ ->
       let log =
         Log.empty
-        |> Log.append (Log.make (term 1) defSM)
-        |> Log.append (Log.make (term 1) defSM)
-        |> Log.append (Log.make (term 1) defSM)
+        |> Log.append (Log.make 1<term> defSM)
+        |> Log.append (Log.make 1<term> defSM)
+        |> Log.append (Log.make 1<term> defSM)
 
       log
-      |> Log.append (Log.make (term 1) defSM)
-      |> Log.append (Log.make (term 1) defSM)
-      |> Log.append (Log.make (term 1) defSM)
+      |> Log.append (Log.make 1<term> defSM)
+      |> Log.append (Log.make 1<term> defSM)
+      |> Log.append (Log.make 1<term> defSM)
       |> assume "Should have length 6" 6 Log.length
       |> ignore
 
@@ -170,14 +170,14 @@ module Log =
 
       let log =
         Log.empty
-        |> Log.append (Log.make (term 1) defSM)
-        |> Log.append (Log.make (term 1) defSM)
-        |> Log.append (Log.make (term 1) defSM)
+        |> Log.append (Log.make 1<term> defSM)
+        |> Log.append (Log.make 1<term> defSM)
+        |> Log.append (Log.make 1<term> defSM)
 
       log
-      |> Log.append (Log.make (term 1) defSM)
-      |> Log.append (Log.make (term 1) defSM)
-      |> Log.append (Log.make (term 1) defSM)
+      |> Log.append (Log.make 1<term> defSM)
+      |> Log.append (Log.make 1<term> defSM)
+      |> Log.append (Log.make 1<term> defSM)
       |> assume "Should be monotonic" true (isMonotonic >> snd)
       |> ignore
 
@@ -196,12 +196,12 @@ module Log =
           log
 
       Log.empty
-      |> Log.append (Log.make (term 1) (AddCue cues.[0]))
-      |> Log.append (Log.make (term 1) (AddCue cues.[1]))
-      |> Log.append (Log.make (term 1) (AddCue cues.[2]))
-      |> Log.append (Log.make (term 1) (AddCue cues.[3]))
-      |> Log.append (Log.make (term 1) (AddCue cues.[4]))
-      |> Log.append (Log.make (term 1) (AddCue cues.[5]))
+      |> Log.append (Log.make 1<term> (AddCue cues.[0]))
+      |> Log.append (Log.make 1<term> (AddCue cues.[1]))
+      |> Log.append (Log.make 1<term> (AddCue cues.[2]))
+      |> Log.append (Log.make 1<term> (AddCue cues.[3]))
+      |> Log.append (Log.make 1<term> (AddCue cues.[4]))
+      |> Log.append (Log.make 1<term> (AddCue cues.[5]))
       |> Log.until 4<index>
       |> assume "Should have 3 logs" 3 (Option.get >> LogEntry.depth)
       |> assume "Should have log with these values" [AddCue cues.[5]; AddCue cues.[4]; AddCue cues.[3]] (Option.get >> getData)
@@ -212,7 +212,7 @@ module Log =
       let id1 = DiscoId.Create()
       let id2 = DiscoId.Create()
 
-      let term = term 1
+      let term = 1<term>
 
       let idx1 = 1<index>
       let idx2 = 2<index>
@@ -231,7 +231,7 @@ module Log =
       let id1 = DiscoId.Create()
       let id2 = DiscoId.Create()
 
-      let term = term 1
+      let term = 1<term>
       let idx1 = 1<index>
       let idx2 = 2<index>
 
@@ -250,7 +250,7 @@ module Log =
       let id2 = DiscoId.Create()
       let id3 = DiscoId.Create()
 
-      let term = term 1
+      let term = 1<term>
       let idx1 = 1<index>
       let idx2 = 2<index>
       let idx3 = 3<index>
@@ -273,7 +273,7 @@ module Log =
 
   let log_snapshot_remembers_last_state =
     testCase "snapshot remembers last state" <| fun _ ->
-      let term = term 8
+      let term = 8<term>
       let data =
         [ for i in 0 .. 3 do
             yield DataSnapshot(State.Empty) ]
@@ -300,7 +300,7 @@ module Log =
             Name = name (string n)
             Slices = Array.empty
           } ]
-      |> List.fold (fun m s -> Log.append (Log.make (term 0) s) m) Log.empty
+      |> List.fold (fun m s -> Log.append (Log.make 0<term> s) m) Log.empty
       |> assume "Should be at correct index" num Log.length
       |> assume "Should pick correct item"  16<index> (Log.untilExcluding 15<index> >> Option.get >> LogEntry.last >> LogEntry.index)
       |> assume "Should have correct index" (AddCue { Id = id; Name = name "16"; Slices = [| |] } |> Some) (Log.untilExcluding 15<index> >> Option.get >> LogEntry.last >> LogEntry.data)
@@ -332,7 +332,7 @@ module Log =
         [ for trm in 1 .. 4 do
             let offset = random.Next(1,60)
             for idx in offset .. offset + random.Next(10,70) do
-              let (_,t,i) as result = (DiscoId.Create(), term trm, index idx)
+              let (_,t,i) as result = (DiscoId.Create(), 1<term> * trm, 1<index> * idx)
               if idx = offset then
                 fidxs := (t,i) :: !fidxs
               yield result ]
@@ -341,8 +341,8 @@ module Log =
         |> combine (!fidxs |> Map.ofList)
 
       for trm in 1 .. 4 do
-        let fidx = Log.firstIndex (term trm) log
-        let result = Map.tryFind (term trm) indices
+        let fidx = Log.firstIndex (1<term> * trm) log
+        let result = Map.tryFind (1<term> * trm) indices
         expect "Should be equal" result id fidx
 
   let log_getn_should_return_right_number_of_entries =
@@ -352,7 +352,7 @@ module Log =
       let log =
         [ for n in 0 .. (n - 1) do
             yield DataSnapshot(State.Empty) ]
-        |> List.fold (fun m n -> Log.append (Log.make (term 0) n) m) Log.empty
+        |> List.fold (fun m n -> Log.append (Log.make 0<term> n) m) Log.empty
 
       expect "should have correct depth" n Log.length log
 

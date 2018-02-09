@@ -1308,7 +1308,7 @@ module rec RaftServer =
   let private initializeRaft (callbacks: IRaftCallbacks) (state: RaftState)  =
     let rand = System.Random()
     raft {
-      let term = term 0
+      let term = 0<term>
       do! setCurrentTerm term
       let! num = RaftMonad.numMembers ()
 

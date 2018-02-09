@@ -331,8 +331,8 @@ type RaftMember =
         RaftPort         = port fb.RaftPort
         Voting           = fb.Voting
         VotedForMe       = fb.VotedForMe
-        NextIndex        = index fb.NextIndex
-        MatchIndex       = index fb.MatchIndex
+        NextIndex        = 1<index> * fb.NextIndex
+        MatchIndex       = 1<index> * fb.MatchIndex
       }
     }
 

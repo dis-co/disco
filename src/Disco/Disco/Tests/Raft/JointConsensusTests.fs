@@ -23,7 +23,7 @@ module JointConsensus =
 
   let server_periodic_executes_all_cfg_changes =
     testCase "periodic executes all cfg changes" <| fun _ ->
-      let trm = term 1
+      let trm = 1<term>
 
       let response = { Term = trm; Granted = true; Reason = None }
 
@@ -69,7 +69,7 @@ module JointConsensus =
       let cbs = Callbacks.Create (ref defSM) :> IRaftCallbacks
 
       let makeResponse() =
-        { Term = term 0
+        { Term = 0<term>
           Success = true
           CurrentIndex = !ci
           FirstIndex = 1<index> }
@@ -190,7 +190,7 @@ module JointConsensus =
             yield (nid, Member.create nid) |] // create mem in the Raft state
 
       let ci = ref 0<index>
-      let trm = ref (term 1)
+      let trm = ref 1<term>
 
       let lokk = new System.Object()
       let vote = { Granted = true; Term = !trm; Reason = None }
@@ -250,7 +250,7 @@ module JointConsensus =
           |> Array.take (n / 2)
           |> Array.map snd
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange (term 1)
+          |> Log.mkConfigChange 1<term>
 
         let! idx = currentIndex ()
         ci := idx
@@ -400,7 +400,7 @@ module JointConsensus =
           mems
           |> Array.map snd
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange (term 1)
+          |> Log.mkConfigChange 1<term>
 
         let! idx = currentIndex ()
         ci := idx
@@ -517,7 +517,7 @@ module JointConsensus =
       let n = 10                      // we want ten mems overall
 
       let ci = ref 0<index>
-      let trm = ref (term 1)
+      let trm = ref 1<term>
       let lokk = new System.Object()
 
       let mems =
@@ -650,7 +650,7 @@ module JointConsensus =
       let lokk = new System.Object()
       let count = ref 0
       let ci = ref 0<index>
-      let trm = ref (term 1)
+      let trm = ref 1<term>
       let init = defaultServer()
       let cbs = { Callbacks.Create (ref defSM)
                     with SendAppendEntries = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
@@ -723,7 +723,7 @@ module JointConsensus =
     testCase "should send appendentries to all servers in joint consensus" <| fun _ ->
       let lokk = new System.Object()
       let count = ref 0
-      let trm = ref (term 1)
+      let trm = ref 1<term>
       let init = defaultServer()
       let cbs = { Callbacks.Create (ref defSM) with
                     SendRequestVote = fun _ _ -> lock lokk <| fun _ -> count := 1 + !count }
@@ -760,7 +760,7 @@ module JointConsensus =
           |> Array.map snd
           |> Array.append [| self |]
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange (term 1)
+          |> Log.mkConfigChange 1<term>
 
         let! response = Raft.receiveEntry entry
 
@@ -796,7 +796,7 @@ module JointConsensus =
       let self = snd mems.[0]
       let lokk = new System.Object()
       let ci = ref 0<index>
-      let trm = ref (term 1)
+      let trm = ref 1<term>
       let count = ref 0
       let init = RaftState.create self
       let cbs =
@@ -922,7 +922,7 @@ module JointConsensus =
           |> Array.map snd
           |> Array.append [| self |]
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange (term 1)
+          |> Log.mkConfigChange 1<term>
 
 
         let! response = Raft.receiveEntry entry

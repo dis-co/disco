@@ -145,7 +145,7 @@ module rec Raft =
           let fidx =
             match fst with
             | Some fidx -> fidx
-            | _         -> msg.PrevLogIdx + (log |> LogEntry.depth |> int |> index)
+            | _         -> msg.PrevLogIdx + ((log |> LogEntry.depth |> int) * 1<index>)
           return
             resp
             |> AppendResponse.setCurrentIndex (LogEntry.index log)
@@ -309,8 +309,6 @@ module rec Raft =
             do! msg.PrevLogIdx
                 |> String.format "Failed. No log at (prev-log-idx: {0})"
                 |> error "receiveAppendEntries"
-            let! state = get
-            do printfn "state: %A" state
             return resp
         else
           return! processEntry nid msg resp
@@ -402,7 +400,7 @@ module rec Raft =
       let request: AppendEntries =
         { Term         = state.CurrentTerm
           PrevLogIdx   = 0<index>
-          PrevLogTerm  = term 0
+          PrevLogTerm  = 0<term>
           LeaderCommit = state.CommitIndex
           Entries      = entries }
 
@@ -519,7 +517,7 @@ module rec Raft =
               let d = cidx - nxtidx
               if d < 0<index> then 0<index> else d
 
-            if difference <= (index (int maxDepth) + 1<index>) then
+            if difference <= (1<index> * (int maxDepth) + 1<index>) then
               // Only send new entries. Don't send the entry to peers who are
               // behind, to prevent them from becoming congested.
               do! sendAppendEntry mem

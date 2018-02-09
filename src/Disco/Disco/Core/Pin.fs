@@ -2868,7 +2868,7 @@ type Slice =
       let slice = fb.Slice<StringFB>()
       if slice.HasValue then
         let value = slice.Value
-        StringSlice(index fb.Index, value.Value)
+        StringSlice(1<index> * fb.Index, value.Value)
         |> Either.succeed
       else
         "Could not parse StringSlice"
@@ -2879,7 +2879,7 @@ type Slice =
       let slice = fb.Slice<DoubleFB>()
       if slice.HasValue then
         let value = slice.Value
-        NumberSlice(index fb.Index,value.Value)
+        NumberSlice(fb.Index * 1<index>,value.Value)
         |> Either.succeed
       else
         "Could not parse NumberSlice"
@@ -2890,7 +2890,7 @@ type Slice =
       let slice = fb.Slice<BoolFB>()
       if slice.HasValue then
         let value = slice.Value
-        BoolSlice(index fb.Index, value.Trigger, value.Value)
+        BoolSlice(fb.Index * 1<index>, value.Trigger, value.Value)
         |> Either.succeed
       else
         "Could not parse BoolSlice"
@@ -2901,7 +2901,7 @@ type Slice =
       let slice = fb.Slice<ByteFB>()
       if slice.HasValue then
         let value = slice.Value
-        ByteSlice(index fb.Index, String.decodeBase64 value.Value)
+        ByteSlice(fb.Index * 1<index>, String.decodeBase64 value.Value)
         |> Either.succeed
       else
         "Could not parse ByteSlice"
@@ -2914,7 +2914,7 @@ type Slice =
         either {
           let value = slice.Value
           let! prop = Property.FromFB value
-          return EnumSlice(index fb.Index, prop)
+          return EnumSlice(fb.Index * 1<index>, prop)
         }
       else
         "Could not parse EnumSlice"
@@ -2927,7 +2927,7 @@ type Slice =
         either {
           let value = slice.Value
           let! color = ColorSpace.FromFB value
-          return ColorSlice(index fb.Index, color)
+          return ColorSlice(fb.Index * 1<index>, color)
         }
       else
         "Could not parse ColorSlice"
@@ -3102,12 +3102,12 @@ type Slices =
 
   member self.Map (f: Slice -> 'a) : 'a array =
     match self with
-    | StringSlices (_,_,arr) -> Array.mapi (fun i el -> StringSlice (index i, el) |> f) arr
-    | NumberSlices (_,_,arr) -> Array.mapi (fun i el -> NumberSlice (index i, el) |> f) arr
-    | BoolSlices (_,_,t,arr) -> Array.mapi (fun i el -> BoolSlice   (index i, t, el) |> f) arr
-    | ByteSlices   (_,_,arr) -> Array.mapi (fun i el -> ByteSlice   (index i, el) |> f) arr
-    | EnumSlices   (_,_,arr) -> Array.mapi (fun i el -> EnumSlice   (index i, el) |> f) arr
-    | ColorSlices  (_,_,arr) -> Array.mapi (fun i el -> ColorSlice  (index i, el) |> f) arr
+    | StringSlices (_,_,arr) -> Array.mapi (fun i el -> StringSlice (1<index> * i, el) |> f) arr
+    | NumberSlices (_,_,arr) -> Array.mapi (fun i el -> NumberSlice (1<index> * i, el) |> f) arr
+    | BoolSlices (_,_,t,arr) -> Array.mapi (fun i el -> BoolSlice   (1<index> * i, t, el) |> f) arr
+    | ByteSlices   (_,_,arr) -> Array.mapi (fun i el -> ByteSlice   (1<index> * i, el) |> f) arr
+    | EnumSlices   (_,_,arr) -> Array.mapi (fun i el -> EnumSlice   (1<index> * i, el) |> f) arr
+    | ColorSlices  (_,_,arr) -> Array.mapi (fun i el -> ColorSlice  (1<index> * i, el) |> f) arr
 
   #if !FABLE_COMPILER
 
@@ -3733,7 +3733,7 @@ module SliceYaml =
           match str with
           | null -> null
           | _ -> str :?> String
-        StringSlice(index yml.Index, parse yml.Value)
+        StringSlice(1<index> * yml.Index, parse yml.Value)
     | "NumberSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Number)") <| fun _ ->
         let parse (value: obj) =
@@ -3750,21 +3750,21 @@ module SliceYaml =
               |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
               |> Logger.err "toSlices (Number)"
               0.0
-        NumberSlice(index yml.Index, parse yml.Value)
+        NumberSlice(1<index> * yml.Index, parse yml.Value)
     | "BoolSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Bool)") <| fun _ ->
-        BoolSlice(index yml.Index, yml.Trigger, yml.Value :?> bool)
+        BoolSlice(1<index> * yml.Index, yml.Trigger, yml.Value :?> bool)
     | "ByteSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Byte)") <| fun _ ->
-        ByteSlice(index yml.Index, yml.Value |> string |> Convert.FromBase64String)
+        ByteSlice(1<index> * yml.Index, yml.Value |> string |> Convert.FromBase64String)
     | "EnumSlice" ->
       Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Enum)") <| fun _ ->
         let pyml = yml.Value :?> PropertyYaml
-        EnumSlice(index yml.Index, { Key = pyml.Key; Value = pyml.Value })
+        EnumSlice(1<index> * yml.Index, { Key = pyml.Key; Value = pyml.Value })
     | "ColorSlice" ->
       either {
         let! color = Yaml.fromYaml(yml.Value :?> ColorYaml)
-        return ColorSlice(index yml.Index, color)
+        return ColorSlice(1<index> * yml.Index, color)
       }
     | unknown ->
       sprintf "Could not de-serialize unknown type: %A" unknown

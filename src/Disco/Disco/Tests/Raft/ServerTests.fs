@@ -55,7 +55,7 @@ module ServerTests =
   let server_currentterm_defaults_to_zero =
     testCase "Raft server current Term should default to zero" <| fun _ ->
       raft {
-        do! expectM "Should be Zero" (term 0) RaftState.currentTerm //
+        do! expectM "Should be Zero" 0<term> RaftState.currentTerm //
       }
       |> runWithDefaults
       |> noError
@@ -64,7 +64,7 @@ module ServerTests =
     testCase "Raft server set term sets term" <| fun _ ->
       raft {
         do! setCurrentTerm 5<term>
-        do! expectM "Should be correct term" (term 5) RaftState.currentTerm
+        do! expectM "Should be correct term" 5<term> RaftState.currentTerm
       }
       |> runWithDefaults
       |> noError
@@ -125,7 +125,7 @@ module ServerTests =
       raft {
         do! setCurrentTerm 2<term>
         do! Raft.startElection ()
-        do! expectM "Raft should have correct term" (term 3) RaftState.currentTerm
+        do! expectM "Raft should have correct term" 3<term> RaftState.currentTerm
       }
       |> runWithDefaults
       |> noError
@@ -366,7 +366,7 @@ module ServerTests =
 
   let server_recv_entry_removes_mem_on_removemem =
     testCase "recv entry removes mem on removemem" <| fun _ ->
-      let term = ref (term 0)
+      let term = ref 0<term>
       let ci = ref 0<index>
       let mem = Member.create (DiscoId.Create())
 
@@ -465,7 +465,7 @@ module ServerTests =
         do! setState Candidate
         do! expectM "Should have zero votes for me" 0 RaftState.numVotesForMe
 
-        let response = { Term = term 2; Granted = true; Reason = None }
+        let response = { Term = 2<term>; Granted = true; Reason = None }
         return! Raft.receiveVoteResponse mem.Id response
       }
       |> runWithDefaults
@@ -479,7 +479,7 @@ module ServerTests =
         do! setCurrentTerm 1<term>
         do! expectM "Should have zero votes for me" 0 RaftState.numVotesForMe
         do! Raft.becomeCandidate ()
-        do! Raft.receiveVoteResponse mem.Id { Term = term 2; Granted = true; Reason = None }
+        do! Raft.receiveVoteResponse mem.Id { Term = 2<term>; Granted = true; Reason = None }
         do! expectM "Should have two votes for me" 2 RaftState.numVotesForMe
       }
       |> runWithDefaults
@@ -496,7 +496,7 @@ module ServerTests =
       raft {
         do! addMember mem
         do! setCurrentTerm 1<term>
-        let response = { Term = term 1; Granted = true; Reason = None }
+        let response = { Term = 1<term>; Granted = true; Reason = None }
         do! Raft.receiveVoteResponse mem.Id response
       }
       |> runWithDefaults
@@ -515,11 +515,11 @@ module ServerTests =
         do! setCurrentTerm 3<term>
         do! Raft.becomeCandidate ()
         let! response = Raft.receiveVoteResponse mem.Id {
-              Term = term 3
+              Term = 3<term>
               Granted = true
               Reason = None
             }
-        do! expectM "Should have term 4" (term 4) RaftState.currentTerm
+        do! expectM "Should have term 4" 4<term> RaftState.currentTerm
       }
       |> runWithDefaults
       |> expectError err
@@ -537,10 +537,10 @@ module ServerTests =
       let mem = Member.create (DiscoId.Create())
 
       let vote =
-        { Term = term 1
+        { Term = 1<term>
         ; Candidate = mem
         ; LastLogIndex = 1<index>
-        ; LastLogTerm = term 1
+        ; LastLogTerm = 1<term>
         }
 
       raft {
@@ -557,10 +557,10 @@ module ServerTests =
       let mem = Member.create (DiscoId.Create())
 
       let vote =
-        { Term = term 2
+        { Term = 2<term>
         ; Candidate = mem
         ; LastLogIndex = 1<index>
-        ; LastLogTerm = term 1
+        ; LastLogTerm = 1<term>
         }
 
       raft {
@@ -577,10 +577,10 @@ module ServerTests =
       let mem = Member.create (DiscoId.Create())
 
       let vote =
-        { Term = term 1
+        { Term = 1<term>
         ; Candidate = mem
         ; LastLogIndex = 1<index>
-        ; LastLogTerm = term 1
+        ; LastLogTerm = 1<term>
         }
 
       raft {
@@ -600,10 +600,10 @@ module ServerTests =
       let mem = Member.create (DiscoId.Create())
 
       let vote =
-        { Term = term 2
+        { Term = 2<term>
         ; Candidate = mem
         ; LastLogIndex = 1<index>
-        ; LastLogTerm = term 2
+        ; LastLogTerm = 2<term>
         }
 
       raft {
@@ -625,10 +625,10 @@ module ServerTests =
       let mem = Member.create (DiscoId.Create())
 
       let vote =
-        { Term = term 2
+        { Term = 2<term>
         ; Candidate = mem
         ; LastLogIndex = 3<index>
-        ; LastLogTerm = term 2
+        ; LastLogTerm = 2<term>
         }
 
       raft {
@@ -656,10 +656,10 @@ module ServerTests =
         do! Raft.becomeLeader ()
         do! expectM "Should be leader" Leader RaftState.state
         let request =
-          { Term = term 1
+          { Term = 1<term>
           ; Candidate = peer
           ; LastLogIndex = 1<index>
-          ; LastLogTerm = term 1
+          ; LastLogTerm = 1<term>
           }
         let! resp = Raft.receiveVoteRequest peer.Id request
         do! expectM "Should be leader" Leader RaftState.state
@@ -676,10 +676,10 @@ module ServerTests =
         do! addMember peer
         do! setCurrentTerm 1<term>
         let request =
-          { Term = term 2
+          { Term = 2<term>
           ; Candidate = peer
           ; LastLogIndex = 1<index>
-          ; LastLogTerm = term 1
+          ; LastLogTerm = 1<term>
           }
         let! resp = Raft.receiveVoteRequest peer.Id request
         expect "Should be granted" true VoteResponse.granted resp
@@ -697,10 +697,10 @@ module ServerTests =
         do! setElectionTimeout 1000<ms>
         do! Raft.periodic 900<ms>
         let request =
-          { Term = term 2
+          { Term = 2<term>
           ; Candidate = peer
           ; LastLogIndex = 1<index>
-          ; LastLogTerm = term 1
+          ; LastLogTerm = 1<term>
           }
         let! resp = Raft.receiveVoteRequest peer.Id request
         expect "Vote should be granted" true VoteResponse.granted resp
@@ -718,16 +718,16 @@ module ServerTests =
         do! Raft.becomeCandidate ()
         do! setCurrentTerm 1<term>
         do! expectM "Should have voted for myself" true RaftState.votedForMyself
-        do! expectM "Should have term 1" (term 1) RaftState.currentTerm
+        do! expectM "Should have term 1" 1<term> RaftState.currentTerm
         let request =
-          { Term = term 2
+          { Term = 2<term>
           ; Candidate = peer
           ; LastLogIndex = 1<index>
-          ; LastLogTerm = term 1
+          ; LastLogTerm = 1<term>
           }
         let! resp = Raft.receiveVoteRequest peer.Id request
         do! expectM "Should now be Follower" Follower RaftState.state
-        do! expectM "Should have term 2" (term 2) RaftState.currentTerm
+        do! expectM "Should have term 2" 2<term> RaftState.currentTerm
         do! expectM "Should have voted for peer" peer.Id (RaftState.votedFor >> Option.get)
       }
       |> runWithDefaults
@@ -744,10 +744,10 @@ module ServerTests =
         do! setCurrentTerm 1<term>
         do! expectM "Should have voted for myself" true RaftState.votedForMyself
         let request =
-          { Term = term 2
+          { Term = 2<term>
           ; Candidate = other
           ; LastLogIndex = 1<index>
-          ; LastLogTerm = term 1
+          ; LastLogTerm = 1<term>
           }
         let! resp = Raft.receiveVoteRequest other.Id request
         do! expectM "Should have added mem" None (RaftState.getMember other.Id)
@@ -761,10 +761,10 @@ module ServerTests =
       let peer1 = Member.create (DiscoId.Create())
       let peer2 = Member.create (DiscoId.Create())
       let request =
-        { Term = term 1
+        { Term = 1<term>
         ; Candidate = peer1
         ; LastLogIndex = 1<index>
-        ; LastLogTerm = term 1
+        ; LastLogTerm = 1<term>
         }
 
       raft {
@@ -824,11 +824,11 @@ module ServerTests =
       raft {
         do! addMember peer
         do! setElectionTimeout 1000<ms>
-        do! expectM "Should be at term zero" (term 0) RaftState.currentTerm
+        do! expectM "Should be at term zero" 0<term> RaftState.currentTerm
         do! Raft.becomeCandidate ()
-        do! expectM "Should be at term one" (term 1) RaftState.currentTerm
+        do! expectM "Should be at term one" 1<term> RaftState.currentTerm
         do! Raft.periodic 1001<ms>
-        do! expectM "Should be at term two" (term 2) RaftState.currentTerm
+        do! expectM "Should be at term two" 2<term> RaftState.currentTerm
       }
       |> runWithDefaults
       |> noError
@@ -862,10 +862,10 @@ module ServerTests =
 
         let! state = get
         let vote : VoteRequest =
-          { Term = term 1
+          { Term = 1<term>
           ; Candidate = state.Member
           ; LastLogIndex = 1<index>
-          ; LastLogTerm = term 1
+          ; LastLogTerm = 1<term>
           }
 
         let! resp = Raft.receiveVoteRequest peer.Id vote
@@ -873,7 +873,7 @@ module ServerTests =
 
         do! setCurrentTerm 2<term>
 
-        let! resp = Raft.receiveVoteRequest peer.Id { vote with Term = term 2; LastLogTerm = term 3; }
+        let! resp = Raft.receiveVoteRequest peer.Id { vote with Term = 2<term>; LastLogTerm = 3<term>; }
         expect "Should be granted" true VoteResponse.granted resp
       }
       |> runWithDefaults
@@ -882,9 +882,9 @@ module ServerTests =
   let follower_becoming_candidate_increments_current_term =
     testCase "follower becoming candidate increments current term" <| fun _ ->
       raft {
-        do! expectM "Should have term 0" (term 0) RaftState.currentTerm
+        do! expectM "Should have term 0" 0<term> RaftState.currentTerm
         do! Raft.becomeCandidate ()
-        do! expectM "Should have term 1" (term 1) RaftState.currentTerm
+        do! expectM "Should have term 1" 1<term> RaftState.currentTerm
       }
       |> runWithDefaults
       |> noError
@@ -969,10 +969,10 @@ module ServerTests =
         let! raft' = get
         let peer = Member.create (DiscoId.Create())
         let vote : VoteRequest =
-          { Term = term 0                // term must be equal or lower that raft's
+          { Term = 0<term>                // term must be equal or lower that raft's
             Candidate = raft'.Member    // term for this to work
             LastLogIndex = 0<index>
-            LastLogTerm = term 0 }
+            LastLogTerm = 0<term> }
         do! addMember peer
         do! voteFor (Some raft'.Member)
         let! resp = Raft.receiveVoteRequest peer.Id vote
@@ -986,7 +986,7 @@ module ServerTests =
       let self = Member.create (DiscoId.Create())
       let raft' = RaftState.create self
       let sender = Sender.create
-      let response = { Term = term 5; Granted = true; Reason = None }
+      let response = { Term = 5<term>; Granted = true; Reason = None }
       let cbs =
         { Callbacks.Create (ref (DataSnapshot (State.Empty)))
             with SendRequestVote = senderRequestVote sender (Some response) }
@@ -1018,8 +1018,8 @@ module ServerTests =
         let vote = List.head (!sender.Outbox) |> getVote
 
         expect "should have last log index be 3" 3<index> VoteRequest.lastLogIndex vote
-        expect "should have last term be 5" (term 5) VoteRequest.term vote
-        expect "should have last log term be 3" (term 3) VoteRequest.lastLogTerm vote
+        expect "should have last term be 5" 5<term> VoteRequest.term vote
+        expect "should have last log term be 3" 3<term> VoteRequest.lastLogTerm vote
         expect "should have candidate id be me" self VoteRequest.candidate vote
       }
       |> runWithRaft raft' cbs
@@ -1029,17 +1029,17 @@ module ServerTests =
     testCase "candidate recv requestvote response becomes follower if current term is less than term" <| fun _ ->
       raft {
         let peer = Member.create (DiscoId.Create())
-        let response = { Term = term 2 ; Granted = false; Reason = None }
+        let response = { Term = 2<term>; Granted = false; Reason = None }
         do! addMember peer
         do! setCurrentTerm 1<term>
         do! setState Candidate
         do! voteFor None
         do! expectM "Should not be follower" false RaftState.isFollower
         do! expectM "Should not *have* a leader" None RaftState.currentLeader
-        do! expectM "Should have term 1" (term 1) RaftState.currentTerm
+        do! expectM "Should have term 1" 1<term> RaftState.currentTerm
         do! Raft.receiveVoteResponse peer.Id response
         do! expectM "Should be Follower" Follower RaftState.state
-        do! expectM "Should have term 2" (term 2) RaftState.currentTerm
+        do! expectM "Should have term 2" 2<term> RaftState.currentTerm
         do! expectM "Should have voted for nobody" None RaftState.votedFor
       }
       |> runWithDefaults
@@ -1050,9 +1050,9 @@ module ServerTests =
     testCase "candidate recv appendentries frm leader results in follower" <| fun _ ->
       let peer = Member.create (DiscoId.Create())
       let ae : AppendEntries =
-        { Term = term 1
+        { Term = 1<term>
         ; PrevLogIdx = 0<index>
-        ; PrevLogTerm = term 0
+        ; PrevLogTerm = 0<term>
         ; LeaderCommit = 0<index>
         ; Entries = None
         }
@@ -1063,11 +1063,11 @@ module ServerTests =
         do! voteFor None
         do! expectM "Should not be follower" false RaftState.isFollower
         do! expectM "Should have no leader" None RaftState.currentLeader
-        do! expectM "Should have term 0" (term 0) RaftState.currentTerm
+        do! expectM "Should have term 0" 0<term> RaftState.currentTerm
         let! resp = Raft.receiveAppendEntries (Some peer.Id) ae
         do! expectM "Should be follower" Follower RaftState.state
         do! expectM "Should have peer as leader" (Some peer.Id) RaftState.currentLeader
-        do! expectM "Should have term 1" (term 1) RaftState.currentTerm
+        do! expectM "Should have term 1" 1<term> RaftState.currentTerm
         do! expectM "Should have voted for noone" None RaftState.votedFor
       }
       |> runWithDefaults
@@ -1077,9 +1077,9 @@ module ServerTests =
     testCase "candidate recv appendentries from same term results in step down" <| fun _ ->
       let peer = Member.create (DiscoId.Create())
       let ae : AppendEntries =
-        { Term = term 2
+        { Term = 2<term>
         ; PrevLogIdx = 1<index>
-        ; PrevLogTerm = term 1
+        ; PrevLogTerm = 1<term>
         ; LeaderCommit = 0<index>
         ; Entries = None
         }
@@ -1284,7 +1284,7 @@ module ServerTests =
         |> assume "Should have PrevLogIdx 0" 0<index> (fun ae -> ae.PrevLogIdx)
         |> assume "Should have one entry" 1 (fun ae -> ae.Entries |> Option.get |> LogEntry.depth)
         |> assume "Should have entry with correct id" (LogEntry.id log) (fun ae -> ae.Entries |> Option.get |> LogEntry.id)
-        |> expect "Should have entry with term" (term 2) (fun ae -> ae.Entries |> Option.get |> LogEntry.term)
+        |> expect "Should have entry with term" 2<term> (fun ae -> ae.Entries |> Option.get |> LogEntry.term)
 
         sender.Outbox := List.empty // reset outbox
 
@@ -1394,7 +1394,7 @@ module ServerTests =
       let log3 = LogEntry(DiscoId.Create(),0<index>,1<term>,DataSnapshot (State.Empty),None)
 
       let response =
-        { Term = term 1
+        { Term = 1<term>
         ; Success = true
         ; CurrentIndex = 3<index>
         ; FirstIndex = 1<index>
@@ -1447,7 +1447,7 @@ module ServerTests =
       let peer2 = Member.create (DiscoId.Create())
 
       let response =
-        { Term = term 1
+        { Term = 1<term>
         ; Success = true
         ; CurrentIndex = 1<index>
         ; FirstIndex = 1<index>
@@ -1493,7 +1493,7 @@ module ServerTests =
       let peer4 = Member.create (DiscoId.Create())
 
       let response =
-        { Term         = term 1
+        { Term         = 1<term>
         ; Success      = true
         ; CurrentIndex = 1<index>
         ; FirstIndex   = 1<index> }
@@ -1588,7 +1588,7 @@ module ServerTests =
       let log4 = LogEntry(DiscoId.Create(),0<index>,4<term>,DataSnapshot (State.Empty),None)
 
       let response =
-        { Term = term 1
+        { Term = 1<term>
         ; Success = true
         ; CurrentIndex = 1<index>
         ; FirstIndex = 1<index> }
@@ -1615,7 +1615,7 @@ module ServerTests =
         do! Raft.sendAllAppendEntries ()
 
         expect "Should have prevLogIdx 4" 4<index> AppendEntries.prevLogIdx (!appendReq |> Option.get)
-        expect "Should have prevLogTerm 4" (term 4) AppendEntries.prevLogTerm (!appendReq |> Option.get)
+        expect "Should have prevLogTerm 4" 4<term> AppendEntries.prevLogTerm (!appendReq |> Option.get)
 
         let! trm = currentTerm ()
         do! Raft.receiveAppendEntriesResponse peer.Id { response with Term = trm; Success = false; CurrentIndex = 1<index> }
@@ -1627,7 +1627,7 @@ module ServerTests =
         do! Raft.sendAllAppendEntries ()
 
         expect "Should have prevLogIdx 1" 1<index> AppendEntries.prevLogIdx (!appendReq |> Option.get)
-        expect "Should have prevLogTerm 1" (term 1) AppendEntries.prevLogTerm  (!appendReq |> Option.get)
+        expect "Should have prevLogTerm 1" 1<term> AppendEntries.prevLogTerm  (!appendReq |> Option.get)
       }
       |> runWithCBS cbs
       |> noError
@@ -1639,7 +1639,7 @@ module ServerTests =
       let lokk = new System.Object()
 
       let ci = ref 0<index>
-      let trm = ref (term 2)
+      let trm = ref 2<term>
       let result = ref false
       let count = ref 0
 
@@ -1660,7 +1660,7 @@ module ServerTests =
         do! setCommitIndex 0<index>
 
         for n in 1 .. 4 do
-          do! LogEntry(DiscoId.Create(),0<index>,term n,DataSnapshot(State.Empty),None)
+          do! LogEntry(DiscoId.Create(),0<index>,1<term> * n,DataSnapshot(State.Empty),None)
               |> appendEntry
               >>= ignoreM
 
@@ -1710,7 +1710,7 @@ module ServerTests =
       let log = LogEntry(DiscoId.Create(),0<index>,1<term>,DataSnapshot (State.Empty),None)
 
       let response =
-        { Term = term 1
+        { Term = 1<term>
         ; Success = true
         ; CurrentIndex = 1<index>
         ; FirstIndex = 1<index>
@@ -1783,14 +1783,14 @@ module ServerTests =
   let leader_recv_entry_is_committed_returns_neg_1_if_invalidated =
     testCase "leader recv entry is committed returns neg 1 if invalidated" <| fun _ ->
       let peer = Member.create (DiscoId.Create())
-      let log = Log.make (term 1) (DataSnapshot (State.Empty))
+      let log = Log.make 1<term> (DataSnapshot (State.Empty))
 
       let ae =
         { LeaderCommit = 1<index>
-        ; Term = term 2
+        ; Term = 2<term>
         ; PrevLogIdx = 0<index>
-        ; PrevLogTerm = term 0
-        ; Entries = Log.make (term 2) defSM |> Some
+        ; PrevLogTerm = 0<term>
+        ; Entries = Log.make 2<term> defSM |> Some
         }
 
       let err =
@@ -1809,7 +1809,7 @@ module ServerTests =
         let! committed = Raft.responseCommitted response
 
         expect "Should not have committed entry" false id committed
-        expect "Should have term 1" (term 1) EntryResponse.term response
+        expect "Should have term 1" 1<term> EntryResponse.term response
         expect "Should have index 1" 1<index> EntryResponse.index response
 
         do! expectM "(1) Should have current idx 1" 1<index> RaftState.currentIndex
@@ -1840,7 +1840,7 @@ module ServerTests =
             SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
-      let log = Log.make (term 1) defSM
+      let log = Log.make 1<term> defSM
 
       raft {
         do! addMember peer
@@ -1868,9 +1868,9 @@ module ServerTests =
             with SendAppendEntries = senderAppendEntries sender None }
         :> IRaftCallbacks
 
-      let log = Log.make (term 1) defSM
+      let log = Log.make 1<term> defSM
       let resp =
-        { Term = term 1
+        { Term = 1<term>
         ; Success = false
         ; CurrentIndex = 0<index>
         ; FirstIndex = 0<index>
@@ -1904,7 +1904,7 @@ module ServerTests =
         :> IRaftCallbacks
 
       let resp =
-        { Term = term 1
+        { Term = 1<term>
         ; Success = true
         ; CurrentIndex = 0<index>
         ; FirstIndex = 0<index>
@@ -1933,7 +1933,7 @@ module ServerTests =
         :> IRaftCallbacks
 
       let resp =
-        { Term = term 1
+        { Term = 1<term>
         ; Success = true
         ; CurrentIndex = 1<index>
         ; FirstIndex = 1<index>
@@ -1953,9 +1953,9 @@ module ServerTests =
     testCase "leader recv appendentries steps down if newer" <| fun _ ->
       let peer = Member.create (DiscoId.Create())
       let ae =
-        { Term = term 6
+        { Term = 6<term>
           PrevLogIdx = 6<index>
-          PrevLogTerm = term 5
+          PrevLogTerm = 5<term>
           LeaderCommit = 0<index>
           Entries = None }
 
@@ -1980,9 +1980,9 @@ module ServerTests =
     testCase "leader recv appendentries steps down if newer term" <| fun _ ->
       let peer = Member.create (DiscoId.Create())
       let resp =
-        { Term = term 6
+        { Term = 6<term>
         ; PrevLogIdx = 5<index>
-        ; PrevLogTerm = term 5
+        ; PrevLogTerm = 5<term>
         ; LeaderCommit = 0<index>
         ; Entries = None
         }
@@ -2007,7 +2007,7 @@ module ServerTests =
       let count = ref 0
 
       let response =
-        ref { Term = term 0
+        ref { Term = 0<term>
               Success = true
               CurrentIndex = 1<index>
               FirstIndex = 1<index> }
@@ -2051,13 +2051,13 @@ module ServerTests =
       let peer1 = Member.create (DiscoId.Create())
       let peer2 = Member.create (DiscoId.Create())
       let sender = Sender.create
-      let resp = { Term = term 1; Granted = true; Reason = None }
+      let resp = { Term = 1<term>; Granted = true; Reason = None }
 
       let vote =
-        { Term = term 1
+        { Term = 1<term>
         ; Candidate = peer2
         ; LastLogIndex = 0<index>
-        ; LastLogTerm = term 0 }
+        ; LastLogTerm = 0<term> }
 
       let peers =
         [| peer1; peer2 |]
@@ -2085,13 +2085,13 @@ module ServerTests =
       let peer1 = Member.create (DiscoId.Create())
       let peer2 = Member.create (DiscoId.Create())
       let sender = Sender.create
-      let resp = { Term = term 1; Granted = true; Reason = None }
+      let resp = { Term = 1<term>; Granted = true; Reason = None }
 
       let vote =
-        { Term = term 2
+        { Term = 2<term>
         ; Candidate = peer2
         ; LastLogIndex = 0<index>
-        ; LastLogTerm = term 0 }
+        ; LastLogTerm = 0<term> }
 
       let peers =
         [| peer1; peer2 |]
@@ -2150,7 +2150,7 @@ module ServerTests =
       let mem3 = { Member.create (DiscoId.Create())  with Status = MemberStatus.Failed }
       let mem4 = { Member.create (DiscoId.Create())  with Status = MemberStatus.Failed }
 
-      let resp = { Term = term 1; Granted = true; Reason = None }
+      let resp = { Term = 1<term>; Granted = true; Reason = None }
 
       let peers =
         [| mem1; mem2; mem3; mem4 |]
@@ -2171,7 +2171,7 @@ module ServerTests =
   let server_periodic_should_trigger_snapshotting =
     testCase "periodic should trigger snapshotting when MaxLogDepth is reached" <| fun _ ->
       raft {
-        let trm = term 1
+        let trm = 1<term>
         let depth = 40
         let! me = self ()
 
@@ -2192,7 +2192,7 @@ module ServerTests =
   let server_should_apply_each_log_when_receiving_a_snapshot =
     testCase "should apply each log when receiving a snapshot" <| fun _ ->
       let idx = 9<index>
-      let trm = term 1
+      let trm = 1<term>
       let count = ref 0
 
       let init = defaultServer ()
@@ -2225,7 +2225,7 @@ module ServerTests =
     testCase "should merge snaphot and existing log when receiving a snapshot" <| fun _ ->
       let idx = 9<index>
       let num = 5
-      let trm = term 1
+      let trm = 1<term>
       let count = ref 0
 
       let init = defaultServer ()
@@ -2311,9 +2311,9 @@ module ServerTests =
         } :> IRaftCallbacks
 
       raft {
-        let log1 = Log.make (term 0) defSM
-        let log2 = Log.make (term 0) defSM
-        let log3 = Log.make (term 0) defSM
+        let log1 = Log.make 0<term> defSM
+        let log2 = Log.make 0<term> defSM
+        let log3 = Log.make 0<term> defSM
 
         let ids =
           [ log3; log2; log1; ]
@@ -2332,9 +2332,9 @@ module ServerTests =
 
   let server_should_call_delete_callback_for_each_deleted_log =
     testCase "should call delete callback for each deleted log" <| fun _ ->
-      let log1 = Log.make (term 0) defSM
-      let log2 = Log.make (term 0) defSM
-      let log3 = Log.make (term 0) defSM
+      let log1 = Log.make 0<term> defSM
+      let log2 = Log.make 0<term> defSM
+      let log3 = Log.make 0<term> defSM
 
       let count = ref [ log3; log2; log1; ]
 
@@ -2410,7 +2410,7 @@ module ServerTests =
 
   let should_respond_to_appendentries_with_correct_next_idx =
     testCase "respond to appendentries with correct next idx" <| fun _ ->
-      let trm = term 1
+      let trm = 1<term>
 
       raft {
         do! setCurrentTerm trm

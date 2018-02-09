@@ -80,8 +80,8 @@ module Generators =
   let uint32Gen = Arb.generate<uint32>
   let uint64Gen = Arb.generate<uint64>
 
-  let indexGen = Gen.map index intGen
-  let termGen = Gen.map term intGen
+  let indexGen = Gen.map ((*) 1<index>) intGen
+  let termGen = Gen.map ((*) 1<term>) intGen
   let nameGen = Gen.map name stringGen
   let emailGen = Gen.map email stringGen
   let hashGen = Gen.map checksum stringGen

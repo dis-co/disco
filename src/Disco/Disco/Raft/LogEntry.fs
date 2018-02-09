@@ -423,7 +423,7 @@ type LogEntry =
             let! id = Id.decodeId logentry
 
             // successfully parsed this LogEntry, so return it wrapped in an option
-            return (id, index logentry.Index, term logentry.Term, mems, previous)
+            return (id, 1<index> * logentry.Index, 1<term> * logentry.Term, mems, previous)
                    |> Configuration
                    |> Some
           else
@@ -463,7 +463,7 @@ type LogEntry =
                 arr
               |> Either.map snd
             let! id = Id.decodeId logentry
-            return (id, index logentry.Index, term logentry.Term, changes, previous)
+            return (id, 1<index> * logentry.Index, 1<term> * logentry.Term, changes, previous)
                    |> JointConsensus
                    |> Some
           else
@@ -484,7 +484,7 @@ type LogEntry =
             if data.HasValue then
               let! command = StateMachine.FromFB data.Value
               let! id = Id.decodeId logentry
-              return(id, index logentry.Index, term logentry.Term, command, previous)
+              return(id, 1<index> * logentry.Index, 1<term> * logentry.Term, command, previous)
                     |> LogEntry
                     |> Some
             else
@@ -533,14 +533,15 @@ type LogEntry =
                   arr
                 |> Either.map snd
 
-              return Snapshot(id,
-                              index logentry.Index,
-                              term logentry.Term,
-                              index logentry.LastIndex,
-                              term logentry.LastTerm,
-                              mems,
-                              state)
-                     |> Some
+              return
+                Some $ Snapshot(
+                  id,
+                  1<index> * logentry.Index,
+                  1<term> * logentry.Term,
+                  1<index> * logentry.LastIndex,
+                  1<term> * logentry.LastTerm,
+                  mems,
+                  state)
             else
               return!
                 "Could not parse empty StateMachineFB"

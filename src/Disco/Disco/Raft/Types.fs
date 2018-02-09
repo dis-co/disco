@@ -50,8 +50,8 @@ type EntryResponse =
       let! id = Id.decodeId fb
       return {
         Id = id
-        Term = term fb.Term
-        Index = index fb.Index
+        Term = 1<term> * fb.Term
+        Index = 1<index> * fb.Index
       }
     }
 
@@ -127,10 +127,10 @@ type VoteRequest =
       let candidate = fb.Candidate
       if candidate.HasValue then
         let! mem = RaftMember.FromFB candidate.Value
-        return { Term         = term fb.Term
+        return { Term         = 1<term> * fb.Term
                  Candidate    = mem
-                 LastLogIndex = index fb.LastLogIndex
-                 LastLogTerm  = term fb.LastLogTerm }
+                 LastLogIndex = 1<index> * fb.LastLogIndex
+                 LastLogTerm  = 1<term> * fb.LastLogTerm }
       else
         return!
           "Could not parse empty MemberFB"
@@ -199,7 +199,7 @@ type VoteResponse =
         else
           Right None
       return {
-        Term    = term fb.Term
+        Term    = 1<term> * fb.Term
         Granted = fb.Granted
         Reason  = reason
       }
@@ -310,10 +310,10 @@ type AppendEntries =
               raw.[i] <- entry.Value
           LogEntry.FromFB raw
 
-      return { Term         = term  fb.Term
-               PrevLogIdx   = index fb.PrevLogIdx
-               PrevLogTerm  = term  fb.PrevLogTerm
-               LeaderCommit = index fb.LeaderCommit
+      return { Term         = 1<term> * fb.Term
+               PrevLogIdx   = 1<index> * fb.PrevLogIdx
+               PrevLogTerm  = 1<term> * fb.PrevLogTerm
+               LeaderCommit = 1<index> * fb.LeaderCommit
                Entries      = entries }
     }
 
@@ -405,10 +405,10 @@ type AppendResponse =
 
   static member FromFB (fb: AppendResponseFB) =
     Either.succeed {
-      Term         = term fb.Term
+      Term         = 1<term> * fb.Term
       Success      = fb.Success
-      CurrentIndex = index fb.CurrentIndex
-      FirstIndex   = index fb.FirstIndex
+      CurrentIndex = 1<index> * fb.CurrentIndex
+      FirstIndex   = 1<index> * fb.FirstIndex
     }
 
   // ** ToOffset
@@ -519,10 +519,10 @@ type InstallSnapshot =
       | Some entries ->
         let! leaderId = Id.decodeLeaderId fb
         return {
-          Term      = term fb.Term
+          Term      = 1<term> * fb.Term
           LeaderId  = leaderId
-          LastIndex = index fb.LastIndex
-          LastTerm  = term fb.LastTerm
+          LastIndex = 1<index> * fb.LastIndex
+          LastTerm  = 1<term> * fb.LastTerm
           Data      = entries
         }
       | _ ->

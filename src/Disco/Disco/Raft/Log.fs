@@ -200,7 +200,7 @@ module Log =
   let term log =
     match log.Data with
     | Some entries -> LogEntry.term entries
-    | _            -> term 0
+    | _            -> 0<term>
 
   // ** prevTerm
 
