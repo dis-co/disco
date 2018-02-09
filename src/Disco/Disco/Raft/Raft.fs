@@ -1238,8 +1238,6 @@ module rec Raft =
           do! startElection ()
         elif timedout && num = 1 then
           do! becomeLeader ()
-        else
-          do! recountPeers ()
 
       let! coi = commitIndex ()
       let! lai = lastAppliedIndex ()

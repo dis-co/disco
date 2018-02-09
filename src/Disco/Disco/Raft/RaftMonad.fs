@@ -266,10 +266,6 @@ module RaftMonad =
 
   let numLogicalPeers () = zoom RaftState.numLogicalPeers
 
-  // ** recountPeers
-
-  let recountPeers () = modify RaftState.recountPeers
-
   // ** hasMember
 
   let hasMember nid = zoom (RaftState.hasMember nid)
@@ -331,11 +327,11 @@ module RaftMonad =
 
   // ** setPeers
 
-  let setPeers peers = modify (RaftState.setPeers peers >> RaftState.recountPeers)
+  let setPeers peers = modify (RaftState.setPeers peers)
 
   // ** setOldPeers
 
-  let setOldPeers peers = modify (RaftState.setOldPeers peers >> RaftState.recountPeers)
+  let setOldPeers peers = modify (RaftState.setOldPeers peers)
 
   // ** peers
 
@@ -348,7 +344,6 @@ module RaftMonad =
       let! state = get
       let updated, state = RaftState.updateMember mem state
       do! put state
-      do! recountPeers ()
       if updated then
         let! cbs = read
         // if the mems has structurally changed fire the callback

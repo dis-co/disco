@@ -123,8 +123,6 @@ type RaftState =
     Peers             : Map<MemberId,RaftMember>
     /// map of the previous cluster configuration. set if currently in a configuration change
     OldPeers          : Map<MemberId,RaftMember> option
-    /// count of all members in the cluster
-    NumMembers        : int
     /// the candidate this server voted for in its current term or None if it hasn't voted for any
     /// other member yet
     VotedFor          : MemberId option
@@ -171,10 +169,6 @@ type RaftState =
     (fun (rs:RaftState) -> rs.OldPeers),
     (fun oldPeers (rs:RaftState) -> { rs with OldPeers = oldPeers })
 
-  static member NumMembers_ =
-    (fun (rs:RaftState) -> rs.NumMembers),
-    (fun numMembers (rs:RaftState) -> { rs with NumMembers = numMembers })
-
   static member VotedFor_ =
     (fun (rs:RaftState) -> rs.VotedFor),
     (fun votedFor (rs:RaftState) -> { rs with VotedFor = votedFor })
@@ -220,7 +214,8 @@ type RaftState =
 State             = %A
 CurrentTerm       = %A
 CurrentLeader     = %A
-NumMembers          = %A
+NumMembers        = %A
+NumOldMembers     = %A
 VotedFor          = %A
 MaxLogDepth       = %A
 CommitIndex       = %A
@@ -234,7 +229,8 @@ ConfigChangeEntry = %s
       self.State
       self.CurrentTerm
       self.CurrentLeader
-      self.NumMembers
+      (Map.count self.Peers)
+      (Option.map Map.count self.OldPeers)
       self.VotedFor
       self.MaxLogDepth
       self.CommitIndex
@@ -300,7 +296,6 @@ ConfigChangeEntry = %s
         CurrentLeader     = leader
         Peers             = Map.empty
         OldPeers          = None
-        NumMembers        = 0
         VotedFor          = votedfor
         Log               = Log.empty
         CommitIndex       = 0<index>
@@ -331,7 +326,6 @@ module RaftState =
   let currentLeader = Optic.get RaftState.CurrentLeader_
   let peers = Optic.get RaftState.Peers_
   let oldPeers = Optic.get RaftState.OldPeers_
-  let numMembers = Optic.get RaftState.NumMembers_
   let votedFor = Optic.get RaftState.VotedFor_
   let log = Optic.get RaftState.Log_
   let commitIndex = Optic.get RaftState.CommitIndex_
@@ -350,7 +344,6 @@ module RaftState =
   let setCurrentLeader = Optic.set RaftState.CurrentLeader_
   let setPeers = Optic.set RaftState.Peers_
   let setOldPeers = Optic.set RaftState.OldPeers_
-  let setNumMembers = Optic.set RaftState.NumMembers_
   let setVotedFor = Optic.set RaftState.VotedFor_
   let setLog = Optic.set RaftState.Log_
   let setCommitIndex = Optic.set RaftState.CommitIndex_
@@ -370,7 +363,6 @@ module RaftState =
       CurrentLeader     = None
       Peers             = Map.ofList [(self.Id, self)]
       OldPeers          = None
-      NumMembers        = 1
       VotedFor          = None
       Log               = Log.empty
       CommitIndex       = 0<index>
@@ -380,6 +372,17 @@ module RaftState =
       RequestTimeout    = Constants.RAFT_REQUEST_TIMEOUT * 1<ms>
       MaxLogDepth       = Constants.RAFT_MAX_LOGDEPTH
       ConfigChangeEntry = None }
+
+  // ** numMembers
+
+  let numMembers = Optic.get RaftState.Peers_ >> Map.count
+
+  // ** numOldMembers
+
+  let numOldMembers =
+    Optic.get RaftState.OldPeers_
+    >> Option.map Map.count
+    >> Option.defaultValue 0
 
   // ** currentIndex
 
@@ -439,10 +442,6 @@ module RaftState =
   // ** numLogicalPeers
 
   let numLogicalPeers: RaftState -> int = logicalPeers >> countMembers
-
-  // ** recountPeers
-
-  let recountPeers state = setNumMembers (numLogicalPeers state) state
 
   // ** hasMember
 
@@ -578,13 +577,6 @@ module RaftState =
     |> Member.setVotedForMe vote
     |> updateMember
 
-  // ** numOldMembers
-
-  let numOldMembers (state: RaftState) =
-    match state.OldPeers with
-    | Some peers -> Map.count peers
-    |      _     -> 0
-
   // ** addMember
 
   /// Adds a mem to the list of known Members and increments NumMembers counter
@@ -594,7 +586,6 @@ module RaftState =
     |> peers
     |> Map.add mem.Id mem
     |> flip setPeers state
-    |> recountPeers
 
   // ** addNonVotingMember
 
@@ -611,7 +602,6 @@ module RaftState =
     |> peers
     |> Map.remove mem.Id
     |> flip setPeers state
-    |> recountPeers
 
   // ** applyChanges
 
@@ -714,7 +704,7 @@ module RaftState =
 
   let updateCommitIndex (state: RaftState) =
     setCommitIndex
-      $ if state.NumMembers = 1
+      $ if numMembers state = 1
         then currentIndex state
         else commitIndex state
       $ state

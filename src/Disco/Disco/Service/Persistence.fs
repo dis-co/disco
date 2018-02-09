@@ -77,7 +77,6 @@ module Persistence =
       return
         { state with
             Member          = ClusterMember.toRaftMember mem
-            NumMembers      = count
             Peers           = Map.map (fun _ -> ClusterMember.toRaftMember) mems
             MaxLogDepth     = options.Raft.MaxLogDepth
             RequestTimeout  = options.Raft.RequestTimeout
