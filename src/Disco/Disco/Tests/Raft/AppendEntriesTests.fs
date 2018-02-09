@@ -320,9 +320,9 @@ module AppendEntries =
 
       let log =
         LogEntry((DiscoId.Create()), 0<index>, 1<term>, DataSnapshot (State.Empty),
-            Some <| LogEntry((DiscoId.Create()), 0<index>, 1<term>, DataSnapshot (State.Empty),
-                Some <| LogEntry((DiscoId.Create()), 0<index>, 1<term>, DataSnapshot (State.Empty),
-                    Some <| LogEntry((DiscoId.Create()), 0<index>, 1<term>, DataSnapshot (State.Empty), None))))
+            Some $ LogEntry((DiscoId.Create()), 0<index>, 1<term>, DataSnapshot (State.Empty),
+                Some $ LogEntry((DiscoId.Create()), 0<index>, 1<term>, DataSnapshot (State.Empty),
+                    Some $ LogEntry((DiscoId.Create()), 0<index>, 1<term>, DataSnapshot (State.Empty), None))))
 
       let msg =
         { Term = 1<term>

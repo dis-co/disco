@@ -206,21 +206,21 @@ module RaftMonad =
     |> Logger.log level (tag site)
     |> returnM
 
-  // ** debug
+  // ** logDebug
 
-  let debug site str = logMsg site Debug str
+  let logDebug site str = logMsg site Debug str
 
-  // ** info
+  // ** logInfo
 
-  let info site str = logMsg site Info str
+  let logInfo site str = logMsg site Info str
 
-  // ** warn
+  // ** logWarn
 
-  let warn site str = logMsg site Warn str
+  let logWarn site str = logMsg site Warn str
 
-  // ** error
+  // ** logError
 
-  let error site str = logMsg site Err str
+  let logError site str = logMsg site Err str
 
   // ** currentIndex
 
@@ -426,7 +426,7 @@ module RaftMonad =
   let setVoting (mem: RaftMember) (vote: bool) =
     raft {
       let msg = String.Format("setting mem {0} voting to {1}", mem.Id, vote)
-      do! debug "setVoting" msg
+      do! logDebug "setVoting" msg
       let! state = get
       let update, state = RaftState.setVoting mem vote state
       do! put state
@@ -457,7 +457,7 @@ module RaftMonad =
           request.LeaderCommit
           request.PrevLogIdx
           request.PrevLogTerm
-      do! debug "sendAppendEntries" msg
+      do! logDebug "sendAppendEntries" msg
       do cbs.SendAppendEntries mem request
     }
 
@@ -606,7 +606,7 @@ module RaftMonad =
 
   // ** setElectionTimeout
 
-  let setElectionTimeout timeout = modify (RaftState.setRequestTimeout timeout)
+  let setElectionTimeout timeout = modify (RaftState.setElectionTimeout timeout)
 
   // ** lastAppliedIndex
 

@@ -906,7 +906,9 @@ module ServerTests =
   let follower_becoming_candidate_resets_election_timeout =
     testCase "follower becoming candidate resets election timeout" <| fun _ ->
       raft {
-        do! setElectionTimeout 1000<ms>
+        let electionAfter = 1000<ms>
+        do! setElectionTimeout electionAfter
+        do! expectM "Should have correct election timeout" electionAfter RaftState.electionTimeout
         do! expectM "Should have zero elapsed timout" 0<ms> RaftState.timeoutElapsed
         do! Raft.periodic 900<ms>
         do! expectM "Should have 900 elapsed timout" 900<ms> RaftState.timeoutElapsed
