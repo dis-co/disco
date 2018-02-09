@@ -130,7 +130,7 @@ module GitServer =
         member self.Subscribe(callback: DiscoEvent -> unit) =
           Observable.subscribe<DiscoEvent> callback subscriptions
 
-        member self.Start () = either {
+        member self.Start () = result {
             do! Network.ensureIpAddress mem.IpAddress
             do! Network.ensureAvailability mem.IpAddress mem.GitPort
 

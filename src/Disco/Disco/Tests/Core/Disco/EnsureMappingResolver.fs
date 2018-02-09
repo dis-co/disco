@@ -25,7 +25,7 @@ module EnsureMappingResolver =
 
   let test =
     testCase "ensure mapping resolver works" <| fun _ ->
-      either {
+      result {
         use electionDone = new WaitEvent()
         use counter = new WaitEvent()
 

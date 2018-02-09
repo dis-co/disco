@@ -128,7 +128,7 @@ module Main =
       match target with
       | Some path when Directory.exists path && Directory.contains (path </> fileName) path ->
         match MachineConfig.load target with
-        | Right config -> config
+        | Ok config -> config
         | _ -> MachineConfig.create address None
       | _ -> MachineConfig.create address None
 
@@ -150,14 +150,14 @@ module Main =
     if yes
     then
       MachineConfig.save target result
-      |> Either.map
+      |> Result.map
         (fun _ ->
           match target with
           | Some path -> printfn "Wrote machine configuration to: %A" path
           | None -> printfn "Wrote machine configuration to: ./etc/machinecfg.yaml")
     else
       printfn "Aborted."
-      Either.nothing
+      Result.nothing
 
   // ** setupDefaults
 
@@ -184,13 +184,13 @@ module Main =
       match target with
       | Some path when Directory.exists path && Directory.contains (path </> fileName) path ->
         match MachineConfig.load target with
-        | Right config -> config
+        | Ok config -> config
         | _ -> MachineConfig.create address None
       | _ -> MachineConfig.create address None
 
     machine
     |> MachineConfig.save target
-    |> Either.map
+    |> Result.map
       (fun _ ->
         match target with
         | Some path -> printfn "Wrote machine configuration to: %A" path
@@ -215,8 +215,8 @@ module Main =
       |> Option.map filepath
       |> MachineConfig.load
     match machine with
-    | Left error -> Error.exitWith error
-    | Right machine ->
+    | Error error -> Error.exitWith error
+    | Ok machine ->
       do MachineConfig.set machine
       let validation = MachineConfig.validate machine
       if not validation.IsEmpty then

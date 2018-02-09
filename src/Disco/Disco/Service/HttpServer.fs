@@ -129,9 +129,9 @@ module HttpServer =
           |> postCommand
         return
           match res with
-          | Left err ->
+          | Result.Error err ->
             Error.toMessage err |> Actions.respondWithCors ctx HTTP_500.status
-          | Right msg ->
+          | Ok msg ->
             msg |> Actions.respondWithCors ctx HTTP_200.status
       }
     choose [
@@ -154,7 +154,7 @@ module HttpServer =
   // ** makeConfig
 
   let private makeConfig machine (basePath: FilePath) (cts: CancellationTokenSource) =
-    either {
+    result {
       try
         let logger =
           let reg = Regex("\{(\w+)(?:\:(.*?))?\}")
@@ -212,7 +212,7 @@ module HttpServer =
   // ** create
 
   let create (machine: DiscoMachine) (frontend: FilePath option) (postCommand: CommandAgent) =
-    either {
+    result {
       let status = ref ServiceStatus.Stopped
 
       let basePath =
@@ -224,7 +224,7 @@ module HttpServer =
 
       return
         { new IHttpServer with
-            member self.Start () = either {
+            member self.Start () = result {
                 try
                   let _, server =
                     basePath </> filepath "index.html"
@@ -238,7 +238,7 @@ module HttpServer =
                     return!
                       exn.Message
                       |> Error.asSocketError (tag "create")
-                      |> Either.fail
+                      |> Result.fail
               }
 
             member self.Dispose () =

@@ -189,7 +189,7 @@ module ApiClient =
 
   let private handleServerRequest (state: ClientState) (req: Request) (agent: ApiAgent) =
       match req.Body |> Binary.decode with
-      | Right (ApiRequest.Snapshot snapshot) ->
+      | Ok (ApiRequest.Snapshot snapshot) ->
         state.Socket.Status
         |> String.format "received snapshot (status: {0})"
         |> Logger.info (tag "handleServerResponse")
@@ -197,12 +197,12 @@ module ApiClient =
         |> Msg.SetState
         |> agent.Post
 
-      | Right (ApiRequest.Update sm) ->
+      | Ok (ApiRequest.Update sm) ->
         sm
         |> Msg.Update
         |> agent.Post
 
-      | Right other ->
+      | Ok other ->
         string other
         |> ApiError.UnknownCommand
         |> ApiResponse.NOK
@@ -210,7 +210,7 @@ module ApiClient =
         |> Response.fromRequest req
         |> state.Socket.Respond
 
-      | Left error ->
+      | Error error ->
         error
         |> string
         |> ApiError.MalformedRequest
@@ -230,7 +230,7 @@ module ApiClient =
     // |  _ <  __/ (_| | \__ \ ||  __/ | |  __/ (_| |
     // |_| \_\___|\__, |_|___/\__\___|_|  \___|\__,_|
     //            |___/
-    | Right ApiResponse.Registered ->
+    | Ok ApiResponse.Registered ->
       Logger.info (tag "handleClientResponse") "registration successful"
       ClientEvent.Registered |> Msg.Notify |> agent.Post
 
@@ -240,7 +240,7 @@ module ApiClient =
     // | |_| | | | |  _ <  __/ (_| | \__ \ ||  __/ | |  __/ (_| |
     //  \___/|_| |_|_| \_\___|\__, |_|___/\__\___|_|  \___|\__,_|
     //                        |___/
-    | Right ApiResponse.Unregistered ->
+    | Ok ApiResponse.Unregistered ->
       Logger.info (tag "handleClientResponse") "un-registration successful"
       ClientEvent.UnRegistered |> Msg.Notify |> agent.Post
       agent.Post Msg.Dispose
@@ -250,14 +250,14 @@ module ApiClient =
     // |  \| | | | | ' /
     // | |\  | |_| | . \
     // |_| \_|\___/|_|\_\
-    | Right (ApiResponse.NOK error) -> error |> string |> Logger.err (tag "handleClientResponse")
+    | Ok (ApiResponse.NOK error) -> error |> string |> Logger.err (tag "handleClientResponse")
 
     //  ____                     _        _____
     // |  _ \  ___  ___ ___   __| | ___  | ____|_ __ _ __ ___  _ __
     // | | | |/ _ \/ __/ _ \ / _` |/ _ \ |  _| | '__| '__/ _ \| '__|
     // | |_| |  __/ (_| (_) | (_| |  __/ | |___| |  | | | (_) | |
     // |____/ \___|\___\___/ \__,_|\___| |_____|_|  |_|  \___/|_|
-    | Left error -> error |> string |> Logger.err (tag "handleClientResponse")
+    | Error error -> error |> string |> Logger.err (tag "handleClientResponse")
     state
 
   // ** handleSocketEvent
@@ -376,7 +376,7 @@ module ApiClient =
           // **** Start
 
           member self.Start () =
-            either {
+            result {
               server.Port
               |> sprintf "Connecting to server on %O:%O" server.IpAddress
               |> Logger.info (tag "start")
@@ -387,7 +387,7 @@ module ApiClient =
           // **** Restart
 
           member self.Restart(server: DiscoServer) =
-            server |> Msg.Restart |> agent.Post |> Either.succeed
+            server |> Msg.Restart |> agent.Post |> Result.succeed
 
           // **** State
 

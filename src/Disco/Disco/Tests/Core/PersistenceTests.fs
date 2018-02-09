@@ -20,7 +20,7 @@ module PersistenceTests =
     Pin.Sink.toggle (mk()) (rndname()) group (mk()) [| true |]
 
   let mkProject () =
-    either {
+    result {
       let root = tmpPath()
       let name = rndstr()
       do! MachineConfig.init (konst "127.0.0.1") None (Some root)
@@ -31,7 +31,7 @@ module PersistenceTests =
     }
 
   let mkState () =
-    either {
+    result {
       let! (machine, project) = mkProject ()
       return
         machine,
@@ -51,9 +51,9 @@ module PersistenceTests =
 
   let test_persist_add_pinwidgets_correctly =
     testCase "persist add pinwidgets correctly" <| fun _ ->
-      either {
+      result {
         let widget = mkPinWidget()
-        let! (machine, state) = mkState () |> Either.map (State.addPinWidget widget |> Tuple.mapSnd)
+        let! (machine, state) = mkState () |> Result.map (State.addPinWidget widget |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinWidget widget)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
         expect "state should contain PinWidget" true (Map.containsKey widget.Id) state.PinWidgets
@@ -63,11 +63,11 @@ module PersistenceTests =
 
   let test_persist_add_pinmappings_correctly =
     testCase "persist add pinmappings correctly" <| fun _ ->
-      either {
+      result {
         let mapping = mkPinMapping()
         let! (machine, state) =
           mkState ()
-          |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
+          |> Result.map (State.addPinMapping mapping |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinMapping mapping)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
         expect "state should contain PinMapping" true (Map.containsKey mapping.Id) state.PinMappings
@@ -77,9 +77,9 @@ module PersistenceTests =
 
   let test_persist_add_pingroups_correctly =
     testCase "persist add pingroups correctly" <| fun _ ->
-      either {
+      result {
         let group = mkPinGroup()
-        let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
+        let! (machine, state) = mkState () |> Result.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
 
@@ -94,9 +94,9 @@ module PersistenceTests =
 
   let test_persist_remove_pinwidgets_correctly =
     testCase "persist remove pinwidgets correctly" <| fun _ ->
-      either {
+      result {
         let widget = mkPinWidget()
-        let! (machine, state) = mkState () |> Either.map (State.addPinWidget widget |> Tuple.mapSnd)
+        let! (machine, state) = mkState () |> Result.map (State.addPinWidget widget |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinWidget widget)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
 
@@ -114,11 +114,11 @@ module PersistenceTests =
 
   let test_persist_remove_pinmappings_correctly =
     testCase "persist remove pinmappings correctly" <| fun _ ->
-      either {
+      result {
         let mapping = mkPinMapping()
         let! (machine, state) =
           mkState ()
-          |> Either.map (State.addPinMapping mapping |> Tuple.mapSnd)
+          |> Result.map (State.addPinMapping mapping |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinMapping mapping)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
 
@@ -140,9 +140,9 @@ module PersistenceTests =
 
   let test_persist_remove_pingroups_correctly =
     testCase "persist remove pingroups correctly" <| fun _ ->
-      either {
+      result {
         let group = mkPinGroup()
-        let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
+        let! (machine, state) = mkState () |> Result.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
 
@@ -168,9 +168,9 @@ module PersistenceTests =
 
   let test_persist_add_cueplayers_correctly =
     testCase "persist add cueplayers correctly" <| fun _ ->
-      either {
+      result {
         let player = mkCuePlayer()
-        let! (machine, state) = mkState () |> Either.map (State.addCuePlayer player |> Tuple.mapSnd)
+        let! (machine, state) = mkState () |> Result.map (State.addCuePlayer player |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddCuePlayer player)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
         expect "state should contain CuePlayer" true (Map.containsKey player.Id) state.CuePlayers
@@ -180,9 +180,9 @@ module PersistenceTests =
 
   let test_persist_remove_cueplayers_correctly =
     testCase "persist remove cueplayers correctly" <| fun _ ->
-      either {
+      result {
         let player = mkCuePlayer()
-        let! (machine, state) = mkState () |> Either.map (State.addCuePlayer player |> Tuple.mapSnd)
+        let! (machine, state) = mkState () |> Result.map (State.addCuePlayer player |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddCuePlayer player)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
 
@@ -204,7 +204,7 @@ module PersistenceTests =
 
   let test_persist_add_pin_correctly =
     testCase "persist add pin correctly" <| fun _ ->
-      either {
+      result {
         let group = mkPinGroup()
 
         let pin =
@@ -216,7 +216,7 @@ module PersistenceTests =
             [| true |]
           |> Pin.setPersisted true
 
-        let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
+        let! (machine, state) = mkState () |> Result.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
 
@@ -242,7 +242,7 @@ module PersistenceTests =
 
   let test_persist_remove_pin_correctly =
     testCase "persist remove pin correctly" <| fun _ ->
-      either {
+      result {
         let group = mkPinGroup()
 
         let pin =
@@ -254,7 +254,7 @@ module PersistenceTests =
             [| true |]
           |> Pin.setPersisted true
 
-        let! (machine, state) = mkState () |> Either.map (State.addPinGroup group |> Tuple.mapSnd)
+        let! (machine, state) = mkState () |> Result.map (State.addPinGroup group |> Tuple.mapSnd)
         let! _ = Persistence.persistEntry state (AddPinGroup group)
         let! loaded = Asset.loadWithMachine state.Project.Path machine
 

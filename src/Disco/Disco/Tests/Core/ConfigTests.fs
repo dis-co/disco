@@ -21,7 +21,7 @@ module ConfigTests =
   //
   let loadSaveTest =
     testCase "Save/Load MachineConfig with default path should render equal values" <| fun _ ->
-      either {
+      result {
         let config = MachineConfig.create "127.0.0.1" None
         do! MachineConfig.save None config
 
@@ -34,7 +34,7 @@ module ConfigTests =
 
   let loadSaveCustomPathTest =
     testCase "Save/Load MachineConfig with default path should render equal values" <| fun _ ->
-      either {
+      result {
         let path = tmpPath()
 
         let config = MachineConfig.create "127.0.0.1" None

@@ -86,7 +86,7 @@ type AppCommand =
   // ** TryParse
 
   static member TryParse (str: string) =
-    Either.tryWith (Error.asParseError "AppCommand.TryParse") <| fun _ ->
+    Result.tryWith (Error.asParseError "AppCommand.TryParse") <| fun _ ->
       str |> AppCommand.Parse
 
   // ** FromFB
@@ -94,24 +94,24 @@ type AppCommand =
   static member FromFB (fb: StateMachineActionFB) =
 #if FABLE_COMPILER
     match fb with
-    | x when x = StateMachineActionFB.UndoFB  -> Right Undo
-    | x when x = StateMachineActionFB.RedoFB  -> Right Redo
-    | x when x = StateMachineActionFB.ResetFB -> Right Reset
-    | x when x = StateMachineActionFB.SaveFB  -> Right Save
+    | x when x = StateMachineActionFB.UndoFB  -> Ok Undo
+    | x when x = StateMachineActionFB.RedoFB  -> Ok Redo
+    | x when x = StateMachineActionFB.ResetFB -> Ok Reset
+    | x when x = StateMachineActionFB.SaveFB  -> Ok Save
     | x ->
       sprintf "Could not parse %A as AppCommand" x
       |> Error.asParseError "AppCommand.FromFB"
-      |> Either.fail
+      |> Result.fail
 #else
     match fb with
-    | StateMachineActionFB.UndoFB  -> Right Undo
-    | StateMachineActionFB.RedoFB  -> Right Redo
-    | StateMachineActionFB.ResetFB -> Right Reset
-    | StateMachineActionFB.SaveFB  -> Right Save
+    | StateMachineActionFB.UndoFB  -> Ok Undo
+    | StateMachineActionFB.RedoFB  -> Ok Redo
+    | StateMachineActionFB.ResetFB -> Ok Reset
+    | StateMachineActionFB.SaveFB  -> Ok Save
     | x ->
       sprintf "Could not parse %A as AppCommand" x
       |> Error.asParseError "AppCommand.FromFB"
-      |> Either.fail
+      |> Result.fail
 #endif
 
   // ** ToOffset
@@ -254,8 +254,8 @@ type State =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   static member Load (path: FilePath, machine: DiscoMachine) =
-    either {
-      let inline toMap value = Either.map (Array.map toPair >> Map.ofArray) value
+    result {
+      let inline toMap value = Result.map (Array.map toPair >> Map.ofArray) value
       let! project  = Asset.loadWithMachine path machine
       let! groups   = Asset.load    project.Path
       let! widgets  = Asset.loadAll project.Path |> toMap
@@ -293,13 +293,13 @@ type State =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   member state.Save (basePath: FilePath) =
-    either {
-      do! Map.fold (Asset.saveMap basePath) Either.nothing state.PinMappings
-      do! Map.fold (Asset.saveMap basePath) Either.nothing state.PinWidgets
-      do! Map.fold (Asset.saveMap basePath) Either.nothing state.Cues
-      do! Map.fold (Asset.saveMap basePath) Either.nothing state.CueLists
-      do! Map.fold (Asset.saveMap basePath) Either.nothing state.Users
-      do! Map.fold (Asset.saveMap basePath) Either.nothing state.CuePlayers
+    result {
+      do! Map.fold (Asset.saveMap basePath) Result.nothing state.PinMappings
+      do! Map.fold (Asset.saveMap basePath) Result.nothing state.PinWidgets
+      do! Map.fold (Asset.saveMap basePath) Result.nothing state.Cues
+      do! Map.fold (Asset.saveMap basePath) Result.nothing state.CueLists
+      do! Map.fold (Asset.saveMap basePath) Result.nothing state.Users
+      do! Map.fold (Asset.saveMap basePath) Result.nothing state.CuePlayers
       do! Asset.save basePath state.PinGroups
       do! Asset.save basePath state.Project
     }
@@ -390,8 +390,8 @@ type State =
 
   // ** FromFB
 
-  static member FromFB(fb: StateFB) : Either<DiscoError, State> =
-    either {
+  static member FromFB(fb: StateFB) : DiscoResult< State> =
+    result {
       // PROJECT
 
       let! project =
@@ -405,7 +405,7 @@ type State =
         else
           "Could not parse empty ProjectFB"
           |> Error.asParseError "State.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       // GROUPS
@@ -421,7 +421,7 @@ type State =
         else
           "Could not parse empty group map payload"
           |> Error.asParseError "State.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       // MAPPINGS
@@ -429,7 +429,7 @@ type State =
       let! mappings =
         let arr = Array.zeroCreate fb.PinMappingsLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<PinMappingId, PinMapping>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<PinMappingId, PinMapping>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -443,21 +443,21 @@ type State =
               else
                 "Could not parse empty PinMapping payload"
                 |> Error.asParseError "State.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add group.Id group map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       // WIDGETS
 
       let! widgets =
         let arr = Array.zeroCreate fb.PinWidgetsLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<WidgetId, PinWidget>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<WidgetId, PinWidget>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -471,21 +471,21 @@ type State =
               else
                 "Could not parse empty PinWidget payload"
                 |> Error.asParseError "State.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add group.Id group map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       // CUES
 
       let! cues =
         let arr = Array.zeroCreate fb.CuesLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<CueId, Cue>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<CueId, Cue>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -499,21 +499,21 @@ type State =
               else
                 "Could not parse empty Cue payload"
                 |> Error.asParseError "State.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add cue.Id cue map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       // CUES
 
       let! fsTrees =
         let arr = Array.zeroCreate fb.FsTreesLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<HostId, FsTree>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<HostId, FsTree>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -527,21 +527,21 @@ type State =
               else
                 "Could not parse empty FsTree payload"
                 |> Error.asParseError "State.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add fsTree.HostId fsTree map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       // CUELISTS
 
       let! cuelists =
         let arr = Array.zeroCreate fb.CueListsLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<CueListId, CueList>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<CueListId, CueList>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -555,21 +555,21 @@ type State =
               else
                 "Could not parse empty CueList payload"
                 |> Error.asParseError "State.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add cuelist.Id cuelist map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       // USERS
 
       let! users =
         let arr = Array.zeroCreate fb.UsersLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<UserId, User>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<UserId, User>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -583,21 +583,21 @@ type State =
               else
                 "Could not parse empty User payload"
                 |> Error.asParseError "State.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add user.Id user map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       // SESSIONS
 
       let! sessions =
         let arr = Array.zeroCreate fb.SessionsLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<SessionId, Session>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<SessionId, Session>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -611,21 +611,21 @@ type State =
               else
                 "Could not parse empty Session payload"
                 |> Error.asParseError "State.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add session.Id session map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       // CLIENTS
 
       let! clients =
         let arr = Array.zeroCreate fb.ClientsLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<ClientId, DiscoClient>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<ClientId, DiscoClient>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -639,21 +639,21 @@ type State =
               else
                 "Could not parse empty Client payload"
                 |> Error.asParseError "Client.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add client.Id client map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       // PLAYERS
 
       let! players =
         let arr = Array.zeroCreate fb.CuePlayersLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<PlayerId, CuePlayer>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<PlayerId, CuePlayer>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -667,21 +667,21 @@ type State =
               else
                 "Could not parse empty CuePlayer payload"
                 |> Error.asParseError "CuePlayer.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add player.Id player map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       // DISCOVERED SERVICES
 
       let! discoveredServices =
         let arr = Array.zeroCreate fb.DiscoveredServicesLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<ServiceId, DiscoveredService>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<ServiceId, DiscoveredService>>) _ -> result {
             let! (i, map) = m
 
             #if FABLE_COMPILER
@@ -695,14 +695,14 @@ type State =
               else
                 "Could not parse empty DiscoveredService payload"
                 |> Error.asParseError "DiscoveredService.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             return (i + 1, Map.add service.Id service map)
           })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       return {
         Project            = project
@@ -722,7 +722,7 @@ type State =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte[]) : Either<DiscoError,State> =
+  static member FromBytes (bytes: byte[]) : DiscoResult<State> =
     Binary.createBuffer bytes
     |> StateFB.GetRootAsStateFB
     |> State.FromFB
@@ -1608,23 +1608,23 @@ type Transaction = Transaction of StateMachine list
     // ** FromFB
 
     static member FromFB(batch: TransactionFB) =
-      either {
+      result {
         let input = Array.zeroCreate batch.CommandsLength
 
         let! (_,commands) =
           #if FABLE_COMPILER
           Array.fold
-            (fun (m: Either<DiscoError, int * StateMachine array>) _ -> either {
+            (fun (m: DiscoResult< int * StateMachine array>) _ -> result {
                 let! (idx, arr) = m
                 let! cmd = batch.Commands(idx) |>  StateMachine.FromFB
                 do arr.[idx] <- cmd
                 return (idx +  1, arr)
               })
-            (Right (0, input))
+            (Ok (0, input))
             input
           #else
           Array.fold
-            (fun (m: Either<DiscoError, int * StateMachine array>)  _ -> either {
+            (fun (m: DiscoResult< int * StateMachine array>)  _ -> result {
                 let! (idx, arr) = m
                 let cmdish = batch.Commands(idx)
                 if cmdish.HasValue then
@@ -1636,9 +1636,9 @@ type Transaction = Transaction of StateMachine list
                   return!
                     "Could not parse empty CommandBatch *value* payload"
                     |> Error.asParseError "StateMachine.FromFB"
-                    |> Either.fail
+                    |> Result.fail
               })
-            (Right (0, input))
+            (Ok (0, input))
             input
           #endif
         return Transaction (List.ofArray commands)
@@ -1677,7 +1677,7 @@ type SlicesMap = SlicesMap of Map<PinId,Slices>
     static member FromFB(fb: SlicesMapFB) =
       [ 0 .. fb.SlicesLength - 1 ]
       |> List.fold
-        (fun (m: Either<DiscoError,Map<PinId,Slices>>) (idx: int) -> either {
+        (fun (m: DiscoResult<Map<PinId,Slices>>) (idx: int) -> result {
             let! output = m
             #if FABLE_COMPILER
             let! parsed = fb.Slices(idx) |> Slices.FromFB
@@ -1692,11 +1692,11 @@ type SlicesMap = SlicesMap of Map<PinId,Slices>
               return!
                 "Could not parse empty SlicesFB value"
                 |> Error.asParseError "SlicesMap"
-                |> Either.fail
+                |> Result.fail
             #endif
           })
-        (Right Map.empty)
-      |> Either.map SlicesMap
+        (Ok Map.empty)
+      |> Result.map SlicesMap
 
 // * SlicesMap module
 
@@ -2246,13 +2246,13 @@ type StateMachine =
       match fb.Action with
       | x when x = StateMachineActionFB.UpdateFB ->
         let project = fb.ProjectFB |> DiscoProject.FromFB
-        Either.map UpdateProject project
+        Result.map UpdateProject project
       | x when x = StateMachineActionFB.RemoveFB ->
-        Right UnloadProject
+        Ok UnloadProject
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //  __  __                _
     // |  \/  | ___ _ __ ___ | |__   ___ _ __
@@ -2263,15 +2263,15 @@ type StateMachine =
       let mem = fb.RaftMemberFB |> RaftMember.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddMachine mem
+        Result.map AddMachine mem
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateMachine mem
+        Result.map UpdateMachine mem
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveMachine mem
+        Result.map RemoveMachine mem
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //  __  __                _
     // |  \/  | ___ _ __ ___ | |__   ___ _ __
@@ -2282,15 +2282,15 @@ type StateMachine =
       let mem = fb.ClusterMemberFB |> ClusterMember.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddMember mem
+        Result.map AddMember mem
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateMember mem
+        Result.map UpdateMember mem
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveMember mem
+        Result.map RemoveMember mem
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //   ____ _ _            _
     //  / ___| (_) ___ _ __ | |_
@@ -2301,15 +2301,15 @@ type StateMachine =
       let client = fb.DiscoClientFB |> DiscoClient.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddClient client
+        Result.map AddClient client
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateClient client
+        Result.map UpdateClient client
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveClient client
+        Result.map RemoveClient client
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //   ____
     //  / ___|_ __ ___  _   _ _ __
@@ -2321,15 +2321,15 @@ type StateMachine =
       let group = fb.PinGroupFB |> PinGroup.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddPinGroup group
+        Result.map AddPinGroup group
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdatePinGroup group
+        Result.map UpdatePinGroup group
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemovePinGroup group
+        Result.map RemovePinGroup group
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //  __  __                   _
     // |  \/  | __ _ _ __  _ __ (_)_ __   __ _
@@ -2341,15 +2341,15 @@ type StateMachine =
       let mapping = fb.PinMappingFB |> PinMapping.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddPinMapping mapping
+        Result.map AddPinMapping mapping
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdatePinMapping mapping
+        Result.map UpdatePinMapping mapping
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemovePinMapping mapping
+        Result.map RemovePinMapping mapping
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     // __        ___     _            _
     // \ \      / (_) __| | __ _  ___| |_
@@ -2361,15 +2361,15 @@ type StateMachine =
       let widget = fb.PinWidgetFB |> PinWidget.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddPinWidget widget
+        Result.map AddPinWidget widget
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdatePinWidget widget
+        Result.map UpdatePinWidget widget
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemovePinWidget widget
+        Result.map RemovePinWidget widget
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //  ____  _
     // |  _ \(_)_ __
@@ -2380,15 +2380,15 @@ type StateMachine =
       let pin = fb.PinFB |> Pin.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddPin pin
+        Result.map AddPin pin
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdatePin pin
+        Result.map UpdatePin pin
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemovePin pin
+        Result.map RemovePin pin
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //  ____  _ _
     // / ___|| (_) ___ ___  ___
@@ -2399,11 +2399,11 @@ type StateMachine =
       let slices = fb.SlicesMapFB |> SlicesMap.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateSlices slices
+        Result.map UpdateSlices slices
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //   ____
     //  / ___|   _  ___
@@ -2414,15 +2414,15 @@ type StateMachine =
       let cue = fb.CueFB |> Cue.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddCue cue
+        Result.map AddCue cue
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateCue cue
+        Result.map UpdateCue cue
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveCue cue
+        Result.map RemoveCue cue
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //   ____           _     _     _
     //  / ___|   _  ___| |   (_)___| |_
@@ -2433,15 +2433,15 @@ type StateMachine =
       let cuelist = fb.CueListFB |> CueList.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddCueList cuelist
+        Result.map AddCueList cuelist
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateCueList cuelist
+        Result.map UpdateCueList cuelist
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveCueList cuelist
+        Result.map RemoveCueList cuelist
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //   ____           ____  _
     //  / ___|   _  ___|  _ \| | __ _ _   _  ___ _ __
@@ -2453,15 +2453,15 @@ type StateMachine =
       let cuelist = fb.CuePlayerFB |> CuePlayer.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddCuePlayer cuelist
+        Result.map AddCuePlayer cuelist
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateCuePlayer cuelist
+        Result.map UpdateCuePlayer cuelist
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveCuePlayer cuelist
+        Result.map RemoveCuePlayer cuelist
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //  _   _
     // | | | |___  ___ _ __
@@ -2472,15 +2472,15 @@ type StateMachine =
       let user = fb.UserFB |> User.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddUser user
+        Result.map AddUser user
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateUser user
+        Result.map UpdateUser user
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveUser user
+        Result.map RemoveUser user
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //  ____                _
     // / ___|  ___  ___ ___(_) ___  _ __
@@ -2491,15 +2491,15 @@ type StateMachine =
       let session = fb.SessionFB |> Session.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddSession session
+        Result.map AddSession session
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateSession session
+        Result.map UpdateSession session
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveSession session
+        Result.map RemoveSession session
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     ///  _____    _____       _
     /// |  ___|__| ____|_ __ | |_ _ __ _   _
@@ -2511,19 +2511,19 @@ type StateMachine =
       let fsEntryUpdate = fb.FsEntryUpdateFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        either {
+        result {
           let! id = Id.decodeHostId fsEntryUpdate
           let! entry = FsEntry.FromFB fsEntryUpdate.Entry
           return AddFsEntry (id,entry)
         }
       | x when x = StateMachineActionFB.UpdateFB ->
-        either {
+        result {
           let! id = Id.decodeHostId fsEntryUpdate
           let! entry = FsEntry.FromFB fsEntryUpdate.Entry
           return UpdateFsEntry (id,entry)
         }
       | x when x = StateMachineActionFB.RemoveFB ->
-        either {
+        result {
           let! id = Id.decodeHostId fsEntryUpdate
           let! path = FsPath.FromFB fsEntryUpdate.Path
           return RemoveFsEntry (id,path)
@@ -2531,7 +2531,7 @@ type StateMachine =
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     ///  _____   _____
     /// |  ___|_|_   _| __ ___  ___
@@ -2542,19 +2542,19 @@ type StateMachine =
       let fsTreeUpdate = fb.FsTreeUpdateFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        either {
+        result {
           let! tree = FsTree.FromFB fsTreeUpdate.Tree
           return AddFsTree tree
         }
       | x when x = StateMachineActionFB.RemoveFB ->
-        either {
+        result {
           let! hostId = Id.decodeHostId fsTreeUpdate
           return RemoveFsTree hostId
         }
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //  ____  _                                     _
     // |  _ \(_)___  ___ _____   _____ _ __ ___  __| |
@@ -2565,15 +2565,15 @@ type StateMachine =
       let discoveredService = fb.DiscoveredServiceFB |> DiscoveredService.FromFB
       match fb.Action with
       | x when x = StateMachineActionFB.AddFB ->
-        Either.map AddDiscoveredService discoveredService
+        Result.map AddDiscoveredService discoveredService
       | x when x = StateMachineActionFB.UpdateFB ->
-        Either.map UpdateDiscoveredService discoveredService
+        Result.map UpdateDiscoveredService discoveredService
       | x when x = StateMachineActionFB.RemoveFB ->
-        Either.map RemoveDiscoveredService discoveredService
+        Result.map RemoveDiscoveredService discoveredService
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //  ____                        _           _
     // / ___| _ __   __ _ _ __  ___| |__   ___ | |_
@@ -2584,7 +2584,7 @@ type StateMachine =
     | x when x = StateMachinePayloadFB.StateFB && fb.Action = StateMachineActionFB.DataSnapshotFB ->
       fb.StateFB
       |> State.FromFB
-      |> Either.map DataSnapshot
+      |> Result.map DataSnapshot
 
     //  _                _____                 _
     // | |    ___   __ _| ____|_   _____ _ __ | |_
@@ -2595,7 +2595,7 @@ type StateMachine =
     | x when x = StateMachinePayloadFB.LogEventFB ->
       fb.LogEventFB
       |> LogEvent.FromFB
-      |> Either.map LogMsg
+      |> Result.map LogMsg
 
     //  ____  _        _
     // / ___|| |_ _ __(_)_ __   __ _
@@ -2608,11 +2608,11 @@ type StateMachine =
       | x when x = StateMachineActionFB.SetLogLevelFB ->
         fb.StringFB.Value
         |> LogLevel.TryParse
-        |> Either.map SetLogLevel
+        |> Result.map SetLogLevel
       | x ->
         sprintf "Could not parse unknown StateMachineActionFB %A" x
         |> Error.asParseError "StateMachine.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     //   ____ _            _
     //  / ___| | ___   ___| | __
@@ -2621,7 +2621,7 @@ type StateMachine =
     //  \____|_|\___/ \___|_|\_\
     | x when x = StateMachinePayloadFB.ClockFB ->
       UpdateClock(fb.ClockFB.Value)
-      |> Either.succeed
+      |> Result.succeed
 
     //  ____        _       _
     // | __ )  __ _| |_ ___| |__
@@ -2629,7 +2629,7 @@ type StateMachine =
     // | |_) | (_| | || (__| | | |
     // |____/ \__,_|\__\___|_| |_|
     | x when x = StateMachinePayloadFB.TransactionFB ->
-      either {
+      result {
         let fb = fb.TransactionFB
         let! batch = Transaction.FromFB fb
         return CommandBatch batch
@@ -2643,7 +2643,7 @@ type StateMachine =
     | _ ->
       fb.Action
       |> AppCommand.FromFB
-      |> Either.map Command
+      |> Result.map Command
 
   #else
 
@@ -2659,7 +2659,7 @@ type StateMachine =
     // |_|   |_|  \___// |\___|\___|\__|
     //               |__/
     | StateMachinePayloadFB.ProjectFB ->
-      either {
+      result {
         match fb.Action with
         | StateMachineActionFB.UpdateFB ->
           let projectish = fb.Payload<ProjectFB>()
@@ -2667,17 +2667,17 @@ type StateMachine =
             if projectish.HasValue then
               projectish.Value
               |> DiscoProject.FromFB
-              |> Either.map UpdateProject
+              |> Result.map UpdateProject
             else
               "Could not parse empty project payload"
               |> Error.asParseError "StateMachine.FromFB"
-              |> Either.fail
+              |> Result.fail
         | StateMachineActionFB.RemoveFB -> return UnloadProject
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //   ____
@@ -2686,7 +2686,7 @@ type StateMachine =
     // | |__| |_| |  __/
     //  \____\__,_|\___|
     | StateMachinePayloadFB.CueFB ->
-      either {
+      result {
         let! cue =
           let cueish = fb.Payload<CueFB>()
           if cueish.HasValue then
@@ -2695,7 +2695,7 @@ type StateMachine =
           else
             "Could not parse empty cue payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddCue cue)
         | StateMachineActionFB.UpdateFB -> return (UpdateCue cue)
@@ -2705,7 +2705,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //   ____ _ _            _
@@ -2714,7 +2714,7 @@ type StateMachine =
     // | |___| | |  __/ | | | |_
     //  \____|_|_|\___|_| |_|\__|
     | StateMachinePayloadFB.DiscoClientFB ->
-      either {
+      result {
         let! client =
           let clientish = fb.Payload<DiscoClientFB>()
           if clientish.HasValue then
@@ -2723,7 +2723,7 @@ type StateMachine =
           else
             "Could not parse empty client payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddClient client)
         | StateMachineActionFB.UpdateFB -> return (UpdateClient client)
@@ -2732,7 +2732,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //   ____           _     _     _
@@ -2741,7 +2741,7 @@ type StateMachine =
     // | |__| |_| |  __/ |___| \__ \ |_
     //  \____\__,_|\___|_____|_|___/\__|
     | StateMachinePayloadFB.CueListFB ->
-      either {
+      result {
         let! cuelist =
           let cuelistish = fb.Payload<CueListFB>()
           if cuelistish.HasValue then
@@ -2750,7 +2750,7 @@ type StateMachine =
           else
             "Could not parse empty cuelist payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddCueList    cuelist)
         | StateMachineActionFB.UpdateFB -> return (UpdateCueList cuelist)
@@ -2759,7 +2759,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //   ____           ____  _
@@ -2769,7 +2769,7 @@ type StateMachine =
     //  \____\__,_|\___|_|   |_|\__,_|\__, |\___|_|
     //                                |___/
     | StateMachinePayloadFB.CuePlayerFB ->
-      either {
+      result {
         let! player =
           let playerish = fb.Payload<CuePlayerFB>()
           if playerish.HasValue then
@@ -2778,7 +2778,7 @@ type StateMachine =
           else
             "Could not parse empty player payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddCuePlayer    player)
         | StateMachineActionFB.UpdateFB -> return (UpdateCuePlayer player)
@@ -2787,7 +2787,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //   ____
@@ -2797,7 +2797,7 @@ type StateMachine =
     //  \____|_|  \___/ \__,_| .__/
     //                       |_|
     | StateMachinePayloadFB.PinGroupFB ->
-      either {
+      result {
         let! group =
           let groupish = fb.Payload<PinGroupFB>()
           if groupish.HasValue then
@@ -2806,7 +2806,7 @@ type StateMachine =
           else
             "Could not parse empty groupe payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddPinGroup    group)
         | StateMachineActionFB.UpdateFB -> return (UpdatePinGroup group)
@@ -2815,7 +2815,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //  __  __                   _
@@ -2825,7 +2825,7 @@ type StateMachine =
     // |_|  |_|\__,_| .__/| .__/|_|_| |_|\__, |
     //              |_|   |_|            |___/
     | StateMachinePayloadFB.PinMappingFB ->
-      either {
+      result {
         let! mapping =
           let mappingish = fb.Payload<PinMappingFB>()
           if mappingish.HasValue then
@@ -2834,7 +2834,7 @@ type StateMachine =
           else
             "Could not parse empty mapping payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddPinMapping    mapping)
         | StateMachineActionFB.UpdateFB -> return (UpdatePinMapping mapping)
@@ -2843,7 +2843,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     // __        ___     _            _
@@ -2853,7 +2853,7 @@ type StateMachine =
     //    \_/\_/  |_|\__,_|\__, |\___|\__|
     //                     |___/
     | StateMachinePayloadFB.PinWidgetFB ->
-      either {
+      result {
         let! widget =
           let widgetish = fb.Payload<PinWidgetFB>()
           if widgetish.HasValue then
@@ -2862,7 +2862,7 @@ type StateMachine =
           else
             "Could not parse empty widget payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddPinWidget    widget)
         | StateMachineActionFB.UpdateFB -> return (UpdatePinWidget widget)
@@ -2871,7 +2871,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //  ____  _
@@ -2880,7 +2880,7 @@ type StateMachine =
     // |  __/| | | | |
     // |_|   |_|_| |_|
     | StateMachinePayloadFB.PinFB ->
-      either {
+      result {
         let! pin =
           let pinish = fb.Payload<PinFB>()
           if pinish.HasValue then
@@ -2889,7 +2889,7 @@ type StateMachine =
           else
             "Could not parse empty pin payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddPin    pin)
         | StateMachineActionFB.UpdateFB -> return (UpdatePin pin)
@@ -2898,7 +2898,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //  ____  _ _
@@ -2907,7 +2907,7 @@ type StateMachine =
     //  ___) | | | (_|  __/\__ \
     // |____/|_|_|\___\___||___/
     | StateMachinePayloadFB.SlicesMapFB ->
-      either {
+      result {
         let! slices =
           let slicesMapish = fb.Payload<SlicesMapFB>()
           if slicesMapish.HasValue then
@@ -2916,14 +2916,14 @@ type StateMachine =
           else
             "Could not parse empty slices payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.UpdateFB -> return (UpdateSlices slices)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     ///  __  __                _
@@ -2932,7 +2932,7 @@ type StateMachine =
     /// | |  | |  __/ | | | | | |_) |  __/ |
     /// |_|  |_|\___|_| |_| |_|_.__/ \___|_|
     | StateMachinePayloadFB.RaftMemberFB ->
-      either {
+      result {
         let! mem =
           let memish = fb.Payload<RaftMemberFB>()
           if memish.HasValue then
@@ -2941,7 +2941,7 @@ type StateMachine =
           else
             "Could not parse empty mem payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddMachine    mem)
         | StateMachineActionFB.UpdateFB -> return (UpdateMachine mem)
@@ -2950,7 +2950,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     ///  __  __                _
@@ -2959,7 +2959,7 @@ type StateMachine =
     /// | |  | |  __/ | | | | | |_) |  __/ |
     /// |_|  |_|\___|_| |_| |_|_.__/ \___|_|
     | StateMachinePayloadFB.ClusterMemberFB ->
-      either {
+      result {
         let! mem =
           let memish = fb.Payload<ClusterMemberFB>()
           if memish.HasValue then
@@ -2968,7 +2968,7 @@ type StateMachine =
           else
             "Could not parse empty mem payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddMember   mem)
         | StateMachineActionFB.UpdateFB -> return (UpdateMember mem)
@@ -2977,7 +2977,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     ///  _____    _____       _
@@ -2987,15 +2987,15 @@ type StateMachine =
     /// |_|  |___/_____|_| |_|\__|_|   \__, |
     ///                                |___/
     | StateMachinePayloadFB.FsEntryUpdateFB ->
-      either {
+      result {
         let! fsEntryUpdate =
           let fsEntryish = fb.Payload<FsEntryUpdateFB>()
           if fsEntryish.HasValue then
-            Either.succeed fsEntryish.Value
+            Result.succeed fsEntryish.Value
           else
             "Could not parse empty FsEntryUpdateFB payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         let! hostId = Id.decodeHostId fsEntryUpdate
         match fb.Action with
         | StateMachineActionFB.AddFB    ->
@@ -3007,7 +3007,7 @@ type StateMachine =
             else
               "Could not parse empty FsEntryFB payload"
               |> Error.asParseError "StateMachine.FromFB"
-              |> Either.fail
+              |> Result.fail
           return AddFsEntry (hostId, entry)
         | StateMachineActionFB.UpdateFB ->
           let! entry =
@@ -3018,7 +3018,7 @@ type StateMachine =
             else
               "Could not parse empty FsEntryFB payload"
               |> Error.asParseError "StateMachine.FromFB"
-              |> Either.fail
+              |> Result.fail
           return UpdateFsEntry(hostId, entry)
         | StateMachineActionFB.RemoveFB ->
           let! path =
@@ -3029,13 +3029,13 @@ type StateMachine =
             else
               "Could not parse empty FsPathFB payload"
               |> Error.asParseError "StateMachine.FromFB"
-              |> Either.fail
+              |> Result.fail
           return RemoveFsEntry (hostId, path)
         | x ->
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     ///  _____   _____
@@ -3044,15 +3044,15 @@ type StateMachine =
     /// |  _|\__ \| || | |  __/  __/
     /// |_|  |___/|_||_|  \___|\___|
     | StateMachinePayloadFB.FsTreeUpdateFB ->
-      either {
+      result {
         let! fsTreeUpdate =
           let updateish = fb.Payload<FsTreeUpdateFB>()
           if updateish.HasValue then
-            Either.succeed updateish.Value
+            Result.succeed updateish.Value
           else
             "Could not parse empty FsTreeUpdateFB payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB ->
           let! tree =
@@ -3063,7 +3063,7 @@ type StateMachine =
             else
               "Could not parse empty FsTreeFB payload"
               |> Error.asParseError "StateMachine.FromFB"
-              |> Either.fail
+              |> Result.fail
           return AddFsTree tree
         | StateMachineActionFB.RemoveFB ->
           let! fsTreeId = Id.decodeHostId fsTreeUpdate
@@ -3072,7 +3072,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //  _   _
@@ -3081,7 +3081,7 @@ type StateMachine =
     // | |_| \__ \  __/ |
     //  \___/|___/\___|_|
     | StateMachinePayloadFB.UserFB ->
-      either {
+      result {
         let! user =
           let userish = fb.Payload<UserFB>()
           if userish.HasValue then
@@ -3090,7 +3090,7 @@ type StateMachine =
           else
             "Could not parse empty user payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddUser    user)
         | StateMachineActionFB.UpdateFB -> return (UpdateUser user)
@@ -3099,7 +3099,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //  ____                _
@@ -3108,7 +3108,7 @@ type StateMachine =
     //  ___) |  __/\__ \__ \ | (_) | | | |
     // |____/ \___||___/___/_|\___/|_| |_|
     | StateMachinePayloadFB.SessionFB ->
-      either {
+      result {
         let! session =
           let sessionish = fb.Payload<SessionFB>()
           if sessionish.HasValue then
@@ -3117,7 +3117,7 @@ type StateMachine =
           else
             "Could not parse empty session payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddSession    session)
         | StateMachineActionFB.UpdateFB -> return (UpdateSession session)
@@ -3126,7 +3126,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //  ____  _                                     _
@@ -3135,7 +3135,7 @@ type StateMachine =
     // | |_| | \__ \ (_| (_) \ V /  __/ | |  __/ (_| |
     // |____/|_|___/\___\___/ \_/ \___|_|  \___|\__,_|
     | StateMachinePayloadFB.DiscoveredServiceFB ->
-      either {
+      result {
         let! discoveredService =
           let discoveredServiceish = fb.Payload<DiscoveredServiceFB>()
           if discoveredServiceish.HasValue then
@@ -3144,7 +3144,7 @@ type StateMachine =
           else
             "Could not parse empty discoveredService payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
         match fb.Action with
         | StateMachineActionFB.AddFB    -> return (AddDiscoveredService    discoveredService)
         | StateMachineActionFB.UpdateFB -> return (UpdateDiscoveredService discoveredService)
@@ -3153,7 +3153,7 @@ type StateMachine =
           return!
             sprintf "Could not parse command. Unknown ActionTypeFB: %A" x
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //  __  __ _
@@ -3162,7 +3162,7 @@ type StateMachine =
     // | |  | | \__ \ (__
     // |_|  |_|_|___/\___|
     | StateMachinePayloadFB.LogEventFB ->
-      either {
+      result {
         let logish = fb.Payload<LogEventFB>()
         if logish.HasValue then
           let! log = LogEvent.FromFB logish.Value
@@ -3171,7 +3171,7 @@ type StateMachine =
           return!
             "Could not parse empty LogEvent payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //  ____                        _           _
@@ -3181,7 +3181,7 @@ type StateMachine =
     // |____/|_| |_|\__,_| .__/|___/_| |_|\___/ \__|
     //                   |_|
     | StateMachinePayloadFB.StateFB ->
-      either {
+      result {
         let stateish = fb.Payload<StateFB>()
         if stateish.HasValue then
           let state = stateish.Value
@@ -3191,7 +3191,7 @@ type StateMachine =
           return!
             "Could not parse empty state payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //  ____  _        _
@@ -3201,7 +3201,7 @@ type StateMachine =
     // |____/ \__|_|  |_|_| |_|\__, |
     //                         |___/
     | StateMachinePayloadFB.StringFB ->
-      either {
+      result {
         let stringish = fb.Payload<StringFB> ()
         if stringish.HasValue then
           let value = stringish.Value
@@ -3211,7 +3211,7 @@ type StateMachine =
           return!
             "Could not parse empty string payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //   ____ _            _
@@ -3220,7 +3220,7 @@ type StateMachine =
     // | |___| | (_) | (__|   <
     //  \____|_|\___/ \___|_|\_\
     | StateMachinePayloadFB.ClockFB ->
-      either {
+      result {
         let clockish = fb.Payload<ClockFB> ()
         if clockish.HasValue then
           let clock = clockish.Value
@@ -3229,7 +3229,7 @@ type StateMachine =
           return!
             "Could not parse empty clock payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //   ____                                          _ ____        _       _
@@ -3238,7 +3238,7 @@ type StateMachine =
     // | |__| (_) | | | | | | | | | | | (_| | | | | (_| | |_) | (_| | || (__| | | |
     //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|____/ \__,_|\__\___|_| |_|
     | StateMachinePayloadFB.TransactionFB ->
-      either {
+      result {
         let batchish = fb.Payload<TransactionFB> ()
         if batchish.HasValue then
           let batch = batchish.Value
@@ -3248,7 +3248,7 @@ type StateMachine =
           return!
             "Could not parse empty CommandBatch payload"
             |> Error.asParseError "StateMachine.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
     //   ____                                          _
@@ -3256,7 +3256,7 @@ type StateMachine =
     // | |   / _ \| '_ ` _ \| '_ ` _ \ / _` | '_ \ / _` |
     // | |__| (_) | | | | | | | | | | | (_| | | | | (_| |
     //  \____\___/|_| |_| |_|_| |_| |_|\__,_|_| |_|\__,_|
-    | _ -> either {
+    | _ -> result {
         let! cmd = AppCommand.FromFB fb.Action
         return (Command cmd)
       }
@@ -4048,7 +4048,7 @@ type StateMachine =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte[]) : Either<DiscoError,StateMachine> =
+  static member FromBytes (bytes: byte[]) : DiscoResult<StateMachine> =
     Binary.createBuffer bytes
     |> StateMachineFB.GetRootAsStateMachineFB
     |> StateMachine.FromFB

@@ -25,7 +25,7 @@ module AddPreviousMemberShouldPull =
 
   let test =
     testCase "ensure previous member pulls from leader" <| fun _ ->
-      either {
+      result {
         use configurationDone = new WaitEvent()
         use updateDone = new WaitEvent()
 

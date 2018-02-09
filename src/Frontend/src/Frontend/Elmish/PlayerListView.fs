@@ -75,11 +75,11 @@ let private updateName (player:CuePlayer) (value:string) =
 let private updateCueList (player:CuePlayer) = function
   | Some id ->
     match DiscoId.TryParse id with
-    | Left _ ->
+    | Error _ ->
       CuePlayer.unsetCueList player
       |> UpdateCuePlayer
       |> ClientContext.Singleton.Post
-    | Right id ->
+    | Ok id ->
       CuePlayer.setCueList id player
       |> UpdateCuePlayer
       |> ClientContext.Singleton.Post

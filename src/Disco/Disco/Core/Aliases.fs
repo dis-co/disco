@@ -241,59 +241,59 @@ type ServiceStatus =
   // ** FromFB
 
   static member FromFB (fb: ServiceStatusFB) =
-    either {
+    result {
       return!
         #if FABLE_COMPILER
 
         match fb.Type with
-        | x when x = ServiceStatusTypeFB.RunningFB  -> Right Running
-        | x when x = ServiceStatusTypeFB.StartingFB -> Right Starting
-        | x when x = ServiceStatusTypeFB.StoppingFB -> Right Stopping
-        | x when x = ServiceStatusTypeFB.StoppedFB  -> Right Stopped
-        | x when x = ServiceStatusTypeFB.DisposedFB -> Right Disposed
+        | x when x = ServiceStatusTypeFB.RunningFB  -> Ok Running
+        | x when x = ServiceStatusTypeFB.StartingFB -> Ok Starting
+        | x when x = ServiceStatusTypeFB.StoppingFB -> Ok Stopping
+        | x when x = ServiceStatusTypeFB.StoppedFB  -> Ok Stopped
+        | x when x = ServiceStatusTypeFB.DisposedFB -> Ok Disposed
         | x when x = ServiceStatusTypeFB.DegradedFB ->
-          fb.Error |> DiscoError.FromFB |> Either.map Degraded
+          fb.Error |> DiscoError.FromFB |> Result.map Degraded
         | x when x = ServiceStatusTypeFB.FailedFB ->
-          fb.Error |> DiscoError.FromFB |> Either.map Failed
+          fb.Error |> DiscoError.FromFB |> Result.map Failed
         | other ->
           other
           |> sprintf "could not parse empty Error payload: %O"
           |> Error.asParseError "ServiceStatus.FromFB"
-          |> Either.fail
+          |> Result.fail
 
         #else
 
         match fb.Type with
-        | ServiceStatusTypeFB.RunningFB -> Right Running
-        | ServiceStatusTypeFB.StartingFB -> Right Starting
-        | ServiceStatusTypeFB.StoppingFB -> Right Stopping
-        | ServiceStatusTypeFB.StoppedFB -> Right Stopped
-        | ServiceStatusTypeFB.DisposedFB -> Right Disposed
+        | ServiceStatusTypeFB.RunningFB -> Ok Running
+        | ServiceStatusTypeFB.StartingFB -> Ok Starting
+        | ServiceStatusTypeFB.StoppingFB -> Ok Stopping
+        | ServiceStatusTypeFB.StoppedFB -> Ok Stopped
+        | ServiceStatusTypeFB.DisposedFB -> Ok Disposed
         | ServiceStatusTypeFB.DegradedFB ->
           let valueish = fb.Error
           if valueish.HasValue then
             let value = valueish.Value
             DiscoError.FromFB value
-            |> Either.map Degraded
+            |> Result.map Degraded
           else
             "could not parse empty Error payload"
             |> Error.asParseError "ServiceStatus.FromFB"
-            |> Either.fail
+            |> Result.fail
         | ServiceStatusTypeFB.FailedFB ->
           let valueish = fb.Error
           if valueish.HasValue then
             let value = valueish.Value
             DiscoError.FromFB value
-            |> Either.map Failed
+            |> Result.map Failed
           else
             "could not parse empty Error payload"
             |> Error.asParseError "ServiceStatus.FromFB"
-            |> Either.fail
+            |> Result.fail
         | other ->
           other
           |> sprintf "could not parse empty Error payload: %O"
           |> Error.asParseError "ServiceStatus.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
     }
 

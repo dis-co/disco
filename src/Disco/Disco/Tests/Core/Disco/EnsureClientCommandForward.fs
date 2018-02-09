@@ -25,7 +25,7 @@ module EnsureClientCommandForward =
 
   let test =
     testCase "ensure client commands are forwarded to leader" <| fun _ ->
-      either {
+      result {
         use electionDone = new WaitEvent()
         use clientReady = new WaitEvent()
         use clientAppendDone = new WaitEvent()
@@ -167,7 +167,7 @@ module EnsureClientCommandForward =
           { Id = DiscoId.Create(); Name = name "Cue 3"; Slices = [||] }
         ]
 
-        do! either {
+        do! result {
           if service1.RaftServer.IsLeader then
             for cue in cues do
               client2.AddCue cue

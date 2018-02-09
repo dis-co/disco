@@ -611,7 +611,7 @@ Usage:
     }
 
     let result =
-      either {
+      result {
         let server =
           { Port =
               if parsed.Contains <@ Port @>
@@ -640,7 +640,7 @@ Usage:
       }
 
     match result with
-    | Right client ->
+    | Ok client ->
       let patch : PinGroup =
         { Id = patchid
           Name = name "MockClient Patch"
@@ -668,7 +668,7 @@ Usage:
       loop client loaded patch
       dispose client
       exit 0
-    | Left error ->
+    | Error error ->
       Console.Error.WriteLine("Encountered error starting client: {0}", Error.toMessage error)
       Console.Error.WriteLine("Aborting.")
       error

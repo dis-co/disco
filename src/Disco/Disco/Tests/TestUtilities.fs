@@ -42,11 +42,11 @@ module TestUtilities =
 
   let waitFor (tag: string) (we: WaitEvent) =
     if we.WaitOne(TimeSpan.FromMilliseconds DISCO_EVENT_TIMEOUT)
-    then Either.succeed()
+    then Result.succeed()
     else
       sprintf "Timout after %f waiting for %s" DISCO_EVENT_TIMEOUT tag
       |> Error.asOther "test"
-      |> Either.fail
+      |> Result.fail
 
   /// abstract over Assert.Equal to create pipe-lineable assertions
   let expect (msg : string) (a : 'a) (b : 't -> 'a) (t : 't) =
@@ -63,15 +63,15 @@ module TestUtilities =
     let uuid = Guid.NewGuid()
     string uuid
 
-  let inline expectE (msg: string) (exp: 'b) (f: 'a -> 'b) (input: Either<DiscoError,'a>) =
-    either {
+  let inline expectE (msg: string) (exp: 'b) (f: 'a -> 'b) (input: DiscoResult<'a>) =
+    result {
       let! value = input
       let result = f value
       if result <> exp then
         return!
           sprintf "Expected %A but got %A in %A" exp result msg
           |> Error.asOther "expectE"
-          |> Either.fail
+          |> Result.fail
       else
         return ()
     }
@@ -79,10 +79,10 @@ module TestUtilities =
   let inline count< ^a when ^a : (member Count: int)> (thing: ^a) : int =
     (^a : (member Count: int) thing)
 
-  let inline noError (input: Either<DiscoError,'a>) =
+  let inline noError (input: DiscoResult<'a>) =
     match input with
-    | Right _ -> ()
-    | Left error ->
+    | Ok _ -> ()
+    | Error error ->
       error
       |> Error.toMessage
       |> Tests.failtest
@@ -371,8 +371,8 @@ module TestData =
     [| for n in 0 .. rand.Next(1,10) do
         yield FsTreeTesting.makeTree (rand.Next(1,3)) (rand.Next(1,10)) |]
 
-  let mkState path : Either<DiscoError,State> =
-    either {
+  let mkState path : DiscoResult<State> =
+    result {
       let! project = mkProject path
       return
         { Project            = project
@@ -399,8 +399,8 @@ module TestData =
     [| for _ in 0 .. n do
         yield mkChange () |]
 
-  let mkLog _ : Either<DiscoError,Log> =
-    either {
+  let mkLog _ : DiscoResult<Log> =
+    result {
       let! state = mkTmpDir() |> mkState
       return
         LogEntry(DiscoId.Create(),7<index>,1<term>, DataSnapshot(state),
@@ -418,15 +418,15 @@ module TestData =
       new LibGit2Sharp.Repository(unwrap path)
 
   let inline binaryEncDec< ^t when ^t : (member ToBytes: unit -> byte[])
-                              and ^t : (static member FromBytes: byte[] -> Either<DiscoError, ^t>)
+                              and ^t : (static member FromBytes: byte[] -> DiscoResult< ^t >)
                               and ^t : equality>
                               (thing: ^t) =
-    let rething: ^t = thing |> Binary.encode |> Binary.decode |> Either.get
+    let rething: ^t = thing |> Binary.encode |> Binary.decode |> Result.get
     expect "Should be equal" thing id rething
 
   let inline yamlEncDec< ^i, ^t when ^t : (member ToYaml: unit -> ^i)
-                                and ^t : (static member FromYaml: ^i -> Either<DiscoError, ^t>)
+                                and ^t : (static member FromYaml: ^i -> DiscoResult< ^t >)
                                 and ^t : equality>
                                 (thing: ^t) =
-    let rething: ^t = thing |> Yaml.encode |> Yaml.decode |> Either.get
+    let rething: ^t = thing |> Yaml.encode |> Yaml.decode |> Result.get
     expect "Should be equal" thing id rething

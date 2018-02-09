@@ -23,7 +23,7 @@ module UtilTests =
 
   let test_rmdir_should_delete_recursively =
     testCase "rmdir should delete recursively with read-only items" <| fun _ ->
-      either {
+      result {
         let! dir =
           Path.getRandomFileName()
           |> Directory.createDirectory

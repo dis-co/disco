@@ -296,8 +296,8 @@ module AssetService =
   // ** create
 
   let create (machine: DiscoMachine) =
-    either {
-      do! Directory.createDirectory machine.AssetDirectory |> Either.map ignore
+    result {
+      do! Directory.createDirectory machine.AssetDirectory |> Result.map ignore
       let subscriptions = Subscriptions()
       let store = AgentStore.create()
 
@@ -321,9 +321,9 @@ module AssetService =
             flusher <- Periodically.run 2000 (flushClock agent)
             agent
             |> startCrawler machine
-            |> Either.succeed
+            |> Result.succeed
 
-          member self.Stop() = Either.nothing
+          member self.Stop() = Result.nothing
 
           member self.State = store.State.Files
 
@@ -352,7 +352,7 @@ let machine =
       AssetFilter = ".file"
     }
 
-let service = AssetService.create machine |> Either.get
+let service = AssetService.create machine |> Result.get
 service.Subscribe (printfn "%O")
 
 service.Start()

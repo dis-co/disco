@@ -183,11 +183,11 @@ module rec Graph =
       try
         str
         |> IOBoxType.Parse
-        |> Either.succeed
+        |> Result.succeed
       with exn ->
         exn.Message
         |> Error.asParseError "IOBoxType"
-        |> Either.fail
+        |> Result.fail
 
   // ** ValueType
 
@@ -214,12 +214,12 @@ module rec Graph =
       try
         str
         |> ValueType.Parse
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asParseError "ValueType.TryParse"
-          |> Either.fail
+          |> Result.fail
 
     static member IsBool (vt: ValueType) =
       match vt with
@@ -250,11 +250,11 @@ module rec Graph =
       try
         str
         |> Behavior.Parse
-        |> Either.succeed
+        |> Result.succeed
       with exn ->
         exn.Message
         |> Error.asParseError "Behavior.TryParse"
-        |> Either.fail
+        |> Result.fail
 
     static member IsTrigger (bh: Behavior) =
       match bh with
@@ -281,15 +281,15 @@ module rec Graph =
 
   let private findPin (name: string) (pins: IPin2 seq) =
     Seq.fold
-      (fun (m: Either<DiscoError,IPin2>) (pin: IPin2) ->
+      (fun (m: DiscoResult<IPin2>) (pin: IPin2) ->
         match m with
-        | Right _ -> m
-        | Left error ->
+        | Ok _ -> m
+        | Error error ->
           if pin.Name = name then
-            Right pin
+            Ok pin
           else
-            Left error)
-      (Left (Other("findPin", (sprintf "could not find pin %A" name))))
+            Error error)
+      (Error (Other("findPin", (sprintf "could not find pin %A" name))))
       pins
 
   // ** visibleInputPins
@@ -327,7 +327,7 @@ module rec Graph =
   // ** parseValueType
 
   let private parseValueType (node: INode2) =
-    either {
+    result {
       let! vtp = findPin Settings.VALUE_TYPE_PIN node.Pins
       return! ValueType.TryParse vtp.[0]
     }
@@ -335,7 +335,7 @@ module rec Graph =
   // ** parseBehavior
 
   let private parseBehavior (node: INode2) =
-    either {
+    result {
       let! bhp = findPin Settings.BEHAVIOR_PIN node.Pins
       return! Behavior.TryParse bhp.[0]
     }
@@ -344,13 +344,13 @@ module rec Graph =
 
   let private isTrigger (node: INode2) =
     match parseBehavior node with
-    | Right bh -> Behavior.IsTrigger bh
+    | Ok bh -> Behavior.IsTrigger bh
     | _ -> false
 
   // ** parseName
 
   let private parseName (node: INode2) =
-    either {
+    result {
       let! np = findPin Settings.DESCRIPTIVE_NAME_PIN node.Pins
       return
         if isNull np.[0]
@@ -403,7 +403,7 @@ module rec Graph =
       |> node.FindPin
       |> fun pin -> pin.[0]
       |> function
-      | "Input" -> Either.succeed VecSize.Dynamic
+      | "Input" -> Result.succeed VecSize.Dynamic
       | _ ->
         let cols =
           try
@@ -424,7 +424,7 @@ module rec Graph =
           with | _ -> 1us
         cols * rows * pages
         |> VecSize.Fixed
-        |> Either.succeed
+        |> Result.succeed
 
   // ** parseBoolValues
 
@@ -458,37 +458,37 @@ module rec Graph =
   // ** parseMin
 
   let private parseMin (node: INode2) =
-    either {
+    result {
       let! min = findPin Settings.MIN_PIN node.Pins
       let! value =
         try
           min.[0]
           |> Int32.Parse
-          |> Either.succeed
+          |> Result.succeed
         with  _ ->
-          Either.succeed -99999999
+          Result.succeed -99999999
       return value
     }
 
   // ** parseMax
 
   let private parseMax (node: INode2) =
-    either {
+    result {
       let! max = findPin Settings.MAX_PIN node.Pins
       let! value =
         try
           max.[0]
           |> Int32.Parse
-          |> Either.succeed
+          |> Result.succeed
         with _ ->
-          Either.succeed 99999999
+          Result.succeed 99999999
       return value
     }
 
   // ** parseUnits
 
   let private parseUnits (node: INode2) =
-    either {
+    result {
       let! units = findPin Settings.UNITS_PIN node.Pins
       return if isNull units.[0] then "" else units.[0]
     }
@@ -496,15 +496,15 @@ module rec Graph =
   // ** parsePrecision
 
   let private parsePrecision (node: INode2) =
-    either {
+    result {
       let! precision = findPin Settings.PRECISION_PIN node.Pins
       let! value =
         try
           precision.[0]
           |> UInt32.Parse
-          |> Either.succeed
+          |> Result.succeed
         with _ ->
-          Either.succeed 4ul
+          Result.succeed 4ul
       return value
     }
 
@@ -610,7 +610,7 @@ module rec Graph =
   // ** parsePinType
 
   let private parsePinType (node: INode2) =
-    either {
+    result {
       let! boxtype = IOBoxType.TryParse (node.NodeInfo.ToString())
       match boxtype with
       | IOBoxType.Value ->
@@ -627,7 +627,7 @@ module rec Graph =
         return!
           sprintf "unsupported type %A" x
           |> Error.asParseError "parsePinType"
-          |> Either.fail
+          |> Result.fail
     }
 
   // ** addCommand
@@ -655,7 +655,7 @@ module rec Graph =
     let pp    = node.FindPin Settings.PAGES_PIN
     let tp    = node.FindPin Settings.TAG_PIN
     let trig  = isTrigger node
-    let tipe  = parsePinType node |> Either.defaultValue PinType.Number
+    let tipe  = parsePinType node |> Result.defaultValue PinType.Number
     let props = parseEnumProperties node
 
     let vecsizeUpdate _ _ =
@@ -748,7 +748,7 @@ module rec Graph =
   // ** parseValuePin
 
   let private parseValuePin clientId nodeId groupId (node:INode2) (pin: IPin2) =
-    either {
+    result {
       let path  = generateNodePath node pin
       let pinId = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
@@ -823,13 +823,13 @@ module rec Graph =
 
   // ** parseSeqWith
 
-  type private Parser = IPin2 -> Either<DiscoError,Pin>
+  type private Parser = IPin2 -> DiscoResult<Pin>
 
   let private parseSeqWith (parse: Parser) (pins: IPin2 seq) : (IPin2 * Pin) list =
     Seq.fold
       (fun lst pin -> parse pin |> function
-        | Right parsed -> (pin, parsed) :: lst
-        | Left error ->
+        | Ok parsed -> (pin, parsed) :: lst
+        | Error error ->
           error
           |> string
           |> Logger.err "parseSeqWith"
@@ -852,7 +852,7 @@ module rec Graph =
   // ** parseStringType
 
   let private parseStringType (node: INode2) =
-    either {
+    result {
       let! st = findPin Settings.STRING_TYPE_PIN node.Pins
       return! Disco.Core.Behavior.TryParse st.[0]
     }
@@ -860,22 +860,22 @@ module rec Graph =
   // ** parseMaxChars
 
   let private parseMaxChars (node: INode2) =
-    either {
+    result {
       let! mc = findPin Settings.MAXCHAR_PIN node.Pins
       let! value =
         try
           mc.[0]
           |> Int32.Parse
-          |> Either.succeed
+          |> Result.succeed
         with  _ ->
-          Either.succeed -1
+          Result.succeed -1
       return value
     }
 
   // ** parseStringPin
 
   let private parseStringPin clientId nodeId groupId (node:INode2) (pin: IPin2) =
-    either {
+    result {
       let path = generateNodePath node pin
       let id = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
@@ -917,7 +917,7 @@ module rec Graph =
   // ** parseEnumPin
 
   let private parseEnumPin clientId nodeId groupId (node: INode2) (pin: IPin2) =
-    either {
+    result {
       let path = generateNodePath node pin
       let id = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
@@ -957,7 +957,7 @@ module rec Graph =
   // ** parseColorPin
 
   let private parseColorPin clientId nodeId groupId (node:INode2) (pin: IPin2) =
-    either {
+    result {
       let path = generateNodePath node pin
       let id = generatePinId nodeId groupId pin
       let cnf = parseConfiguration pin
@@ -995,7 +995,7 @@ module rec Graph =
   // ** parseINode2
 
   let private parseINode2 clientId nodeId groupId (node: INode2) =
-    either {
+    result {
       let! boxtype = IOBoxType.TryParse (string node.NodeInfo)
       match boxtype with
       | IOBoxType.Value  -> return parseValueBox  clientId nodeId groupId node
@@ -1006,7 +1006,7 @@ module rec Graph =
         return!
           sprintf "unsupported type %A" x
           |> Error.asParseError "parseINode2"
-          |> Either.fail
+          |> Result.fail
     }
 
   // ** parseGroupName
@@ -1100,10 +1100,10 @@ module rec Graph =
 
     /// parse all visibile pin on this node and
     match parseINode2 clientId nodeId groupId node with
-    | Left error ->
+    | Error error ->
       Logger.err (tag "nodeAdded") error.Message
       state
-    | Right pins ->
+    | Ok pins ->
       Seq.fold
         (fun (state: PluginState) (pin:IPin2, parsed: Pin) ->
           addPin state nodeId node pin parsed)
@@ -1197,7 +1197,7 @@ module rec Graph =
 
   let private pinNameChange (state: PluginState) groupId pinId (node:INode2) =
     parseName node
-    |> Either.defaultValue ""
+    |> Result.defaultValue ""
     |> name
     |> Pin.setName
     |> updatePinWith state groupId pinId (Some UpdatePin)
@@ -1213,7 +1213,7 @@ module rec Graph =
 
   let private pinVecSizeChange (state: PluginState) groupId pinId node =
     parseVecSize node
-    |> Either.defaultValue VecSize.Dynamic
+    |> Result.defaultValue VecSize.Dynamic
     |> Pin.setVecSize
     |> updatePinWith state groupId pinId (Some UpdatePin)
 
@@ -1225,9 +1225,9 @@ module rec Graph =
       | None -> state
       | Some nodeId ->
         match parseINode2 state.ClientId nodeId groupId node with
-        | Right []     -> state
-        | Left error   -> Logger.err "processing" error.Message; state
-        | Right parsed ->
+        | Ok []     -> state
+        | Error error   -> Logger.err "processing" error.Message; state
+        | Ok parsed ->
           List.fold
             (fun (state:PluginState) (pin,parsed) ->
               pin
@@ -1267,9 +1267,9 @@ module rec Graph =
     let cnf = parseConfiguration pin
     let tipe, props =
       match parsePinType node with
-      | Right PinType.Enum -> PinType.Enum, Some (parseEnumProperties node)
-      | Right tipe         -> tipe, None
-      | Left  _            -> PinType.String, None /// default is string
+      | Ok PinType.Enum -> PinType.Enum, Some (parseEnumProperties node)
+      | Ok tipe         -> tipe, None
+      | Error  _            -> PinType.String, None /// default is string
     { PinId = id
       GroupId = groupId
       NodePath = node.GetNodePath(false)

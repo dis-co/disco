@@ -25,7 +25,7 @@ module ClonesFromLeader =
 
   let test =
     testCase "ensure disco server clones changes from leader" <| fun _ ->
-      either {
+      result {
         use checkGitStarted = new WaitEvent()
         use electionDone = new WaitEvent()
         use appendDone = new WaitEvent()

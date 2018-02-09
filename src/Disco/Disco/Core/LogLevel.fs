@@ -34,7 +34,7 @@ type LogLevel =
     | _               -> failwithf "could not parse %s" str
 
   static member TryParse (str: string) =
-    Either.tryWith ParseError "LogLevel" <| fun _ ->
+    Result.tryWith ParseError "LogLevel" <| fun _ ->
       str |> LogLevel.Parse
 
   override self.ToString() =

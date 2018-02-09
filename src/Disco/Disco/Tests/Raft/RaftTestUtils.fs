@@ -175,7 +175,7 @@ module RaftTestUtils =
   let defSM =
     mkTmpDir()
     |> mkState
-    |> Either.get
+    |> Result.get
     |> StateMachine.DataSnapshot
 
   let runWithDefaults action =
@@ -225,12 +225,12 @@ module RaftTestUtils =
   let runWithRaft r c m = runRaft r c m
 
   let expectError e = function
-    | Left (e',_) when e = e' -> ()
-    | Left (e',_) when e <> e' ->
+    | Error (e',_) when e = e' -> ()
+    | Error (e',_) when e <> e' ->
       Expecto.Tests.failtestf "Expected error: %A but got: %A" e e'
     | _ as v ->
       Expecto.Tests.failtestf "Expected error but got: %A" v
 
   let noError = function
-    | Left (e,_) -> failwithf "ERROR: %A" e
+    | Error (e,_) -> failwithf "ERROR: %A" e
     | _ -> ()

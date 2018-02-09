@@ -114,11 +114,11 @@ module DiscoService =
   /// Persiste a state machine command to disk and log results.
   let private persistWithLogging (store: IAgentStore<DiscoState>) sm =
     match Persistence.persistEntry store.State.Store.State sm with
-    | Right () ->
+    | Ok () ->
       string sm
       |> String.format "Successfully persisted command {0} to disk"
       |> Logger.debug (tag "statePersistor")
-    | Left error ->
+    | Error error ->
       error
       |> String.format "Error persisting command to disk: {0}"
       |> Logger.err (tag "statePersistor")
@@ -159,13 +159,13 @@ module DiscoService =
           // | |__| (_) | | | | | | | | | | | | |_
           //  \____\___/|_| |_| |_|_| |_| |_|_|\__|
           match Config.getMembers state.Store.State.Project.Config with
-          | Left error ->
+          | Error error ->
             error.Message
             |> String.format "Error committing changes to disk: {0}"
             |> Logger.err (tag "statePersistor")
-          | Right members ->
+          | Ok members ->
             match Persistence.commitChanges state.Store.State with
-            | Right (repo, commit) ->
+            | Ok (repo, commit) ->
               commit.Sha
               |> String.format "Successfully committed changes in: {0}"
               |> Logger.debug (tag "statePersistor")
@@ -180,7 +180,7 @@ module DiscoService =
                   sprintf "could not push to %s: %O" name err
                   |> Logger.err (tag "statePersistor"))
               dispose repo
-            | Left error ->
+            | Error error ->
               error
               |> String.format "Error committing changes to disk: {0}"
               |> Logger.err (tag "statePersistor")
@@ -263,8 +263,8 @@ module DiscoService =
     match cmd with
     | DiscoEvent.Append(_, LogMsg log) ->
       match LogFile.write store.State.LogFile log with
-      | Right _ -> ()
-      | Left error ->
+      | Ok _ -> ()
+      | Error error ->
         error
         |> string
         |> Logger.err (tag "logPersistor")
@@ -502,7 +502,7 @@ module DiscoService =
 
     | DiscoEvent.PersistSnapshot log ->
       match Persistence.persistSnapshot store.State.Store.State log with
-      | Left error -> Logger.err (tag "persistSnapshot") (string error)
+      | Error error -> Logger.err (tag "persistSnapshot") (string error)
       | _ -> ()
 
     | DiscoEvent.RaftError error -> Logger.err (tag "processEvents") error.Message
@@ -561,7 +561,7 @@ module DiscoService =
     | Append (Origin.Web id, AddSession session) ->
       session
       |> store.State.SocketServer.BuildSession id
-      |> Either.iter (AddSession >> handleAppend store)
+      |> Result.iter (AddSession >> handleAppend store)
 
     // replicate a RemoveSession command if the session exists
     | SessionClosed id ->
@@ -641,7 +641,7 @@ module DiscoService =
       Constants.SNAPSHOT_FILENAME +
       Constants.ASSET_EXTENSION
     match DiscoData.read path with
-    | Right str ->
+    | Ok str ->
       try
         let yml = Yaml.deserialize<SnapshotYaml> str
         let id = DiscoId.Parse yml.Id
@@ -658,7 +658,7 @@ module DiscoService =
         |> Logger.err (tag "retrieveSnapshot")
         None
 
-    | Left error ->
+    | Error error ->
       error
       |> string
       |> Logger.err (tag "retrieveSnapshot")
@@ -668,7 +668,7 @@ module DiscoService =
 
   let private persistSnapshot (state: DiscoState) (log: LogEntry) =
     match Persistence.persistSnapshot state.Store.State log with
-    | Left error -> Logger.err (tag "persistSnapshot") (string error)
+    | Error error -> Logger.err (tag "persistSnapshot") (string error)
     | _ -> ()
     state
 
@@ -703,7 +703,7 @@ module DiscoService =
     | _ ->
       "Login rejected"
       |> Error.asProjectError (tag "loadProject")
-      |> Either.fail
+      |> Result.fail
 
   // ** updateSite
 
@@ -740,7 +740,7 @@ module DiscoService =
   // ** makeState
 
   let private makeState store state serviceOptions _ =
-    either {
+    result {
       let subscriptions = Subscriptions()
       let state = updateSite state serviceOptions
 
@@ -818,7 +818,7 @@ module DiscoService =
   // ** makeStore
 
   let private makeStore (serviceOptions: DiscoServiceOptions) =
-    either {
+    result {
       let store = AgentStore.create()
 
       let logDir =
@@ -833,7 +833,7 @@ module DiscoService =
       let! (state: State) =
         serviceOptions.Machine
         |> Asset.loadWithMachine path
-        |> Either.map State.initialize
+        |> Result.map State.initialize
 
       let! updated =
         state.Users
@@ -849,12 +849,12 @@ module DiscoService =
   // ** start
 
   let private start (store: IAgentStore<DiscoState>) =
-    either {
+    result {
       store.State.Dispatcher.Start()
 
       // start all services
       let result =
-        either {
+        result {
           do! store.State.ApiServer.Start()
           do! store.State.SocketServer.Start()
           do! store.State.GitServer.Start()
@@ -863,7 +863,7 @@ module DiscoService =
         }
 
       match result with
-      | Right _ ->
+      | Ok _ ->
         { store.State with Status = ServiceStatus.Running }
         |> store.Update
 
@@ -871,7 +871,7 @@ module DiscoService =
         |> DiscoEvent.Status
         |> Observable.onNext store.State.Subscriptions
         return ()
-      | Left error ->
+      | Error error ->
         { store.State with Status = ServiceStatus.Failed error }
         |> store.Update
 
@@ -879,7 +879,7 @@ module DiscoService =
         |> DiscoEvent.Status
         |> Observable.onNext store.State.Subscriptions
         dispose store.State
-        return! Either.fail error
+        return! Result.fail error
     }
 
   // ** disposeService
@@ -961,28 +961,28 @@ module DiscoService =
         // member self.LeaveCluster () =
         //   Tracing.trace (tag "LeaveCluster") <| fun () ->
         //     match postCommand agent "LeaveCluster"  Msg.Leave with
-        //     | Right Reply.Ok -> Right ()
-        //     | Left error -> Left error
-        //     | Right other ->
+        //     | Ok Reply.Ok -> Ok ()
+        //     | Error error -> Error error
+        //     | Ok other ->
         //       String.format "Unexpected response from DiscoAgent: {0}" other
         //       |> Error.asOther (tag "LeaveCluster")
-        //       |> Either.fail
+        //       |> Result.fail
 
         // member self.JoinCluster ip port =
         //   Tracing.trace (tag "JoinCluster") <| fun () ->
         //     match postCommand agent "JoinCluster" (fun chan -> Msg.Join(chan,ip, port)) with
-        //     | Right Reply.Ok -> Right ()
-        //     | Left error  -> Left error
-        //     | Right other ->
+        //     | Ok Reply.Ok -> Ok ()
+        //     | Error error  -> Error error
+        //     | Ok other ->
         //       String.format "Unexpected response from DiscoAgent: {0}" other
         //       |> Error.asOther (tag "JoinCluster")
-        //       |> Either.fail
+        //       |> Result.fail
       }
 
   // ** create
 
   let create (disco: DiscoServiceOptions) =
-    either {
+    result {
       let! store = makeStore disco
       return makeService store
     }

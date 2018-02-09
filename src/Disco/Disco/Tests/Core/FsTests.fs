@@ -25,19 +25,19 @@ module FsTests =
     FileSystem.rmDir (filepath path) |> ignore
 
   let withTree (f: FsTree -> unit) =
-    withTmpDir (fun path -> FsTree.create (DiscoId.Create()) path Array.empty |> Either.get |> f)
+    withTmpDir (fun path -> FsTree.create (DiscoId.Create()) path Array.empty |> Result.get |> f)
 
   let test_should_have_correct_base_path =
     testCase "should have correct base path" <| fun _ ->
       withTmpDir <| fun path ->
-        let tree = FsTree.create (DiscoId.Create()) path Array.empty |> Either.get
+        let tree = FsTree.create (DiscoId.Create()) path Array.empty |> Result.get
         Expect.equal (FsTree.basePath tree) (FsPath.parse path) "Should have correct base path"
 
   let test_should_handle_base_path_with_slash =
     testCase "should handle base path with slash" <| fun _ ->
       withTmpDir <| fun path ->
         let withSlash = filepath (unwrap path + "/")
-        let tree = FsTree.create (DiscoId.Create()) withSlash Array.empty |> Either.get
+        let tree = FsTree.create (DiscoId.Create()) withSlash Array.empty |> Result.get
         Expect.equal (FsTree.basePath tree) (FsPath.parse path) "Should have correct base path"
 
   let test_fspath_is_sane =

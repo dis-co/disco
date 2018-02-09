@@ -364,7 +364,7 @@ module TcpServer =
           with get () = options.ServerId
 
         member server.Start() =
-          either {
+          result {
             try
               do! Network.ensureAvailability options.Listen options.Port
               do state.Listener.Bind(state.EndPoint)
@@ -374,7 +374,7 @@ module TcpServer =
               return!
                 exn.Message
                 |> Error.asSocketError (tag "Start")
-                |> Either.fail
+                |> Result.fail
           }
 
         member server.Request (client: Guid) (request: Request) =

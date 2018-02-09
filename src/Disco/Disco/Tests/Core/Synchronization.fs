@@ -17,7 +17,7 @@ module SynchronizationTests =
 
   let test_should_call_monitor_correct_number_of_times =
     testCase "should call monitor correct number of times" <| fun _ ->
-      either {
+      result {
         use ev = new WaitEvent()
         async {
           do! Async.Sleep(1000)

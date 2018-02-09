@@ -56,11 +56,11 @@ type DiscoId =
   // ** TryParse
 
   static member TryParse (str: string) =
-    try DiscoId.Parse str |> Either.succeed
+    try DiscoId.Parse str |> Result.succeed
     with exn ->
       exn.Message
       |> Error.asParseError "DiscoId"
-      |> Either.fail
+      |> Result.fail
 
   // ** FromGuid
 
@@ -127,7 +127,7 @@ module Id =
     [| 0 .. 15 |]
     |> Array.map t
     |> DiscoId.FromByteArray
-    |> Either.succeed
+    |> Result.succeed
 
   let inline decodeId (fb: ^t) =
     (fun idx -> (^t : (member Id: int -> byte) fb, idx))

@@ -91,12 +91,12 @@ let activeConfig dispatch state =
               OnClick (fun ev ->
                 ev.stopPropagation()
                 match Config.findMember config kv.Key with
-                | Right mem ->
+                | Ok mem ->
                   mem
                   |> ClusterMember.toRaftMember
                   |> RemoveMachine
                   |> ClientContext.Singleton.Post
-                | Left error -> printfn "Cannot find member in config: %O" error)
+                | Error error -> printfn "Cannot find member in config: %O" error)
             ] []
           ]
         ]

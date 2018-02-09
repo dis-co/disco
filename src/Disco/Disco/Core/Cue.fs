@@ -50,19 +50,19 @@ type CueYaml() =
   // ** ToCue
 
   member yaml.ToCue() =
-    either {
+    result {
       let! slices =
         let arr = Array.zeroCreate yaml.Slices.Length
         Array.fold
-          (fun (m: Either<DiscoError,int * Slices array>) box -> either {
+          (fun (m: DiscoResult<int * Slices array>) box -> result {
             let! (i, arr) = m
             let! (slice : Slices) = Yaml.fromYaml box
             arr.[i] <- slice
             return (i + 1, arr)
           })
-          (Right (0, arr))
+          (Ok (0, arr))
           yaml.Slices
-        |> Either.map snd
+        |> Result.map snd
 
       let! id = DiscoId.TryParse yaml.Id
 
@@ -106,12 +106,12 @@ type Cue =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  static member FromFB(fb: CueFB) : Either<DiscoError,Cue> =
-    either {
+  static member FromFB(fb: CueFB) : DiscoResult<Cue> =
+    result {
       let! slices =
         let arr = Array.zeroCreate fb.SlicesLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Slices array>) _ -> either {
+          (fun (m: DiscoResult<int * Slices array>) _ -> result {
             let! (i, slices) = m
 
             let! slice =
@@ -126,19 +126,19 @@ type Cue =
                 else
                   "Could not parse empty SlicesFB"
                   |> Error.asParseError "Cue.FromFB"
-                  |> Either.fail
+                  |> Result.fail
                 #endif
               with
                 | exn ->
                   exn.Message
                   |> Error.asParseError "Cue.FromtFB"
-                  |> Either.fail
+                  |> Result.fail
 
             slices.[i] <- slice
             return (i + 1, slices) })
-          (Right (0, arr))
+          (Ok (0, arr))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       let! id = Id.decodeId fb
 
@@ -164,7 +164,7 @@ type Cue =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: byte[]) : Either<DiscoError,Cue> =
+  static member FromBytes(bytes: byte[]) : DiscoResult<Cue> =
     bytes
     |> Binary.createBuffer
     |> CueFB.GetRootAsCueFB
@@ -188,7 +188,7 @@ type Cue =
 
   // ** FromYaml
 
-  static member FromYaml(yaml: CueYaml) : Either<DiscoError,Cue> =
+  static member FromYaml(yaml: CueYaml) : DiscoResult<Cue> =
     yaml.ToCue()
 
   // ** AssetPath
@@ -216,12 +216,12 @@ type Cue =
   // | |__| (_) | (_| | (_| |
   // |_____\___/ \__,_|\__,_|
 
-  static member Load(path: FilePath) : Either<DiscoError, Cue> =
+  static member Load(path: FilePath) : DiscoResult<Cue> =
     DiscoData.load path
 
   // ** LoadAll
 
-  static member LoadAll(basePath: FilePath) : Either<DiscoError, Cue array> =
+  static member LoadAll(basePath: FilePath) : DiscoResult<Cue array> =
     basePath </> filepath CUE_DIR
     |> DiscoData.loadAll
 

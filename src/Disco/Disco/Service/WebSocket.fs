@@ -60,18 +60,18 @@ module WebSocketServer =
             IpAddress = IpAddress.Parse socket.ConnectionInfo.ClientIpAddress
             UserAgent = ua }
       if connections.TryUpdate(socketId, (socket, Some updated), current) then
-        Either.succeed updated
+        Result.succeed updated
       elif connections.TryUpdate(socketId, (socket, Some updated), current) then
-        Either.succeed updated
+        Result.succeed updated
       else
         "Updating connections failed after one retry"
         |> Error.asSocketError (tag "buildSession")
-        |> Either.fail
+        |> Result.fail
     | false, _ ->
       socketId
       |> String.format "No connection found for {0}"
       |> Error.asSocketError (tag "buildSession")
-      |> Either.fail
+      |> Result.fail
 
   // ** ucast
 
@@ -85,22 +85,22 @@ module WebSocketServer =
           |> Binary.encode
           |> socket.Send
           |> ignore
-          |> Either.succeed
+          |> Result.succeed
         with exn ->
           exn.Message
           |> Error.asSocketError (tag "send")
-          |> Either.fail
+          |> Result.fail
       else
         sid
         |> String.format "Socket {0} not available"
         |> Error.asSocketError (tag "send")
-        |> Either.fail
+        |> Result.fail
     | false, _ ->
       sid
       |> string
       |> sprintf "Could not send message to session %s. Not found."
       |> Error.asSocketError (tag "send")
-      |> Either.fail
+      |> Result.fail
 
   // ** bcast
 
@@ -117,16 +117,16 @@ module WebSocketServer =
     |> Seq.choose
       (fun id ->
         match ucast connections id msg with
-        | Right ()   -> None
-        | Left error ->
+        | Ok ()   -> None
+        | Error error ->
           error.Message
           |> String.format "Error broadcasting message: {0}"
           |> Logger.err (tag "bcast")
           Some id)
     |> Seq.toList
     |> function
-      | [ ]    -> Either.nothing
-      | result -> Either.fail result
+      | [ ]    -> Result.nothing
+      | result -> Result.fail result
 
   // ** mcast
 
@@ -143,22 +143,22 @@ module WebSocketServer =
   let private mcast (connections: Connections)
                     (id: SessionId)
                     (msg: StateMachine) :
-                    Either<SessionId list, unit> =
+                    Result<unit,SessionId list> =
     connections.Keys
     |> Seq.filter (fun sid -> id <> sid)
     |> Seq.choose
       (fun id ->
         match ucast connections id msg with
-        | Right ()   -> None
-        | Left error ->
+        | Ok ()   -> None
+        | Error error ->
           error.Message
           |> String.format "Error multicasting message: {0}"
           |> Logger.err (tag "mcast")
           Some id)
     |> Seq.toList
     |> function
-      | [ ]    -> Either.nothing
-      | result -> Either.fail result
+      | [ ]    -> Result.nothing
+      | result -> Result.fail result
 
   // ** onNewSocket
 
@@ -214,8 +214,8 @@ module WebSocketServer =
     socket.OnBinary <- fun bytes ->
       let sid = getConnectionId socket
       match Binary.decode bytes with
-      | Right cmd -> DiscoEvent.Append(Origin.Web sid, cmd) |> agent.Post
-      | Left err  ->
+      | Ok cmd -> DiscoEvent.Append(Origin.Web sid, cmd) |> agent.Post
+      | Error err  ->
         err
         |> string
         |> sprintf "Could not decode message: %s"
@@ -262,7 +262,7 @@ module WebSocketServer =
   // ** create
 
   let create (mem: ClusterMember) =
-    either {
+    result {
       let status = ref ServiceStatus.Stopped
       let connections = Connections()
       let subscriptions = Subscriptions()
@@ -305,13 +305,13 @@ module WebSocketServer =
               match ev with
               | DiscoEvent.Append (_, cmd) ->
                 bcast connections cmd
-                |> Either.mapError handleBroadcastErrors
+                |> Result.mapError handleBroadcastErrors
                 |> ignore
               | _ -> ()
 
             member self.Send (id: SessionId) (cmd: StateMachine) =
               ucast connections id cmd
-              |> Either.mapError
+              |> Result.mapError
                 (Error.message
                  >> sprintf "Error sending to %A: %s" id
                  >> konst [ id ]
@@ -320,12 +320,12 @@ module WebSocketServer =
 
             member self.Broadcast (cmd: StateMachine) =
               bcast connections cmd
-              |> Either.mapError handleBroadcastErrors
+              |> Result.mapError handleBroadcastErrors
               |> ignore
 
             member self.Multicast (except: SessionId) (cmd: StateMachine) =
               mcast connections except cmd
-              |> Either.mapError handleBroadcastErrors
+              |> Result.mapError handleBroadcastErrors
               |> ignore
 
             member self.BuildSession (id: SessionId) (session: Session) =
@@ -357,12 +357,12 @@ module WebSocketServer =
                 status := ServiceStatus.Running
                 "WebSocketServer successfully started"
                 |> Logger.debug (tag "Start")
-                |> Either.succeed
+                |> Result.succeed
               with
                 | exn ->
                   exn.Message
                   |> Error.asSocketError (tag "Start")
-                  |> Either.fail
+                  |> Result.fail
 
             member self.Dispose () =
               if Service.isRunning !status then

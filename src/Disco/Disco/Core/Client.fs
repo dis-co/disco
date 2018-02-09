@@ -43,18 +43,18 @@ type Role =
   static member FromFB(fb: RoleFB) =
     #if FABLE_COMPILER
     match fb with
-    | x when x = RoleFB.RendererFB -> Either.succeed Renderer
+    | x when x = RoleFB.RendererFB -> Result.succeed Renderer
     | x ->
       sprintf "Unknown RoleFB value: %A" x
       |> Error.asClientError "Role.FromFB"
-      |> Either.fail
+      |> Result.fail
     #else
     match fb with
-    | RoleFB.RendererFB -> Either.succeed Renderer
+    | RoleFB.RendererFB -> Result.succeed Renderer
     | x ->
       sprintf "Unknown RoleFB value: %A" x
       |> Error.asClientError "Role.FromFB"
-      |> Either.fail
+      |> Result.fail
     #endif
 
 // * DiscoClient
@@ -97,7 +97,7 @@ type DiscoClient =
   // ** FromFB
 
   static member FromFB(fb: DiscoClientFB) =
-    either {
+    result {
       let! id = Id.decodeId fb
       let! serviceId = Id.decodeServiceId fb
       let! role = Role.FromFB fb.Role
@@ -113,7 +113,7 @@ type DiscoClient =
         else
           "could not parse empty status payload"
           |> Error.asParseError "DiscoClient.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
       return {
         Id        = id

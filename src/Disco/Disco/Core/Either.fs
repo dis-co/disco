@@ -9,74 +9,61 @@ namespace Disco.Core
 
 open System
 
-// * Either Type
-
-//  _____ _ _   _
-// | ____(_) |_| |__   ___ _ __
-// |  _| | | __| '_ \ / _ \ '__|
-// | |___| | |_| | | |  __/ |
-// |_____|_|\__|_| |_|\___|_|
-
-type Either<'err,'a> =
-  | Right of 'a
-  | Left  of 'err
-
-// * Either Module
+// * Result Module
 
 [<RequireQualifiedAccess>]
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module Either =
+module Result =
 
   // ** ofNullable
 
   // FB types are not modeled with nullables in JS
   #if FABLE_COMPILER
   let ofNullable (v: 'T) (er: string -> 'Err) =
-    Right v
+    Ok v
   #else
   let ofNullable (v: Nullable<'T>) (er: string -> 'Err) =
     if v.HasValue
-    then Right v.Value
-    else "Item has no value" |> er |> Left
+    then Ok v.Value
+    else "Item has no value" |> er |> Error
   #endif
 
   // ** succeed
 
-  /// ## lift a regular value into Either
+  /// ## lift a regular value into Result
   ///
   /// ### Signature:
-  /// - v: value to lift into Either
+  /// - v: value to lift into Result
   ///
-  /// Returns: Either<^err, ^t>
-  let succeed v = Right v
+  /// Returns: Result<^err, ^t>
+  let succeed v = Ok v
 
   // ** fail
 
-  /// ## lift an error value into Either
+  /// ## lift an error value into Result
   ///
   /// ### Signature:
-  /// - v: error to lift into Either
+  /// - v: error to lift into Result
   ///
-  /// Returns: Either<^err, ^t>
-  let fail v = Left v
+  /// Returns: Result<^err, ^t>
+  let fail v = Error v
 
   // ** isFail
 
-  /// ## Check if Either is a failure
+  /// ## Check if Result is a failure
   ///
-  /// Check passed value of type Either<^err, ^t> for being a failure.
+  /// Check passed value of type Result<^err, ^t> for being a failure.
   ///
   /// ### Signature:
   /// - value: value to be checked
   ///
   /// Returns: bool
   let isFail = function
-    | Left _ -> true
+    | Error _ -> true
     |      _ -> false
 
   // ** isSuccess
 
-  /// ## Check if Either value is a success
+  /// ## Check if Result value is a success
   ///
   /// Check the passed value for being a success constructor.g
   ///
@@ -85,175 +72,116 @@ module Either =
   ///
   /// Returns: bool
   let isSuccess = function
-    | Right _ -> true
+    | Ok _ -> true
     |       _ -> false
 
   // ** get
 
-  /// ## Extract success value from Either wrapper type
+  /// ## Extract success value from Result wrapper type
   ///
   /// Extracts the result of a computation from the wrapper
-  /// type. Crashes hard if the constructor is a Left (failure).
+  /// type. Crashes hard if the constructor is a Error (failure).
   ///
   /// ### Signature:
-  /// - value: Either<^err,^t> to extract result from
+  /// - value: Result<^err,^t> to extract result from
   ///
   /// Returns: ^t
   let get = function
-    | Right result -> result
-    | Left   error ->
-      failwithf "Either: cannot get result from failure: %A" error
+    | Ok result -> result
+    | Error   error ->
+      failwithf "Result: cannot get result from failure: %A" error
 
   // ** error
 
-  /// ## Extract the embedded error value from an Either
+  /// ## Extract the embedded error value from an Result
   ///
-  /// Extracts the embedded error value from the passed Either
+  /// Extracts the embedded error value from the passed Result
   /// wrapper. Crashed hard if the constructor was actually a success.
   ///
   /// ### Signature:
-  /// - value: value of type Either<^err,^t> to extract error from
+  /// - value: value of type Result<^err,^t> to extract error from
   ///
   /// Returns: ^err
   let error = function
-    | Left error -> error
-    | Right _    ->
-      failwith "Either: cannot get error from regular result"
+    | Error error -> error
+    | Ok _    ->
+      failwith "Result: cannot get error from regular result"
 
   // ** iter
 
-  let inline iter< ^a, ^err >(f: ^a -> unit) (a: Either< ^err, ^a >) =
+  let inline iter< ^a, ^err >(f: ^a -> unit) (a: Result< ^a,^err >) =
     match a with
-    | Right value -> f value
-    | Left _ -> ()
+    | Ok value -> f value
+    | Error _ -> ()
 
   // ** iterError
 
-  let inline iterError< ^a, ^err >(f: ^err -> unit) (a: Either< ^err, ^a >) =
+  let inline iterError< ^a, ^err >(f: ^err -> unit) (a: Result< ^a, ^err >) =
     match a with
-    | Left error -> f error
-    | Right _ -> ()
+    | Error error -> f error
+    | Ok _ -> ()
 
-  // ** unwrap
+  // ** bindArray
 
-  /// Gets the value if it's successful and runs the provided function otherwise
-  let inline unwrap< ^a, ^err > (fail: ^err -> ^a) (a: Either< ^err, ^a >) =
-    match a with
-    | Right value -> value
-    | Left err    -> fail err
-
-  // ** bind
-
-  /// ## Bind a function to the result of a computation
-  ///
-  /// Inspects the passed value `a` and applies the function `f` to
-  /// the embedded value, *if* `a` was a `Right` (or success). Errors
-  /// are just passed through.
-  ///
-  /// ### Signature:
-  /// - `f`: function to apply to the embedded value of `a`
-  /// - `a`: value of type Either<^err, ^t> to apply `f` to
-  ///
-  /// Returns: Either<^err, ^t>
-  let inline bind< ^a, ^b, ^err >
-                 (f: ^a -> Either< ^err, ^b >)
-                 (a: Either< ^err, ^a >)
-                 : Either< ^err, ^b > =
-    match a with
-    | Right value -> f value
-    | Left err    -> Left err
-
-  // ** map
-
-  /// ## Map over an embedded value
-  ///
-  /// Applies a function `f` to the inner value of `a`, *if* `a`
-  /// indeed is a `Right`.
-  ///
-  /// ### Signature:
-  /// - `f`: function to apply to the inner value of `a`
-  /// - `a`: value to extract and apply `f` to
-  ///
-  /// Returns: Either<^err, ^t>
-  let inline map< ^a, ^b, ^err >
-                (f: ^a -> ^b)
-                (a: Either< ^err, ^a >)
-                : Either< ^err, ^b > =
-    match a with
-    | Right value -> f value |> succeed
-    | Left  error -> Left error
-
-  let bindArray(f: 'a -> Either<'err,'b>) (arr:'a[]): Either<'err,'b[]> =
+  let bindArray(f: 'a -> Result<'b,'err>) (arr:'a[]): Result<'b[],'err> =
     let mutable i = 0
     let mutable error = None
     let arr2 = Array.zeroCreate arr.Length
     while i < arr.Length && Option.isNone error do
       match f arr.[i] with
-      | Right value -> arr2.[i] <- value; i <- i + 1
-      | Left err -> error <- Some err
+      | Ok value -> arr2.[i] <- value; i <- i + 1
+      | Error err -> error <- Some err
     match error with
-    | Some err -> Left err
-    | None -> Right arr2
+    | Some err -> Error err
+    | None -> Ok arr2
 
-  // ** mapError
+  // ** unwrap
 
-  /// ## Map over the embedded error value
-  ///
-  /// Inspects the passed value `a` and applies the function `f`, *if*
-  /// `a` is a `Left`.
-  ///
-  /// ### Signature:
-  /// - `f`: function to apply to the inner error value
-  /// - `a`: value of type Either<^err,^t>
-  ///
-  /// Returns: Either<^err, ^t>
-  let inline mapError< ^a, ^err1, ^err2 >
-                    (f: ^err1 -> ^err2)
-                    (a: Either< ^err1, ^a >)
-                    : Either< ^err2, ^a> =
+  /// Gets the value if it's successful and runs the provided function otherwise
+  let inline unwrap< ^a, ^err > (fail: ^err -> ^a) (a: Result< ^a,^err >) =
     match a with
-    | Right value -> Right value
-    | Left error  -> Left(f error)
+    | Ok value -> value
+    | Error err    -> fail err
 
   // ** combine
 
   let inline combine< ^a, ^b, ^err >
                     (v1 : ^a)
-                    (v2 : Either< ^err, ^b >)
-                    : Either< ^err, (^a * ^b) > =
+                    (v2 : Result< ^b,^err >)
+                    : Result< (^a * ^b),^err > =
     match v2 with
-    | Right value2 -> succeed (v1, value2)
-    | Left err     -> Left err
+    | Ok value2 -> succeed (v1, value2)
+    | Error err     -> Error err
 
   // ** ofOption
 
-  /// ## Transform an Option value into an Either
+  /// ## Transform an Option value into a Result
   ///
   /// Converts the passed value of type `'t option` into an
-  /// Either<^err, ^t>. If the passed value is a `None`, use the
-  /// provided error value in the `Left`.
+  /// Result<^t,^err>. If the passed value is a `None`, use the
+  /// provided error value in the `Error`.
   ///
   /// ### Signature:
   /// - err: error value to use when `a` is `None`
   /// - `a`: value to convert
   ///
-  /// Returns: Either<^err,^t>
+  /// Returns: Result<^t,^err>
   let inline ofOption< ^a, ^b, ^err >
                      (err: ^err)
                      (a: ^a option)
-                     : Either< ^err, ^a > =
+                     : Result< ^a,^err > =
     match a with
-    | Some value -> Right value
-    | None       -> Left err
+    | Some value -> Ok value
+    | None       -> Error err
 
   // ** nothing
 
-  let inline nothing< ^err > : Either< ^err,unit > =
+  let inline nothing< ^err > : Result<unit,^err> =
     succeed ()
 
   // ** ignore
 
-  let inline ignore< ^err > _ : Either< ^err, unit > =
+  let inline ignore< ^err > _ : Result<unit, ^err> =
     succeed ()
 
   // ** tryWith
@@ -261,7 +189,7 @@ module Either =
   let inline tryWith< ^a, ^err >
                     (err: (string -> ^err))
                     (f: unit -> ^a)
-                    : Either< ^err, ^a > =
+                    : Result< ^a, ^err > =
     try
       f() |> succeed
     with
@@ -274,56 +202,48 @@ module Either =
   // ** orElse
 
   let inline orElse value = function
-    | Right _ as good -> good
-    | Left _ -> Right value
+    | Ok _ as good -> good
+    | Error _ -> Ok value
 
   // ** defaultValue
 
   let defaultValue def = function
-    | Right value -> value
-    | Left _ -> def
+    | Ok value -> value
+    | Error _ -> def
 
-// * Either Builder
-
-//  _____ _ _   _                 ____        _ _     _
-// | ____(_) |_| |__   ___ _ __  | __ ) _   _(_) | __| | ___ _ __
-// |  _| | | __| '_ \ / _ \ '__| |  _ \| | | | | |/ _` |/ _ \ '__|
-// | |___| | |_| | | |  __/ |    | |_) | |_| | | | (_| |  __/ |
-// |_____|_|\__|_| |_|\___|_|    |____/ \__,_|_|_|\__,_|\___|_|
+// * Result Builder
 
 [<AutoOpen>]
-module EitherUtils =
+module ResultUtils =
 
-  type EitherBuilder() =
+  type ResultBuilder() =
 
-    member self.Return(v: 'a): Either<'err, 'a> = Right v
+    member self.Return(v: 'a): Result<'a,'err> = Ok v
 
-    member self.ReturnFrom(v: Either<'err, 'a>): Either<'err, 'a> = v
+    member self.ReturnFrom(v: Result<'a,'err>): Result<'a,'err> = v
 
-    member self.Bind(m: Either<'err, 'a>, f: 'a -> Either<'err, 'b>): Either<'err, 'b> =
-      match m with
-      | Right value -> f value
-      | Left err    -> Left err
+    member self.Bind(m: Result<'a,'err>, f: 'a -> Result<'b,'err>): Result<'b,'err> =
+      Result.bind f m
 
-    member self.Zero(): Either<'err, unit> = Right ()
+    member self.Zero(): Result<unit,'err> = Ok ()
 
-    member self.Delay(f: unit -> Either<'err, 'a>) = f
+    member self.Delay(f: unit -> Result<'a,'err>) = f
 
-    member self.Run(f: unit -> Either<'err, 'a>) = f()
+    member self.Run(f: unit -> Result<'a,'err>) = f()
 
-    member self.While(guard: unit -> bool, body: unit -> Either<'err, unit>): Either<'err, unit> =
+    member self.While(guard: unit -> bool, body: unit -> Result<unit,'err>): Result<unit,'err> =
       if guard ()
       then self.Bind(body(), fun () -> self.While(guard, body))
       else self.Zero()
 
-    member self.For(sequence:seq<'a>, body: 'a -> Either<'err, unit>): Either<'err, unit> =
+    member self.For(sequence:seq<'a>, body: 'a -> Result<unit,'err>): Result<unit,'err> =
       self.Using(sequence.GetEnumerator(), fun enum ->
         self.While(enum.MoveNext, fun () -> body enum.Current))
 
     member self.Combine(a, b) =
       match a with
-      | Right _ -> a
-      | Left  _ -> b
+      | Ok _ -> a
+      | Error  _ -> b
 
     member self.TryWith(body, handler) =
       try body() |> self.ReturnFrom
@@ -336,17 +256,17 @@ module EitherUtils =
         handler ()
 
     member self.Using<'a, 'b, 'err when 'a :> IDisposable>
-                     (disposable: 'a, body: 'a -> Either<'err, 'b>): Either<'err, 'b> =
+                     (disposable: 'a, body: 'a -> Result<'b,'err>): Result<'b,'err> =
 
       let body' = fun () -> body disposable
       self.TryFinally(body', fun () ->
         disposable.Dispose())
 
-  let either = EitherBuilder()
+  let result = ResultBuilder()
 
 #if INTERACTIVE
 module Test =
-  open EitherUtils
+  open ResultUtils
 
   type DisposableAction(f) =
       interface IDisposable with
@@ -360,15 +280,15 @@ module Test =
 
   let orFail x =
     match x with
-    | Left err -> printfn "ERROR: %O" err
-    | Right v -> printfn "OK: %O" v
+    | Error err -> printfn "ERROR: %O" err
+    | Ok v -> printfn "OK: %O" v
 
   let riskyOp x =
     printfn "Evaluating %O..." x
-    if x = 0 then Left "boom!" else Right ()
+    if x = 0 then Error "boom!" else Ok ()
 
   let test() =
-    let test = either {
+    let test = result {
       printfn "This should be lazy but it's evaluated eagerly"
       let ar = [|1;2;0;3|]
       let mutable i = 0
@@ -381,13 +301,13 @@ module Test =
     orFail test
 
     // No problem here
-    either {
+    result {
       for x in [1;2;3] do
         do! riskyOp x
     } |> orFail
 
     // Boom!
-    either {
+    result {
       for x in [|1;2;0;3|] do
         do! riskyOp x
     } |> orFail
@@ -396,10 +316,10 @@ module Test =
       let isDisposed = ref false
       let step1ok = ref false
       let step2ok = ref false
-      let resource = either {
+      let resource = result {
           return new DisposableAction(fun () -> isDisposed := true)
       }
-      either {
+      result {
           use! r = resource
           step1ok := not !isDisposed
       } |> ignore
@@ -434,4 +354,4 @@ module OptionUtils =
 
     member __.Run (f) = f()
 
-  let maybe = new MaybeBuilder()
+  let maybe = MaybeBuilder()

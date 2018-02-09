@@ -25,7 +25,7 @@ module PinBecomesDirty =
 
   let test =
     testCase "pin becomes dirty" <| fun _ ->
-      either {
+      result {
         use started = new WaitEvent()
         use updateDone = new WaitEvent()
         use saveDone = new WaitEvent()

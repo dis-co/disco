@@ -48,7 +48,7 @@ type PinWidgetYaml() =
     yml
 
   member yml.ToPinWidget() =
-    either {
+    result {
       let! id = DiscoId.TryParse yml.Id
       let! widget = DiscoId.TryParse yml.WidgetType
       return {
@@ -109,7 +109,7 @@ type PinWidget =
   //                           |___/
 
   static member FromFB (fb: PinWidgetFB) =
-    either {
+    result {
       let! id = Id.decodeId fb
       let! widget = Id.decodeWidgetType fb
       return {
@@ -137,7 +137,7 @@ type PinWidget =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte[]) : Either<DiscoError,PinWidget> =
+  static member FromBytes (bytes: byte[]) : DiscoResult<PinWidget> =
     Binary.createBuffer bytes
     |> PinWidgetFB.GetRootAsPinWidgetFB
     |> PinWidget.FromFB
@@ -152,12 +152,12 @@ type PinWidget =
 
   #if !FABLE_COMPILER && !DISCO_NODES
 
-  static member Load(path: FilePath) : Either<DiscoError, PinWidget> =
+  static member Load(path: FilePath) : DiscoResult<PinWidget> =
     DiscoData.load path
 
   // ** LoadAll
 
-  static member LoadAll(basePath: FilePath) : Either<DiscoError, PinWidget array> =
+  static member LoadAll(basePath: FilePath) : DiscoResult<PinWidget array> =
     basePath </> filepath Constants.PINWIDGET_DIR
     |> DiscoData.loadAll
 

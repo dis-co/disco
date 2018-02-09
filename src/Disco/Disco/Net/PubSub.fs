@@ -152,12 +152,12 @@ module rec PubSub =
             do client.Client.Bind(localEp)
             do client.JoinMulticastGroup(remoteAddress, externalAddress)
             do beginReceive state
-            Either.nothing
+            Result.nothing
           with
             | exn ->
               exn.Message
               |> Error.asSocketError (tag "Start")
-              |> Either.fail
+              |> Result.fail
 
         member pubsub.Send(bytes: byte array) =
           try

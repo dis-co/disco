@@ -55,7 +55,7 @@ type CueReferenceYaml() =
   // ** ToCueReference
 
   member yaml.ToCueReference() =
-     either {
+     result {
       let! id = DiscoId.TryParse yaml.Id
       let! cueId = DiscoId.TryParse yaml.CueId
       return {
@@ -112,8 +112,8 @@ type CueReference =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  static member FromFB(fb: CueReferenceFB) : Either<DiscoError,CueReference> =
-    either {
+  static member FromFB(fb: CueReferenceFB) : DiscoResult<CueReference> =
+    result {
       let! id = Id.decodeId fb
       let! cueId = Id.decodeCueId fb
       return {
@@ -140,7 +140,7 @@ type CueReference =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: byte[]) : Either<DiscoError,CueReference> =
+  static member FromBytes(bytes: byte[]) : DiscoResult<CueReference> =
     bytes
     |> Binary.createBuffer
     |> CueReferenceFB.GetRootAsCueReferenceFB
@@ -164,7 +164,7 @@ type CueReference =
 
   // ** FromYaml
 
-  static member FromYaml(yaml: CueReferenceYaml) : Either<DiscoError,CueReference> =
+  static member FromYaml(yaml: CueReferenceYaml) : DiscoResult<CueReference> =
     yaml.ToCueReference()
 
   #endif

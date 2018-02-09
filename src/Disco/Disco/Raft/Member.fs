@@ -53,12 +53,12 @@ type MemberStatus =
 
   static member TryParse (str: string) =
     try
-      str |> MemberStatus.Parse |> Either.succeed
+      str |> MemberStatus.Parse |> Result.succeed
     with
       | exn ->
         sprintf "Could not parse MemberStatus: %s" exn.Message
         |> Error.asParseError "MemberStatus.TryParse"
-        |> Either.fail
+        |> Result.fail
 
   // ** ToOffset
 
@@ -73,22 +73,22 @@ type MemberStatus =
   static member FromFB (fb: MemberStatusFB) =
     #if FABLE_COMPILER
     match fb with
-      | x when x = MemberStatusFB.JoiningFB -> Right Joining
-      | x when x = MemberStatusFB.RunningFB -> Right Running
-      | x when x = MemberStatusFB.FailedFB  -> Right Failed
+      | x when x = MemberStatusFB.JoiningFB -> Ok Joining
+      | x when x = MemberStatusFB.RunningFB -> Ok Running
+      | x when x = MemberStatusFB.FailedFB  -> Ok Failed
       | x ->
         sprintf "Could not parse MemberStatus: %A" x
         |> Error.asParseError "MemberStatus.FromFB"
-        |> Either.fail
+        |> Result.fail
     #else
     match fb with
-      | MemberStatusFB.JoiningFB -> Right Joining
-      | MemberStatusFB.RunningFB -> Right Running
-      | MemberStatusFB.FailedFB  -> Right Failed
+      | MemberStatusFB.JoiningFB -> Ok Joining
+      | MemberStatusFB.RunningFB -> Ok Running
+      | MemberStatusFB.FailedFB  -> Ok Failed
       | x ->
         sprintf "Could not parse MemberStatus: %A" x
         |> Error.asParseError "MemberStatus.FromFB"
-        |> Either.fail
+        |> Result.fail
     #endif
 
 // * RaftMemberYaml
@@ -150,11 +150,11 @@ type MemberState =
   static member TryParse str =
     try
       MemberState.Parse str
-      |> Either.succeed
+      |> Result.succeed
     with exn ->
       exn.Message
       |> Error.asParseError "RaftState.TryParse"
-      |> Either.fail
+      |> Result.fail
 
   // ** ToOffset
 
@@ -169,19 +169,19 @@ type MemberState =
   static member FromFB(fb: MemberStateFB) =
     match fb with
     #if FABLE_COMPILER
-    | x when x = MemberStateFB.FollowerFB  -> Right Follower
-    | x when x = MemberStateFB.LeaderFB    -> Right Leader
-    | x when x = MemberStateFB.CandidateFB -> Right Candidate
+    | x when x = MemberStateFB.FollowerFB  -> Ok Follower
+    | x when x = MemberStateFB.LeaderFB    -> Ok Leader
+    | x when x = MemberStateFB.CandidateFB -> Ok Candidate
     #else
-    | MemberStateFB.FollowerFB  -> Right Follower
-    | MemberStateFB.LeaderFB    -> Right Leader
-    | MemberStateFB.CandidateFB -> Right Candidate
+    | MemberStateFB.FollowerFB  -> Ok Follower
+    | MemberStateFB.LeaderFB    -> Ok Leader
+    | MemberStateFB.CandidateFB -> Ok Candidate
     #endif
     | other ->
       other
       |> String.format "unknown raft state: {0}"
       |> Error.asParseError "RaftState.FromFB"
-      |> Either.fail
+      |> Result.fail
 
 // * RaftMember
 
@@ -271,8 +271,8 @@ type RaftMember =
 
   // ** FromYaml
 
-  static member FromYaml (yaml: RaftMemberYaml) : Either<DiscoError, RaftMember> =
-    either {
+  static member FromYaml (yaml: RaftMemberYaml): DiscoResult<RaftMember> =
+    result {
       let! id = DiscoId.TryParse yaml.Id
       let! ip = IpAddress.TryParse yaml.IpAddress
       let! mcastip = IpAddress.TryParse yaml.MulticastAddress
@@ -317,8 +317,8 @@ type RaftMember =
 
   // ** FromFB
 
-  static member FromFB (fb: RaftMemberFB) : Either<DiscoError, RaftMember> =
-    either {
+  static member FromFB (fb: RaftMemberFB): DiscoResult<RaftMember> =
+    result {
       let! id = Id.decodeId fb
       let! state = MemberState.FromFB fb.State
       let! status = MemberStatus.FromFB fb.Status
@@ -405,8 +405,8 @@ type ConfigChange =
 
   // ** FromFB
 
-  static member FromFB (fb: ConfigChangeFB) : Either<DiscoError,ConfigChange> =
-    either {
+  static member FromFB (fb: ConfigChangeFB): DiscoResult<ConfigChange> =
+    result {
       #if FABLE_COMPILER
       let! mem = fb.Member |> RaftMember.FromFB
       match fb.Type with
@@ -416,7 +416,7 @@ type ConfigChange =
         return!
           sprintf "Could not parse ConfigChangeTypeFB %A" x
           |> Error.asParseError "ConfigChange.FromFB"
-          |> Either.fail
+          |> Result.fail
       #else
       let nullable = fb.Member
       if nullable.HasValue then
@@ -428,12 +428,12 @@ type ConfigChange =
           return!
             sprintf "Could not parse ConfigChangeTypeFB %A" x
             |> Error.asParseError "ConfigChange.FromFB"
-            |> Either.fail
+            |> Result.fail
       else
         return!
           "Could not parse empty ConfigChangeFB payload"
           |> Error.asParseError "ConfigChange.FromFB"
-          |> Either.fail
+          |> Result.fail
       #endif
     }
 
@@ -461,18 +461,18 @@ type ConfigChange =
 
   static member FromYaml (yml: ConfigChangeYaml) =
     match yml.ChangeType with
-    | "MemberAdded" -> either {
+    | "MemberAdded" -> result {
         let! mem = Yaml.fromYaml yml.Member
         return MemberAdded(mem)
       }
-    | "MemberRemoved" -> either {
+    | "MemberRemoved" -> result {
         let! mem = Yaml.fromYaml yml.Member
         return MemberRemoved(mem)
       }
     | x ->
       sprintf "Could not parse %s as ConfigChange" x
       |> Error.asParseError "ConfigChange.FromYaml"
-      |> Either.fail
+      |> Result.fail
 
   #endif
 

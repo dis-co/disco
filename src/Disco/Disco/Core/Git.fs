@@ -80,12 +80,12 @@ module Git =
       url
       |> Repository.ListRemoteReferences
       |> Seq.cast<Reference>
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         exn.Message
         |> Error.asGitError (tag "lsRemote")
-        |> Either.fail
+        |> Result.fail
 
   // ** Branch module
 
@@ -119,12 +119,12 @@ module Git =
     let create (name: string) (repo: Repository) =
       try
         repo.CreateBranch(name)
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "create")
-          |> Either.fail
+          |> Result.fail
 
     // *** current
 
@@ -147,14 +147,14 @@ module Git =
     /// ### Signature:
     /// - branch: Branch
     ///
-    /// Returns: Either<string,Branch>
-    let tracked (branch: Branch) : Either<DiscoError,Branch> =
+    /// Returns: Result<Branch,string>
+    let tracked (branch: Branch) : DiscoResult<Branch> =
       match branch.TrackedBranch with
         | null      ->
           "No tracked branch"
           |> Error.asGitError (tag "tracked")
-          |> Either.fail
-        | branch -> Either.succeed branch
+          |> Result.fail
+        | branch -> Result.succeed branch
 
     // *** tracking
 
@@ -166,13 +166,13 @@ module Git =
     /// - branch: Branch to get details for
     ///
     /// Returns: BranchTrackingDetails option
-    let tracking (branch: Branch) : Either<DiscoError,BranchTrackingDetails> =
+    let tracking (branch: Branch) : DiscoResult<BranchTrackingDetails> =
       match branch.TrackingDetails with
         | null       ->
           "No tracked branch"
           |> Error.asGitError (tag "tracking")
-          |> Either.fail
-        | details -> Either.succeed details
+          |> Result.fail
+        | details -> Result.succeed details
 
     // *** tip
 
@@ -310,7 +310,7 @@ module Git =
     /// - remote: string
     /// - upstream: string
     ///
-    /// Returns: Either<DiscoError, unit>
+    /// Returns: DiscoResult<unit>
 
     let setTracked (repo: Repository) (branch: Branch) (remote: Remote) =
       try
@@ -318,12 +318,12 @@ module Git =
           updater.Remote <- remote.Name
           updater.UpstreamBranch <- branch.CanonicalName
         repo.Branches.Update (branch, setRemote)
-        |> Either.ignore
+        |> Result.ignore
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "setTracked")
-          |> Either.fail
+          |> Result.fail
 
   // ** Repo
 
@@ -396,12 +396,12 @@ module Git =
     let setReceivePackConfig (repo: Repository) =
       try
         repo.Config.Set("receive.denyCurrentBranch", "updateInstead")
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "setReceivePackConfig")
-          |> Either.fail
+          |> Result.fail
 
     #endif
 
@@ -415,10 +415,10 @@ module Git =
     /// - target: FilePath to target directory
     /// - remote: string specifiying the remote repository address
     ///
-    /// Returns: Either<DiscoError, Respository>
+    /// Returns: DiscoResult<Respository>
     let clone (target: FilePath) (remote: string) =
       try
-        either {
+        result {
           let path = Repository.Clone(remote, unwrap target)
           let repo = new Repository(path)
           do! setReceivePackConfig repo
@@ -427,7 +427,7 @@ module Git =
         | exn ->
           exn.Message
           |> Error.asGitError (tag "clone")
-          |> Either.fail
+          |> Result.fail
 
     // *** branches
 
@@ -484,12 +484,12 @@ module Git =
     let reset (opts: ResetMode) (repo: Repository) =
       try
         repo.Reset opts
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "reset")
-          |> Either.fail
+          |> Result.fail
 
     // *** resetTo
 
@@ -506,12 +506,12 @@ module Git =
     let resetTo (opts: ResetMode) (commit: Commit) (repo: Repository) =
       try
         repo.Reset(opts, commit)
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "resetTo")
-          |> Either.fail
+          |> Result.fail
 
     // *** clean
 
@@ -628,8 +628,8 @@ module Git =
         spec
         |> String.format "{0} not found"
         |> Error.asGitError (tag "checkout")
-        |> Either.fail
-      | branch -> Either.succeed branch
+        |> Result.fail
+      | branch -> Result.succeed branch
 
     // *** repository
 
@@ -641,7 +641,7 @@ module Git =
     /// - path: FilePath to search for the .git folder
     ///
     /// Returns: Repository option
-    let repository (path: FilePath) : Either<DiscoError,Repository> =
+    let repository (path: FilePath) : DiscoResult<Repository> =
       try
         let normalized =
           if Path.endsWith ".git" path then
@@ -650,17 +650,17 @@ module Git =
             path </> filepath ".git"
 
         new Repository(unwrap normalized)
-        |> Either.succeed
+        |> Result.succeed
       with
         | :? RepositoryNotFoundException as exn  ->
           exn.Message
           |> String.format (unwrap path + ": {0}")
           |> Error.asGitError (tag "repository")
-          |> Either.fail
+          |> Result.fail
         | exn ->
           exn.Message
           |> Error.asGitError (tag "repository")
-          |> Either.fail
+          |> Result.fail
 
     // *** init
 
@@ -671,7 +671,7 @@ module Git =
     /// ### Signature:
     /// - path: FilePath pointing to the target directory
     ///
-    /// Returns: Either<DiscoError<string>,Repository>
+    /// Returns: DiscoResult<Repository>
     let init (path: FilePath) =
       try
         Path.map Repository.Init path |> ignore
@@ -680,7 +680,7 @@ module Git =
         | exn ->
           exn.Message
           |> Error.asGitError (tag "init")
-          |> Either.fail
+          |> Result.fail
 
     // *** add
 
@@ -690,18 +690,18 @@ module Git =
           path
           |> String.format "Path must be relative to the project root: {0}"
           |> Error.asGitError (tag "add")
-          |> Either.fail
+          |> Result.fail
         else
           if File.exists path || Directory.exists path then
             runGit repo.Info.WorkingDirectory "add" "." ""
-            |> Either.ignore
+            |> Result.ignore
           else
-            Either.succeed ()
+            Result.succeed ()
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "add")
-          |> Either.fail
+          |> Result.fail
 
     // *** stage
 
@@ -709,17 +709,17 @@ module Git =
       try
         if Path.isPathRooted path && not (repo.Ignore.IsPathIgnored (unwrap path))then
           runGit repo.Info.WorkingDirectory "stage" "." ""
-          |> Either.ignore
+          |> Result.ignore
         else
           path
           |> String.format "Paths must be absolute: {0}"
           |> Error.asGitError (tag "stage")
-          |> Either.fail
+          |> Result.fail
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "stage")
-          |> Either.fail
+          |> Result.fail
 
     // *** stageAll
 
@@ -731,24 +731,24 @@ module Git =
       try
         repo.RetrieveStatus()
         |> Seq.iter _stage
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "stageAll")
-          |> Either.fail
+          |> Result.fail
 
     // *** commit
 
     let commit (repo: Repository) (msg: string) (committer: Signature) =
       try
         repo.Commit(msg, committer, committer)
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "commit")
-          |> Either.fail
+          |> Result.fail
 
     // *** status
 
@@ -760,15 +760,15 @@ module Git =
     /// - repo: Repository to fetch status for
     ///
     /// Returns: RepositoryStatus
-    let status (repo: Repository) : Either<DiscoError,RepositoryStatus> =
+    let status (repo: Repository) : DiscoResult<RepositoryStatus> =
       try
         repo.RetrieveStatus()
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "status")
-          |> Either.fail
+          |> Result.fail
 
     // *** isDirty
 
@@ -780,8 +780,8 @@ module Git =
     /// - repo: Repository to check
     ///
     /// Returns: boolean
-    let isDirty (repo: Repository) : Either<DiscoError, bool> =
-      either {
+    let isDirty (repo: Repository) : DiscoResult<bool> =
+      result {
         let! status = status repo
         return status.IsDirty
       }
@@ -796,8 +796,8 @@ module Git =
     /// - repo: Repository
     ///
     /// Returns: seq<StatusEntry>
-    let untracked (repo: Repository) : Either<DiscoError,seq<StatusEntry>> =
-      either {
+    let untracked (repo: Repository) : DiscoResult<seq<StatusEntry>> =
+      result {
         let! status = status repo
         return status.Untracked
       }
@@ -827,15 +827,15 @@ module Git =
     /// - t: IQueryableCommitLog
     ///
     /// Returns: Commit
-    let elementAt (idx: int) (t: IQueryableCommitLog) : Either<DiscoError,Commit> =
+    let elementAt (idx: int) (t: IQueryableCommitLog) : DiscoResult<Commit> =
       try
         t.ElementAt(idx)
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "elementAt")
-          |> Either.fail
+          |> Result.fail
 
     // *** commitCount
 
@@ -859,12 +859,12 @@ module Git =
         let basepath = Path.GetDirectoryName repo.Info.Path
         branch.FriendlyName
         |> runGit basepath "push" remote.Name
-        |> Either.ignore
+        |> Result.ignore
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "push")
-          |> Either.fail
+          |> Result.fail
 
     // *** pull
 
@@ -876,11 +876,11 @@ module Git =
     /// - repo: Repository
     /// - remote: string
     ///
-    /// Returns: Either<DiscoError,MergeResult>
+    /// Returns: DiscoResult<MergeResult>
 
     let pull (repo: Repository) (signature: Signature) =
       try
-        either {
+        result {
           let options =
             let fopts = FetchOptions()
             let popts = PullOptions()
@@ -896,7 +896,7 @@ module Git =
         | exn ->
           exn.Message
           |> Error.asGitError (tag "pull")
-          |> Either.fail
+          |> Result.fail
 
     // *** lsRemote
 
@@ -905,12 +905,12 @@ module Git =
         remote
         |> repo.Network.ListReferences
         |> Seq.cast<Reference>
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "lsRemote")
-          |> Either.fail
+          |> Result.fail
 
   // ** Config
 
@@ -946,12 +946,12 @@ module Git =
     let addRemote (repo: Repository) (name: string) (url: Url) =
       try
         repo.Network.Remotes.Add(name, unwrap url)
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "addRemote")
-          |> Either.fail
+          |> Result.fail
 
     // *** updateRemote
 
@@ -961,18 +961,18 @@ module Git =
           updater.Url <- unwrap url
         repo.Network.Remotes.Update(remote.Name, update)
         repo.Network.Remotes.[remote.Name]
-        |> Either.succeed
+        |> Result.succeed
       with
         | exn ->
           exn.Message
           |> Error.asGitError (tag "updateRemote")
-          |> Either.fail
+          |> Result.fail
 
     // *** delRemote
 
-    let delRemote (repo: Repository) (name: string) : Either<DiscoError,unit> =
+    let delRemote (repo: Repository) (name: string) : DiscoResult<unit> =
       repo.Network.Remotes.Remove name
-      |> Either.succeed
+      |> Result.succeed
 
   #endif
 
@@ -1031,6 +1031,6 @@ repo.Network.Fetch("git@bitbucket.org:krgn/meh.git", ["master"], "hello")
 
 Commands.Pull(repo, User.Admin.Signature, options)
 
-repo.Network.Push(fix_issue |> Either.get)
+repo.Network.Push(fix_issue |> Result.get)
 
 #endif

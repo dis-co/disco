@@ -34,7 +34,7 @@ module Common =
         WorkSpace = tmpPath() </> Path.getRandomFileName() }
 
   let mkProject (machine: DiscoMachine) (site: ClusterConfig) =
-    either {
+    result {
       let name = Path.GetRandomFileName()
       let path = machine.WorkSpace </> filepath name
 
@@ -71,7 +71,7 @@ module Common =
           |> Map.ofList }
 
   let mkCluster (num: int) =
-    either {
+    result {
       let baseport = 4000us
 
       let machines =
@@ -88,13 +88,13 @@ module Common =
           (fun (i, project') machine ->
             if i = 0 then
               match mkProject machine site with
-              | Right project -> (i + 1, project)
-              | Left error -> failwithf "unable to create project: %O" error
+              | Ok project -> (i + 1, project)
+              | Error error -> failwithf "unable to create project: %O" error
             else
               let path = project'.Path
               match copyDir path (machine.WorkSpace </> (project'.Name |> unwrap |> filepath)) with
-              | Right () -> (i + 1, project')
-              | Left error -> failwithf "error copying project: %O" error)
+              | Ok () -> (i + 1, project')
+              | Error error -> failwithf "error copying project: %O" error)
           (0, Unchecked.defaultof<DiscoProject>)
           machines
         |> snd

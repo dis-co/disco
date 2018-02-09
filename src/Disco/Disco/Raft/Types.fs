@@ -46,7 +46,7 @@ type EntryResponse =
   // ** FromFB
 
   static member FromFB(fb: EntryResponseFB) =
-    either {
+    result {
       let! id = Id.decodeId fb
       return {
         Id = id
@@ -122,8 +122,8 @@ type VoteRequest =
 
   // ** FromFB
 
-  static member FromFB (fb: VoteRequestFB) : Either<DiscoError, VoteRequest> =
-    either {
+  static member FromFB (fb: VoteRequestFB): DiscoResult<VoteRequest> =
+    result {
       let candidate = fb.Candidate
       if candidate.HasValue then
         let! mem = RaftMember.FromFB candidate.Value
@@ -135,7 +135,7 @@ type VoteRequest =
         return!
           "Could not parse empty MemberFB"
           |> Error.asParseError "VoteRequest.FromFB"
-          |> Either.fail
+          |> Result.fail
     }
 
   // ** optics
@@ -189,15 +189,15 @@ type VoteResponse =
 
   // ** FromFB
 
-  static member FromFB (fb: VoteResponseFB) : Either<DiscoError, VoteResponse> =
-    either {
+  static member FromFB (fb: VoteResponseFB): DiscoResult<VoteResponse> =
+    result {
       let! reason =
         let reason = fb.Reason
         if reason.HasValue then
           DiscoError.FromFB reason.Value
-          |> Either.map Some
+          |> Result.map Some
         else
-          Right None
+          Ok None
       return {
         Term    = 1<term> * fb.Term
         Granted = fb.Granted
@@ -297,11 +297,11 @@ type AppendEntries =
 
   // ** FromFB
 
-  static member FromFB (fb: AppendEntriesFB) : Either<DiscoError,AppendEntries> =
-    either {
+  static member FromFB (fb: AppendEntriesFB): DiscoResult<AppendEntries> =
+    result {
       let! entries =
         if fb.EntriesLength = 0 then
-          Either.succeed None
+          Result.succeed None
         else
           let raw = Array.zeroCreate fb.EntriesLength
           for i in 0 .. (fb.EntriesLength - 1) do
@@ -404,7 +404,7 @@ type AppendResponse =
   // ** FromFB
 
   static member FromFB (fb: AppendResponseFB) =
-    Either.succeed {
+    Result.succeed {
       Term         = 1<term> * fb.Term
       Success      = fb.Success
       CurrentIndex = 1<index> * fb.CurrentIndex
@@ -501,7 +501,7 @@ type InstallSnapshot =
   // ** FromFB
 
   static member FromFB (fb: InstallSnapshotFB) =
-    either  {
+    result {
       let! decoded =
         if fb.DataLength > 0 then
           let raw = Array.zeroCreate fb.DataLength
@@ -513,7 +513,7 @@ type InstallSnapshot =
         else
           "Invalid InstallSnapshot (no log data)"
           |> Error.asParseError "InstallSnapshot.FromFB"
-          |> Either.fail
+          |> Result.fail
 
       match decoded with
       | Some entries ->
@@ -529,7 +529,7 @@ type InstallSnapshot =
         return!
           "Invalid InstallSnapshot (no log data)"
           |> Error.asParseError "InstallSnapshot.FromFB"
-          |> Either.fail
+          |> Result.fail
     }
 
 // * InstallSnapshot module

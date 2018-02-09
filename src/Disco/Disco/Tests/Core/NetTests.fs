@@ -29,7 +29,7 @@ module NetIntegrationTests =
 
   let test_client_should_automatically_reconnect =
     testCase "client should automatically reconnect" <| fun _ ->
-      either {
+      result {
         let ip = IpAddress.Localhost
         let prt = port 5555us
 
@@ -69,7 +69,7 @@ module NetIntegrationTests =
 
   let test_server_request_handling =
     testCase "server request handling" <| fun _ ->
-      either {
+      result {
 
         let rand = new System.Random()
         use stopper = new WaitEvent()
@@ -199,7 +199,7 @@ module NetIntegrationTests =
 
   let test_duplicate_server_fails_gracefully =
     testCase "duplicate server fails gracefully" <| fun _ ->
-      either {
+      result {
         let ip = IpAddress.Localhost
         let prt = port 5555us
 
@@ -219,14 +219,14 @@ module NetIntegrationTests =
 
         return!
           match server2.Start() with
-          | Right _ -> Left(Other("test","should have failed"))
-          | Left  _ -> Right ()
+          | Ok _ -> Error(Other("test","should have failed"))
+          | Error  _ -> Ok ()
       }
       |> noError
 
   let test_pub_socket_disposes_properly =
     testCase "pub socket disposes properly" <| fun _ ->
-      either {
+      result {
         let mem = DiscoId.Create() |> ClusterMember.create
         use pub = PubSub.create mem
         do! pub.Start()

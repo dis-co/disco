@@ -50,8 +50,8 @@ type ClientEvent =
 type IApiClient =
   inherit IDisposable
   abstract Id: ClientId
-  abstract Start: unit -> Either<DiscoError,unit>
-  abstract Restart: server:DiscoServer -> Either<DiscoError,unit>
+  abstract Start: unit -> DiscoResult<unit>
+  abstract Restart: server:DiscoServer -> DiscoResult<unit>
   abstract State: State
   abstract Status: ServiceStatus
   abstract Subscribe: (ClientEvent -> unit) -> IDisposable

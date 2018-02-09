@@ -25,7 +25,7 @@ module EnsureClientsReplicated =
 
   let test =
     testCase "ensure connected clients are forwarded to leader" <| fun _ ->
-      either {
+      result {
         use electionDone = new WaitEvent()
         use addClientDone = new WaitEvent()
         use appendDone = new WaitEvent()

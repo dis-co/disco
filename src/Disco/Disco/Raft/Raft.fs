@@ -81,7 +81,7 @@ module rec Raft =
         do! voteFor None
         do! setLeader nid
         do! becomeFollower ()
-        return Right resp
+        return Ok resp
       // 2) Else, if the current mem's term value is lower than the requests
       // term, we take become follower and set our own term to higher value.
       elif term < msg.Term then
@@ -91,7 +91,7 @@ module rec Raft =
         return
           resp
           |> AppendResponse.setTerm msg.Term
-          |> Either.succeed
+          |> Result.succeed
       // 3) Else, finally, if the msg's Term is lower than our own we reject the
       // the request entirely.
       elif msg.Term < term then
@@ -99,9 +99,9 @@ module rec Raft =
         return
           resp
           |> AppendResponse.setCurrentIndex idx
-          |> Either.fail
+          |> Result.fail
       else
-        return Either.succeed resp
+        return Result.succeed resp
     }
 
   // ** handleConflicts
@@ -297,7 +297,7 @@ module rec Raft =
       let! result = createResponse nid msg  // check terms et al match, fail otherwise
 
       match result with
-      | Right resp ->
+      | Ok resp ->
         // this is not the first AppendEntry we're receiving
         if msg.PrevLogIdx > 0<index> then
           let! entry = entryAt msg.PrevLogIdx
@@ -311,7 +311,7 @@ module rec Raft =
             return resp
         else
           return! processEntry nid msg resp
-      | Left err -> return err
+      | Error err -> return err
     }
 
   // ** receiveAppendEntriesResponse

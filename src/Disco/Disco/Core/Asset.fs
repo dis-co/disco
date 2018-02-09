@@ -35,46 +35,46 @@ module Asset =
 
   #if !FABLE_COMPILER
 
-  let inline save< ^t when ^t : (member Save: FilePath -> Either<DiscoError, unit>)>
+  let inline save< ^t when ^t : (member Save: FilePath -> DiscoResult<unit>)>
                  (path: FilePath)
                  (t: ^t) =
-    (^t : (member Save: FilePath -> Either<DiscoError, unit>) (t, path))
+    (^t : (member Save: FilePath -> DiscoResult<unit>) (t, path))
 
 
   // ** delete
 
-  let inline delete< ^t when ^t : (member Delete: FilePath -> Either<DiscoError, unit>)>
+  let inline delete< ^t when ^t : (member Delete: FilePath -> DiscoResult<unit>)>
                    (path: FilePath)
                    (t: ^t) =
-    (^t : (member Delete: FilePath -> Either<DiscoError, unit>) (t, path))
+    (^t : (member Delete: FilePath -> DiscoResult<unit>) (t, path))
 
   // ** saveMap
 
 
-  let inline saveMap (basepath: FilePath) (guard: Either<DiscoError,unit>) _ (t: ^t) =
-    either {
+  let inline saveMap (basepath: FilePath) (guard: DiscoResult<unit>) _ (t: ^t) =
+    result {
       do! guard
       do! save basepath t
     }
 
   // ** load
 
-  let inline load< ^t when ^t : (static member Load: FilePath -> Either<DiscoError, ^t>)>
+  let inline load< ^t when ^t : (static member Load: FilePath -> DiscoResult< ^t>)>
                  (path: FilePath) =
-    (^t : (static member Load: FilePath -> Either<DiscoError, ^t>) path)
+    (^t : (static member Load: FilePath -> DiscoResult< ^t>) path)
 
   // ** loadWithMachine
 
-  let inline loadWithMachine< ^t when ^t : (static member Load: FilePath * DiscoMachine -> Either<DiscoError, ^t>)>
+  let inline loadWithMachine< ^t when ^t : (static member Load: FilePath * DiscoMachine -> DiscoResult< ^t>)>
                  (path: FilePath)
                  (machine: DiscoMachine) =
-    (^t : (static member Load: FilePath * DiscoMachine -> Either<DiscoError, ^t>) (path,machine))
+    (^t : (static member Load: FilePath * DiscoMachine -> DiscoResult< ^t>) (path,machine))
 
   // ** loadAll
 
-  let inline loadAll< ^t when ^t : (static member LoadAll: FilePath -> Either<DiscoError, ^t array>)>
+  let inline loadAll< ^t when ^t : (static member LoadAll: FilePath -> DiscoResult< ^t array>)>
                     (basePath: FilePath) =
-    (^t : (static member LoadAll: FilePath -> Either<DiscoError, ^t array>) basePath)
+    (^t : (static member LoadAll: FilePath -> DiscoResult< ^t array>) basePath)
 
   // ** hasParent
 
@@ -104,9 +104,9 @@ module DiscoData =
   /// - location: FilePath to asset
   /// - payload: string payload to save
   ///
-  /// Returns: Either<DiscoError,FileInfo>
+  /// Returns: DiscoResult<FileInfo>
   let write (location: FilePath) (payload: StringPayload) =
-    either {
+    result {
       try
         let data = match payload with | Payload data -> data
         let info = File.info location
@@ -119,7 +119,7 @@ module DiscoData =
           return!
             exn.Message
             |> Error.asAssetError (tag "write")
-            |> Either.fail
+            |> Result.fail
     }
 
   #endif
@@ -135,9 +135,9 @@ module DiscoData =
   /// ### Signature:
   /// - location: FilePath to asset
   ///
-  /// Returns: Either<DiscoError,bool>
+  /// Returns: DiscoResult<bool>
   let remove (location: FilePath) =
-    either {
+    result {
       try
         if File.exists location then
           Path.map File.Delete location
@@ -148,7 +148,7 @@ module DiscoData =
         return!
           exn.Message
           |> Error.asAssetError (tag "remove")
-          |> Either.fail
+          |> Result.fail
     }
 
   #endif
@@ -165,9 +165,9 @@ module DiscoData =
   /// ### Signature:
   /// - locationg: FilePath to asset
   ///
-  /// Returns: Either<DiscoError,string>
-  let read (location: FilePath) : Either<DiscoError, string> =
-    either {
+  /// Returns: DiscoResult<string>
+  let read (location: FilePath) : DiscoResult< string> =
+    result {
       if File.exists location then
         try
           return File.readText location
@@ -176,19 +176,19 @@ module DiscoData =
             return!
               exn.Message
               |> Error.asAssetError (tag "read")
-              |> Either.fail
+              |> Result.fail
       else
         return!
           sprintf "File not found: %O" location
           |> Error.asAssetError (tag "read")
-          |> Either.fail
+          |> Result.fail
     }
   #endif
 
   // ** load
 
   let inline load (path: FilePath) =
-    either {
+    result {
       let! data = read path
       let! group = Yaml.decode data
       return group
@@ -197,7 +197,7 @@ module DiscoData =
   // ** loadAll
 
   let inline loadAll (basePath: FilePath) =
-    either {
+    result {
       try
         let files = Directory.getFiles true ("*" + Constants.ASSET_EXTENSION) basePath
         let! (_,groups) =
@@ -206,14 +206,14 @@ module DiscoData =
             |> Array.length
             |> Array.zeroCreate
           Array.fold
-            (fun (m: Either<DiscoError, int * ^t array>) path ->
-              either {
+            (fun (m: DiscoResult<int * ^t array>) path ->
+              result {
                 let! (idx,groups) = m
                 let! group = load path
                 groups.[idx] <- group
                 return (idx + 1, groups)
               })
-            (Right(0, arr))
+            (Ok(0, arr))
             files
         return groups
       with
@@ -221,7 +221,7 @@ module DiscoData =
           return!
             exn.Message
             |> Error.asAssetError "PinGroup.LoadAll"
-            |> Either.fail
+            |> Result.fail
     }
 
   // ** ensureDirectoryExists
@@ -231,9 +231,9 @@ module DiscoData =
       path
       |> Path.getDirectoryName
       |> Directory.createDirectory
-      |> Either.ignore
+      |> Result.ignore
     else
-      Either.nothing
+      Result.nothing
 
   // ** ensureDirectoryGone
 
@@ -241,14 +241,14 @@ module DiscoData =
     if Asset.hasParent asset then
       if Directory.isEmpty dir then
         Directory.removeDirectory dir
-        |> Either.ignore
-      else Either.nothing
-    else Either.nothing
+        |> Result.ignore
+      else Result.nothing
+    else Result.nothing
 
   // ** save
 
   let inline save (basePath: FilePath) asset =
-    either {
+    result {
       let path = basePath </> Asset.path asset
       do! ensureDirectoryExists path asset
       let data = Yaml.encode asset
@@ -259,7 +259,7 @@ module DiscoData =
   // ** delete
 
   let inline delete (basePath: FilePath) asset =
-    either {
+    result {
       let path = basePath </> Asset.path asset
       do! path |> Path.concat basePath |> remove
       do! ensureDirectoryGone (Path.directoryName path) asset
@@ -270,7 +270,7 @@ module DiscoData =
   #if !FABLE_COMPILER
 
   let inline commit (basepath: FilePath) (msg: string) (signature: LibGit2Sharp.Signature) (t: ^t) =
-    either {
+    result {
       use! repo = Git.Repo.repository basepath
 
       let target =
@@ -291,7 +291,7 @@ module DiscoData =
   #if !FABLE_COMPILER
 
   let inline saveWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
-    either {
+    result {
       do! save basepath t
       let filename = t |> Asset.path |> Path.getFileName
       let msg = sprintf "%s saved %A" signature.Name filename
@@ -305,7 +305,7 @@ module DiscoData =
   #if !FABLE_COMPILER
 
   let inline deleteWithCommit (basepath: FilePath) (signature: LibGit2Sharp.Signature) (t: ^t) =
-    either {
+    result {
       let filepath = basepath </> Asset.path t
       let! _ = remove filepath
       let msg = sprintf "%s deleted %A" signature.Name (Path.getFileName filepath)

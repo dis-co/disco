@@ -30,7 +30,7 @@ open FlatBuffers
 
 [<NoComparison;NoEquality>]
 type RaftMonad<'Env,'State,'T,'Error> =
-  MkRM of ('Env -> 'State -> Either<'Error * 'State,'T * 'State>)
+  MkRM of ('Env -> 'State -> Result<'T * 'State,'Error * 'State>)
 
 // * RaftM
 
@@ -44,17 +44,17 @@ module RaftMonad =
   // ** get
 
   /// get current Raft state
-  let get = MkRM (fun _ s -> Right (s, s))
+  let get = MkRM (fun _ s -> Ok (s, s))
 
   // ** put
 
   /// update Raft/State to supplied value
-  let put s = MkRM (fun _ _ -> Right ((), s))
+  let put s = MkRM (fun _ _ -> Ok ((), s))
 
   // ** read
 
   /// get the read-only environment value
-  let read: RaftM<_,_> = MkRM (fun l s -> Right (l, s))
+  let read: RaftM<_,_> = MkRM (fun l s -> Ok (l, s))
 
   // ** apply
 
@@ -73,28 +73,28 @@ module RaftMonad =
   /// run monadic action against supplied state and evironment and return new state
   let evalRaft (s: 's) (l: 'e) (m: RaftMonad<'e,'s,'a,'err>) =
     match runRaft s l m with
-    | Right (_,state) | Left (_,state) -> state
+    | Ok (_,state) | Error (_,state) -> state
 
   // ** returnM
 
   /// Lift a regular value into a RaftMonad by wrapping it in a closure.
-  /// This variant wraps it in a `Right` value. This means the computation will,
+  /// This variant wraps it in a `Ok` value. This means the computation will,
   /// if possible, continue to the next step.
   let returnM value : RaftMonad<'e,'s,'t,'err> =
-    MkRM (fun _ state -> Right(value, state))
+    MkRM (fun _ state -> Ok(value, state))
 
   // ** ignoreM
 
   let ignoreM _ : RaftMonad<'e,'s,unit,'err> =
-    MkRM (fun _ state -> Right((), state))
+    MkRM (fun _ state -> Ok((), state))
 
   // ** failM
 
   /// Lift a regular value into a RaftMonad by wrapping it in a closure.
-  /// This variant wraps it in a `Left` value. This means the computation will
+  /// This variant wraps it in a `Error` value. This means the computation will
   /// not continue past this step and no regular value will be returned.
   let failM l =
-    MkRM (fun _ s -> Left (l, s))
+    MkRM (fun _ s -> Error (l, s))
 
   // ** returnFromM
 
@@ -105,7 +105,7 @@ module RaftMonad =
   // ** zeroM
 
   let zeroM () =
-    MkRM (fun _ state -> Right((), state))
+    MkRM (fun _ state -> Ok((), state))
 
   // ** delayM
 
@@ -120,8 +120,8 @@ module RaftMonad =
             RaftMonad<'env,'state,'b,'err> =
     MkRM (fun env state ->
       match apply env state m with
-      | Right  (value,state') -> f value |> apply env state'
-      | Left    err           -> Left err)
+      | Ok  (value,state') -> f value |> apply env state'
+      | Error    err           -> Error err)
 
   // ** (>>=)
 

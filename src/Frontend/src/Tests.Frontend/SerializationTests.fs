@@ -279,7 +279,7 @@ module SerializationTests =
       DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
 
   let inline check thing =
-    let thong = thing |> Binary.encode |> Binary.decode |> Either.get
+    let thong = thing |> Binary.encode |> Binary.decode |> Result.get
     equals thing thong
 
   let main () =
@@ -349,50 +349,50 @@ module SerializationTests =
 
     testSync "Validate PinWidget Serialization" <| fun () ->
       let widget : PinWidget = mkPinWidget ()
-      let rewidget = widget |> Binary.encode |> Binary.decode |> Either.get
+      let rewidget = widget |> Binary.encode |> Binary.decode |> Result.get
       equals widget rewidget
 
     testSync "Validate PinMapping Serialization" <| fun () ->
       let mapping : PinMapping = mkPinMapping ()
-      let remapping = mapping |> Binary.encode |> Binary.decode |> Either.get
+      let remapping = mapping |> Binary.encode |> Binary.decode |> Result.get
       equals mapping remapping
 
     testSync "Validate Cue Serialization" <| fun () ->
       let cue : Cue = mkCue ()
-      let recue = cue |> Binary.encode |> Binary.decode |> Either.get
+      let recue = cue |> Binary.encode |> Binary.decode |> Result.get
       equals cue recue
 
     testSync "Validate CueReference Serialization" <| fun () ->
       let cueReference : CueReference = mkCueRef ()
-      let recueReference = cueReference |> Binary.encode |> Binary.decode |> Either.get
+      let recueReference = cueReference |> Binary.encode |> Binary.decode |> Result.get
       equals cueReference recueReference
 
     testSync "Validate CueGroup Serialization" <| fun () ->
       let cueGroup : CueGroup = mkCueGroup ()
-      let recueGroup = cueGroup |> Binary.encode |> Binary.decode |> Either.get
+      let recueGroup = cueGroup |> Binary.encode |> Binary.decode |> Result.get
       equals cueGroup recueGroup
 
     test "Validate CueList Serialization" <| fun finish ->
       let cuelist : CueList = mkCueList ()
-      let recuelist = cuelist |> Binary.encode |> Binary.decode |> Either.get
+      let recuelist = cuelist |> Binary.encode |> Binary.decode |> Result.get
       equals cuelist recuelist
       finish()
 
     test "Validate PinGroup Serialization" <| fun finish ->
       let group : PinGroup = mkPinGroup ()
-      let regroup = group |> Binary.encode |> Binary.decode |> Either.get
+      let regroup = group |> Binary.encode |> Binary.decode |> Result.get
       equals group regroup
       finish()
 
     test "Validate Session Serialization" <| fun finish ->
       let session : Session = mkSession ()
-      let resession = session |> Binary.encode |> Binary.decode |> Either.get
+      let resession = session |> Binary.encode |> Binary.decode |> Result.get
       equals session resession
       finish()
 
     test "Validate User Serialization" <| fun finish ->
       let user : User = mkUser ()
-      let reuser = user |> Binary.encode |> Binary.decode |> Either.get
+      let reuser = user |> Binary.encode |> Binary.decode |> Result.get
       equals user reuser
       finish()
 
@@ -436,7 +436,7 @@ module SerializationTests =
     test "Validate DiscoProject Binary Serializaton" <| fun finish ->
       mkProject()
       |> (fun project ->
-          let reproject = project |> Binary.encode |> Binary.decode |> Either.get
+          let reproject = project |> Binary.encode |> Binary.decode |> Result.get
           if project <> reproject then
             printfn "project: %O" project
             printfn "reproject: %O" reproject
@@ -491,7 +491,7 @@ module SerializationTests =
       ]
       |> List.iter
         (fun ting ->
-          let reting = ting |> Binary.encode |> Binary.decode |> Either.get
+          let reting = ting |> Binary.encode |> Binary.decode |> Result.get
           if ting <> reting then
             printfn "ting: %O" ting
             printfn "reting: %O" reting
@@ -518,7 +518,7 @@ module SerializationTests =
             |> Binary.createBuffer
             |> ErrorFB.GetRootAsErrorFB
             |> DiscoError.FromFB
-            |> Either.get
+            |> Result.get
           equals error reerror)
 
       finish()

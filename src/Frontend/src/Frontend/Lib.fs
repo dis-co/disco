@@ -326,7 +326,7 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
     | _ -> None
   | ColorPin pin ->
     match ColorSpace.TryParse(unbox value) with
-    | Right color ->
+    | Ok color ->
       tryUpdateArray index color pin.Values
       |> Option.map (fun values -> ColorSlices(pin.Id, client, values))
     | _ -> None

@@ -53,14 +53,14 @@ type ClientIdNode() =
           self.InStr.[0]
           |> DiscoId.TryParse
           |> function
-          | Right id -> id
-          | Left _ ->
+          | Ok id -> id
+          | Error _ ->
             DISCO_CLIENT_ID_ENV_VAR
             |> Environment.GetEnvironmentVariable
             |> DiscoId.TryParse
             |> function
-            | Right id -> id
-            | Left _ -> DiscoId.Create()
+            | Ok id -> id
+            | Error _ -> DiscoId.Create()
 
         do Logger.initialize {
           MachineId = id

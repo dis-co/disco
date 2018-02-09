@@ -117,7 +117,7 @@ type RaftConfig =
   // ** FromFB
 
   static member FromFB(fb: RaftConfigFB) =
-    either {
+    result {
       let! level = Disco.Core.LogLevel.TryParse fb.LogLevel
       return
         { RequestTimeout   = fb.RequestTimeout * 1<ms>
@@ -202,7 +202,7 @@ type ClientExecutable =
   // ** FromFB
 
   static member FromFB(fb: ClientExecutableFB) =
-    either {
+    result {
       let! id = Id.decodeId fb
       return {
         Id         = id
@@ -271,11 +271,11 @@ type ClientConfig = ClientConfig of Map<ClientId,ClientExecutable>
     // ** FromFB
 
     static member FromFB(fb: ClientConfigFB) =
-      either {
+      result {
         let! executables =
           List.fold
-            (fun (m: Either<DiscoError, Map<ClientId,ClientExecutable>>) idx ->
-              either {
+            (fun (m: DiscoResult<Map<ClientId,ClientExecutable>>) idx ->
+              result {
                 let! exes = m
                 let! exe =
                   #if FABLE_COMPILER
@@ -289,11 +289,11 @@ type ClientConfig = ClientConfig of Map<ClientId,ClientExecutable>
                   else
                     "Could not parse empty ClientExecutableFB"
                     |> Error.asParseError "ClientConfig.FromFB"
-                    |> Either.fail
+                    |> Result.fail
                   #endif
                 return Map.add exe.Id exe exes
               })
-            (Right Map.empty)
+            (Ok Map.empty)
             [ for n in 0 .. fb.ExecutablesLength - 1 -> n ]
         return ClientConfig executables
       }
@@ -387,14 +387,14 @@ type TimingConfig =
   // ** FromFB
 
   static member FromFB(fb: TimingConfigFB) =
-    either {
+    result {
       let! (_,servers) =
         let arr =
           fb.ServersLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * IpAddress array>) _ ->
-            either {
+          (fun (m: DiscoResult<int * IpAddress array>) _ ->
+            result {
               let! (idx,servers) = m
               let! server =
                 fb.Servers(idx)
@@ -402,7 +402,7 @@ type TimingConfig =
               servers.[idx] <- server
               return (idx + 1, servers)
             })
-          (Right(0, arr))
+          (Ok(0, arr))
           arr
 
       return
@@ -467,7 +467,7 @@ type AudioConfig =
   // ** FromFB
 
   static member FromFB(fb: AudioConfigFB) =
-    either {
+    result {
       return { SampleRate = fb.SampleRate }
     }
 
@@ -529,20 +529,20 @@ type HostGroup =
   // ** FromFB
 
   static member FromFB(fb: HostGroupFB) =
-    either {
+    result {
       let! (_,members) =
         let arr =
           fb.MembersLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * MemberId array>) _ ->
-            either {
+          (fun (m: DiscoResult<int * MemberId array>) _ ->
+            result {
               let! (idx, ids) = m
               let! id = DiscoId.TryParse (fb.Members(idx))
               ids.[idx] <- id
               return (idx + 1, ids)
             })
-          (Right(0, arr))
+          (Ok(0, arr))
           arr
 
       return
@@ -675,8 +675,8 @@ type ClusterMember =
 
   // ** FromFB
 
-  static member FromFB (fb: ClusterMemberFB) : Either<DiscoError, ClusterMember> =
-    either {
+  static member FromFB (fb: ClusterMemberFB) : DiscoResult<ClusterMember> =
+    result {
       let! id = Id.decodeId fb
       let! state = MemberState.FromFB fb.State
       let! status = MemberStatus.FromFB fb.Status
@@ -856,14 +856,14 @@ type ClusterConfig =
   // ** FromFB
 
   static member FromFB(fb: ClusterConfigFB) =
-    either {
+    result {
       let! (_,members) =
         let arr =
           fb.MembersLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * Map<MemberId,ClusterMember>>) _ ->
-            either {
+          (fun (m: DiscoResult<int * Map<MemberId,ClusterMember>>) _ ->
+            result {
               let! (idx,members) = m
 
               let! mem =
@@ -878,12 +878,12 @@ type ClusterConfig =
                 else
                   "Could not parse empty ClusterMemberFB"
                   |> Error.asParseError "Cluster.FromFB"
-                  |> Either.fail
+                  |> Result.fail
                 #endif
 
               return (idx + 1, Map.add mem.Id mem members)
             })
-          (Right(0, Map.empty))
+          (Ok(0, Map.empty))
           arr
 
       let! (_,groups) =
@@ -891,8 +891,8 @@ type ClusterConfig =
           fb.GroupsLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * HostGroup array>) _ ->
-            either {
+          (fun (m: DiscoResult<int * HostGroup array>) _ ->
+            result {
               let! (idx,groups) = m
 
               let! group =
@@ -907,13 +907,13 @@ type ClusterConfig =
                 else
                   "Could not parse empty HostGroupFB"
                   |> Error.asParseError "Cluster.FromFB"
-                  |> Either.fail
+                  |> Result.fail
                 #endif
 
               groups.[idx] <- group
               return (idx + 1, groups)
             })
-          (Right(0, arr))
+          (Ok(0, arr))
           arr
 
       let! id = Id.decodeId fb
@@ -1057,16 +1057,16 @@ type DiscoConfig =
   // ** FromFB
 
   static member FromFB(fb: ConfigFB) =
-    either {
+    result {
       let version = fb.Version
 
       let! site =
         try
           if fb.ActiveSiteLength = 0
-          then Either.succeed None
-          else Id.decodeActiveSite fb |> Either.map Some
+          then Result.succeed None
+          else Id.decodeActiveSite fb |> Result.map Some
         with exn ->
-          Either.succeed None
+          Result.succeed None
 
       let! machine =
         #if FABLE_COMPILER
@@ -1079,7 +1079,7 @@ type DiscoConfig =
         else
           "Unable to parse empty DiscoMachineFB value"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! audio =
@@ -1093,7 +1093,7 @@ type DiscoConfig =
         else
           "Could not parse empty AudioConfigFB"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! clients =
@@ -1107,7 +1107,7 @@ type DiscoConfig =
         else
           "Could not parse empty ClientConfigFB"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! raft =
@@ -1121,7 +1121,7 @@ type DiscoConfig =
         else
           "Could not parse empty RaftConfigFB"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! timing =
@@ -1135,13 +1135,13 @@ type DiscoConfig =
         else
           "Could not parse empty TimingConfigFB"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! (_, sites) =
         Array.fold
-          (fun (m: Either<DiscoError, int * Map<SiteId,ClusterConfig>>) _ ->
-            either {
+          (fun (m: DiscoResult<int * Map<SiteId,ClusterConfig>>) _ ->
+            result {
               let! (idx, sites) = m
               let! site =
                 #if FABLE_COMPILER
@@ -1155,11 +1155,11 @@ type DiscoConfig =
                 else
                   "Could not parse empty ClusterConfigFB"
                   |> Error.asParseError "DiscoConfig.FromFB"
-                  |> Either.fail
+                  |> Result.fail
                 #endif
               return (idx + 1, Map.add site.Id site sites)
             })
-            (Right(0, Map.empty))
+            (Ok(0, Map.empty))
             [| 0 .. fb.SitesLength - 1 |]
 
       return {
@@ -1296,22 +1296,22 @@ module ProjectYaml =
 
   // ** parseTuple
 
-  let internal parseTuple (input: string) : Either<DiscoError,int * int> =
+  let internal parseTuple (input: string) : DiscoResult<int * int> =
     input.Split [| '('; ','; ' '; ')' |]       // split the string according to the specified chars
     |> Array.filter (String.length >> ((<) 0)) // filter out elements that have zero length
     |> fun parsed ->
       try
         match parsed with
-        | [| x; y |] -> Right (int x, int y)
+        | [| x; y |] -> Ok (int x, int y)
         | _ ->
           sprintf "Cannot parse %A as (int * int) tuple" input
           |> Error.asParseError "Config.parseTuple"
-          |> Either.fail
+          |> Result.fail
       with
         | exn ->
           sprintf "Cannot parse %A as (int * int) tuple: %s" input exn.Message
           |> Error.asParseError "Config.parseTuple"
-          |> Either.fail
+          |> Result.fail
 
   // ** parseStringProp
 
@@ -1325,8 +1325,8 @@ module ProjectYaml =
   /// Parses the Audio configuration section of the passed-in configuration file.
   ///
   /// # Returns: AudioConfig
-  let internal parseAudio (config: DiscoProjectYaml) : Either<DiscoError, AudioConfig> =
-    Either.tryWith (Error.asParseError "Config.parseAudio") <| fun _ ->
+  let internal parseAudio (config: DiscoProjectYaml) : DiscoResult<AudioConfig> =
+    Result.tryWith (Error.asParseError "Config.parseAudio") <| fun _ ->
       { SampleRate = uint32 config.Audio.SampleRate }
 
   // ** saveAudio
@@ -1344,8 +1344,8 @@ module ProjectYaml =
 
   // ** parseExecutable
 
-  let internal parseExecutable (exe: ClientExecutableYaml) : Either<DiscoError, ClientExecutable> =
-    either {
+  let internal parseExecutable (exe: ClientExecutableYaml) : DiscoResult<ClientExecutable> =
+    result {
       let! id = DiscoId.TryParse exe.Id
       return {
         Id         = id
@@ -1357,16 +1357,16 @@ module ProjectYaml =
 
   // ** parseClients
 
-  let internal parseClients (file: DiscoProjectYaml) : Either<DiscoError,ClientConfig> =
-    either {
+  let internal parseClients (file: DiscoProjectYaml) : DiscoResult<ClientConfig> =
+    result {
       let! executables =
         Seq.fold
-          (fun (m: Either<DiscoError,Map<ClientId,ClientExecutable>>) exe -> either {
+          (fun (m: DiscoResult<Map<ClientId,ClientExecutable>>) exe -> result {
             let! exes = m
             let! exe = parseExecutable exe
             return Map.add exe.Id exe exes
           })
-          (Right Map.empty)
+          (Ok Map.empty)
           file.Clients
       return ClientConfig executables
     }
@@ -1398,8 +1398,8 @@ module ProjectYaml =
   /// Parses the passed-in configuration file contents and returns a `RaftConfig` value.
   ///
   /// Returns: RaftConfig
-  let internal parseRaft (config: DiscoProjectYaml) : Either<DiscoError, RaftConfig> =
-    either {
+  let internal parseRaft (config: DiscoProjectYaml) : DiscoResult<RaftConfig> =
+    result {
       let! loglevel = Disco.Core.LogLevel.TryParse config.Engine.LogLevel
 
       try
@@ -1416,7 +1416,7 @@ module ProjectYaml =
           return!
             sprintf "Could not parse Engine config: %s" exn.Message
             |> Error.asParseError "Config.parseRaft"
-            |> Either.fail
+            |> Result.fail
     }
 
   // ** saveRaft
@@ -1452,8 +1452,8 @@ module ProjectYaml =
   /// Parse TimingConfig related values into a TimingConfig value and return it.
   ///
   /// # Returns: TimingConfig
-  let internal parseTiming (config: DiscoProjectYaml) : Either<DiscoError,TimingConfig> =
-    either {
+  let internal parseTiming (config: DiscoProjectYaml) : DiscoResult<TimingConfig> =
+    result {
       let timing = config.Timing
       let arr =
         timing.Servers
@@ -1462,13 +1462,13 @@ module ProjectYaml =
 
       let! (_,servers) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * IpAddress array>) thing -> either {
+          (fun (m: DiscoResult<int * IpAddress array>) thing -> result {
             let! (idx, lst) = m
             let! server = IpAddress.TryParse thing
             lst.[idx] <- server
             return (idx + 1, lst)
           })
-          (Right(0, arr))
+          (Ok(0, arr))
           timing.Servers
 
       try
@@ -1483,7 +1483,7 @@ module ProjectYaml =
           return!
             sprintf "Could not parse Timing config: %s" exn.Message
             |> Error.asParseError "Config.parseTiming"
-            |> Either.fail
+            |> Result.fail
     }
 
   // ** saveTiming
@@ -1508,7 +1508,7 @@ module ProjectYaml =
   // ** parseMember
 
   let internal parseMember (yaml:ClusterMemberYaml) =
-    either {
+    result {
       let! id = DiscoId.TryParse yaml.Id
       let! ip = IpAddress.TryParse yaml.IpAddress
       let! mcastip = IpAddress.TryParse yaml.MulticastAddress
@@ -1557,17 +1557,17 @@ module ProjectYaml =
   /// ### Signature:
   /// - mems: MemberYaml collection
   ///
-  /// Returns: Either<DiscoError, RaftMember array>
-  let internal parseMembers mems : Either<DiscoError, Map<MemberId,ClusterMember>> =
-    either {
+  /// Returns: DiscoResult<RaftMember array>
+  let internal parseMembers mems : DiscoResult<Map<MemberId,ClusterMember>> =
+    result {
       let! (_,mems) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * Map<MemberId,ClusterMember>>) mem -> either {
+          (fun (m: DiscoResult<int * Map<MemberId,ClusterMember>>) mem -> result {
             let! (idx, mems) = m
             let! mem = parseMember mem
             return (idx + 1, Map.add mem.Id mem mems)
           })
-          (Right(0, Map.empty))
+          (Ok(0, Map.empty))
           mems
 
       return mems
@@ -1575,8 +1575,8 @@ module ProjectYaml =
 
   // ** parseGroup
 
-  let internal parseGroup (group: GroupYaml) : Either<DiscoError, HostGroup> =
-    either {
+  let internal parseGroup (group: GroupYaml) : DiscoResult<HostGroup> =
+    result {
       let ids = Seq.map (string >> DiscoId.Parse) group.Members |> Seq.toArray
       return {
         Name = name group.Name
@@ -1586,8 +1586,8 @@ module ProjectYaml =
 
   // ** parseGroups
 
-  let internal parseGroups groups : Either<DiscoError, HostGroup array> =
-    either {
+  let internal parseGroups groups : DiscoResult<HostGroup array> =
+    result {
       let arr =
         groups
         |> Seq.length
@@ -1595,13 +1595,13 @@ module ProjectYaml =
 
       let! (_, groups) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * HostGroup array>) group -> either {
+          (fun (m: DiscoResult<int * HostGroup array>) group -> result {
             let! (idx, groups) = m
             let! group = parseGroup group
             groups.[idx] <- group
             return (idx + 1, groups)
           })
-          (Right(0,arr))
+          (Ok(0,arr))
           groups
 
       return groups
@@ -1616,8 +1616,8 @@ module ProjectYaml =
   ///
   /// # Returns: Cluster
 
-  let internal parseCluster (cluster: SiteYaml) : Either<DiscoError, ClusterConfig> =
-    either {
+  let internal parseCluster (cluster: SiteYaml) : DiscoResult<ClusterConfig> =
+    result {
       let! groups = parseGroups cluster.Groups
       let! mems = parseMembers cluster.Members
       let! id = DiscoId.TryParse cluster.Id
@@ -1632,16 +1632,16 @@ module ProjectYaml =
   // ** parseSites
 
   let internal parseSites (config: DiscoProjectYaml) =
-    either {
+    result {
       let! (_, sites) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * Map<SiteId,ClusterConfig>>) cfg ->
-            either {
+          (fun (m: DiscoResult<int * Map<SiteId,ClusterConfig>>) cfg ->
+            result {
               let! (idx, sites) = m
               let! site = parseCluster cfg
               return (idx + 1, Map.add site.Id site sites)
             })
-          (Right(0, Map.empty))
+          (Ok(0, Map.empty))
           config.Sites
       return sites
     }
@@ -1724,12 +1724,12 @@ module ProjectYaml =
     try
       str
       |> Yaml.deserialize<DiscoProjectYaml>
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         exn.Message
         |> Error.asParseError "ProjectYaml.parse"
-        |> Either.fail
+        |> Result.fail
 
 #endif
 
@@ -1754,8 +1754,8 @@ module Config =
 
   let fromFile (file: ProjectYaml.DiscoProjectYaml)
                (machine: DiscoMachine)
-               : Either<DiscoError, DiscoConfig> =
-    either {
+               : DiscoResult<DiscoConfig> =
+    result {
       let  version   = file.Version
       let! raftcfg   = ProjectYaml.parseRaft      file
       let! timing    = ProjectYaml.parseTiming    file
@@ -1765,8 +1765,8 @@ module Config =
 
       let! site =
         if isNull file.ActiveSite || file.ActiveSite = ""
-        then Right None
-        else DiscoId.TryParse file.ActiveSite |> Either.map Some
+        then Ok None
+        else DiscoId.TryParse file.ActiveSite |> Result.map Some
 
       return {
         Machine    = machine
@@ -1857,25 +1857,25 @@ module Config =
       match Map.tryFind active config.Sites with
       | Some cluster ->
         match Map.tryFind id cluster.Members with
-        | Some mem -> Either.succeed mem
+        | Some mem -> Result.succeed mem
         | _ ->
           ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
           |> Error.asProjectError "Config.findMember"
-          |> Either.fail
+          |> Result.fail
       | _ ->
         ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
         |> Error.asProjectError "Config.findMember"
-        |> Either.fail
+        |> Result.fail
     | None ->
       ErrorMessages.PROJECT_NO_ACTIVE_CONFIG
       |> Error.asProjectError "Config.findMember"
-      |> Either.fail
+      |> Result.fail
 
   // ** tryFindMember
 
   let tryFindMember (config: DiscoConfig) (id: MemberId) =
     match findMember config id with
-    | Right mem -> Some mem
+    | Ok mem -> Some mem
     | _ -> None
 
   // ** getMembers
@@ -1884,25 +1884,25 @@ module Config =
     match config.ActiveSite with
     | Some active ->
       match Map.tryFind active config.Sites with
-      | Some site -> site.Members |> Either.succeed
+      | Some site -> site.Members |> Result.succeed
       | None ->
         ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
         |> Error.asProjectError "Config.getMembers"
-        |> Either.fail
+        |> Result.fail
     | None ->
       ErrorMessages.PROJECT_NO_ACTIVE_CONFIG
       |> Error.asProjectError "Config.getMembers"
-      |> Either.fail
+      |> Result.fail
 
   // ** setActiveSite
 
   let setActiveSite (id: SiteId) (config: DiscoConfig) =
     if Map.containsKey id config.Sites
-    then Right { config with ActiveSite = Some id }
+    then Ok { config with ActiveSite = Some id }
     else
       ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
       |> Error.asProjectError "Config.setActiveSite"
-      |> Either.fail
+      |> Result.fail
 
   // ** getActiveSite
 
@@ -1938,7 +1938,7 @@ module Config =
   // ** validateSettings
 
   /// Cross-check the settins in a given cluster member definition with this machines settings
-  let validateSettings (mem: ClusterMember) (machine:DiscoMachine): Either<DiscoError,unit> =
+  let validateSettings (mem: ClusterMember) (machine:DiscoMachine): DiscoResult<unit> =
     let errorMsg tag a b =
       sprintf "Member %s: %O is different from Machine %s: %O\n" tag a tag b
     let errors = [
@@ -1954,12 +1954,12 @@ module Config =
         yield errorMsg "WS Post" mem.WsPort machine.WsPort
     ]
     if List.isEmpty errors
-    then Either.nothing
+    then Result.nothing
     else
       errors
       |> List.fold ((+)) ""
       |> Error.asProjectError (tag "validateSettings")
-      |> Either.fail
+      |> Result.fail
 
   // ** addSitePrivate
 
@@ -2165,7 +2165,7 @@ Config: %A
   // |_____\___/ \__,_|\__,_|
 
   static member Load (basepath: FilePath, machine: DiscoMachine) =
-    either {
+    result {
       let filename = PROJECT_FILENAME + ASSET_EXTENSION
 
       let normalizedPath =
@@ -2183,7 +2183,7 @@ Config: %A
         return!
           sprintf "Project Not Found: %O" normalizedPath
           |> Error.asProjectError "Project.load"
-          |> Either.fail
+          |> Result.fail
       else
         let! project = DiscoData.load normalizedPath
         return
@@ -2257,26 +2257,26 @@ Config: %A
   // ** FromFB
 
   static member FromFB(fb: ProjectFB) =
-    either {
+    result {
       let nll = sprintf "%A" null
 
       let! lastsaved =
         match fb.LastSaved with
-        | null    -> Right None
-        | value when value = nll -> Right (Some null)
-        | date -> Right (Some date)
+        | null    -> Ok None
+        | value when value = nll -> Ok (Some null)
+        | date -> Ok (Some date)
 
       let! copyright =
         match fb.Copyright with
-        | null   -> Right None
-        | value when value = nll -> Right (Some null)
-        | str -> Right (Some str)
+        | null   -> Ok None
+        | value when value = nll -> Ok (Some null)
+        | str -> Ok (Some str)
 
       let! author =
         match fb.Author with
-        | null   -> Right None
-        | value when value = nll -> Right (Some null)
-        | str -> Right (Some str)
+        | null   -> Ok None
+        | value when value = nll -> Ok (Some null)
+        | str -> Ok (Some str)
 
       let! config =
         #if FABLE_COMPILER
@@ -2289,7 +2289,7 @@ Config: %A
         else
           "Could not parse empty ConfigFB"
           |> Error.asParseError "DiscoProject.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! id = Id.decodeId fb
@@ -2346,7 +2346,7 @@ Config: %A
   // ** FromYaml
 
   static member FromYaml(meta: ProjectYaml.DiscoProjectYaml) =
-    either {
+    result {
       let lastSaved =
         match meta.LastSaved with
           | null | "" -> None
@@ -2427,7 +2427,7 @@ module Project =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let currentBranch (project: DiscoProject) =
-    either {
+    result {
       let! repo = repository project
       return Git.Branch.current repo
     }
@@ -2439,7 +2439,7 @@ module Project =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let checkoutBranch (name: string) (project: DiscoProject) =
-    either {
+    result {
       let! repo = repository project
       return! Git.Repo.checkout name repo
     }
@@ -2462,9 +2462,9 @@ module Project =
     if File.exists path |> not then
       sprintf "Project Not Found: %O" projectName
       |> Error.asProjectError (tag "checkPath")
-      |> Either.fail
+      |> Result.fail
     else
-      Either.succeed path
+      Result.succeed path
 
   #endif
 
@@ -2493,7 +2493,7 @@ module Project =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let private writeDaemonExportFile (repo: Repository) =
-    either {
+    result {
       let path = repo.Info.Path <.> "git-daemon-export-ok"
       let! _ = DiscoData.write path (Payload "")
       return ()
@@ -2506,7 +2506,7 @@ module Project =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let private writeGitIgnoreFile (repo: Repository) =
-    either {
+    result {
       let parent = Git.Repo.parentPath repo
       let path = parent </> filepath ".gitignore"
       let! _ = DiscoData.write path (Payload GITIGNORE)
@@ -2520,7 +2520,7 @@ module Project =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let private createAssetDir (repo: Repository) (dir: FilePath) =
-    either {
+    result {
       let parent = Git.Repo.parentPath repo
       let target = parent </> dir
       do! FileSystem.mkDir target
@@ -2550,8 +2550,8 @@ module Project =
                          (committer: Signature)
                          (msg : string)
                          (project: DiscoProject) :
-                         Either<DiscoError,(Commit * DiscoProject)> =
-    either {
+                         DiscoResult<Commit * DiscoProject> =
+    result {
       let! repo = repository project
       let abspath =
         if Path.isPathRooted filepath then
@@ -2574,9 +2574,9 @@ module Project =
                (committer: Signature)
                (msg : string)
                (project: DiscoProject) :
-               Either<DiscoError,(Commit * DiscoProject)> =
+               DiscoResult<Commit * DiscoProject> =
 
-    either {
+    result {
       let info = File.info path
       do! info.Directory.FullName |> filepath |> FileSystem.mkDir
       let! _ = DiscoData.write path (Payload contents)
@@ -2593,8 +2593,8 @@ module Project =
                  (committer: Signature)
                  (msg : string)
                  (project: DiscoProject) :
-                 Either<DiscoError,(Commit * DiscoProject)> =
-    either {
+                 DiscoResult<Commit * DiscoProject> =
+    result {
       let! _ = DiscoData.remove path
       return! commitPath path committer msg project
     }
@@ -2615,7 +2615,7 @@ module Project =
   /// - committer: User the thing to save. Must implement certain methods/getters
   /// - project: Project to save file into
   ///
-  /// Returns: Either<DiscoError,Commit * Project>
+  /// Returns: DiscoResult<Commit * Project>
   let inline saveAsset (thing: ^t) (committer: User) (project: DiscoProject) =
     let payload = thing |> Yaml.encode
     let filepath = project.Path </> Asset.path thing
@@ -2639,7 +2639,7 @@ module Project =
   /// - msg: User committing the change
   /// - project: DiscoProject to work on
   ///
-  /// Returns: Either<DiscoError, FileInfo * Commit * Project>
+  /// Returns: DiscoResult<FileInfo * Commit * Project>
   let inline deleteAsset (thing: ^t) (committer: User) (project: DiscoProject) =
     let filepath = project.Path </> Asset.path thing
     let signature = committer.Signature
@@ -2672,15 +2672,15 @@ module Project =
   /// exists, otherwise creating it.
   ///
   /// # Returns: Repository
-  let private initRepo (project: DiscoProject) : Either<DiscoError,unit> =
-    either {
+  let private initRepo (project: DiscoProject) : DiscoResult<unit> =
+    result {
       let! repo = project.Path |> Git.Repo.init
       do! writeDaemonExportFile repo
       do! Git.Repo.setReceivePackConfig repo
       do! writeGitIgnoreFile repo
       do! List.fold
-            (fun m dir -> Either.bind (fun () -> createAssetDir repo (filepath dir)) m)
-            Either.nothing
+            (fun m dir -> Result.bind (fun () -> createAssetDir repo (filepath dir)) m)
+            Result.nothing
             Constants.GLOBAL_ASSET_DIRS
       let relPath = Asset.path User.Admin
       let absPath = project.Path </> relPath
@@ -2705,7 +2705,7 @@ module Project =
   ///
   /// # Returns: DiscoProject
   let create (path: FilePath) (projectName: string) (machine: DiscoMachine) =
-    either {
+    result {
       let project =
         { Id        = DiscoId.Create()
           Name      = Measure.name projectName
@@ -2780,16 +2780,16 @@ module Project =
 
   /// Using the current active site configuration, update git remotes to reflect the configured
   /// members' details. This allows the service to use `git push` to those peers.
-  let updateRemotes (project: DiscoProject) = either {
+  let updateRemotes (project: DiscoProject) = result {
       let! repo = repository project
 
       // delete all current remotes
       let current = Git.Config.remotes repo
       do! Map.fold
-            (fun kontinue name _ -> either {
+            (fun kontinue name _ -> result {
               do! kontinue
               do! Git.Config.delRemote repo name })
-            (Right ())
+            (Ok ())
             current
 
       let! mem = Config.selfMember project.Config
@@ -2798,18 +2798,18 @@ module Project =
       do! match Config.getActiveSite project.Config with
           | Some cluster ->
             Map.fold
-              (fun kontinue id peer -> either {
+              (fun kontinue id peer -> result {
                   do! kontinue
                   if id <> mem.Id then
                     let url = Uri.gitUri project.Name peer.IpAddress peer.GitPort
                     let name = string peer.Id
                     do! Git.Config.addRemote repo name url
-                        |> Either.iterError (string >> Logger.err (tag "updateRemotes"))
-                        |> Either.succeed
+                        |> Result.iterError (string >> Logger.err (tag "updateRemotes"))
+                        |> Result.succeed
                 })
-              (Right ())
+              (Ok ())
               cluster.Members
-          | None -> Either.nothing
+          | None -> Result.nothing
     }
 
   #endif

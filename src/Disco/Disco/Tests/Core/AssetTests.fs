@@ -31,22 +31,22 @@ module AssetTests =
     member self.ToYaml() = self
 
     member self.Save(basePath: FilePath) =
-      either {
+      result {
         let path = basePath </> Asset.path self
         let data = Yaml.encode self
         let! info = DiscoData.write path (Payload data)
         return ()
       }
 
-    static member Load(path: FilePath) : Either<DiscoError, TestAsset> =
-      either {
+    static member Load(path: FilePath): DiscoResult<TestAsset> =
+      result {
         let! data = DiscoData.read path
         return Yaml.deserialize<TestAsset> data
       }
 
   let test_write_read_asset_correctly =
     testCase "should write and read asset correctly" <| fun _ ->
-      either {
+      result {
         let path = tmpPath()
         let payload = string (DiscoId.Create())
         let! info = DiscoData.write path (Payload payload)
@@ -57,7 +57,7 @@ module AssetTests =
 
   let test_save_load_asset_correctly =
     testCase "should save and load asset correctly" <| fun _ ->
-      either {
+      result {
         let path = tmpPath()
         let asset = TestAsset()
         do! Asset.save path asset
@@ -69,7 +69,7 @@ module AssetTests =
 
   let test_save_with_commit_adds_and_commits_an_asset =
     testCase "should save an asset with commit even if its new" <| fun _ ->
-      either {
+      result {
         let path = tmpPath()
         let! repo = Git.Repo.init path
         let signature = User.Admin.Signature

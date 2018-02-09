@@ -68,7 +68,7 @@ type CuePlayerYaml() =
   // ** ToPlayer
 
   member yaml.ToPlayer() =
-    either {
+    result {
       let str2opt str =
         match str with
         | null -> None
@@ -200,30 +200,30 @@ type CuePlayer =
   // ** FromFB
 
   static member FromFB(fb: CuePlayerFB) =
-    either {
+    result {
       let! cuelist =
         try
           if fb.CueListIdLength = 0
-          then Either.succeed None
-          else Id.decodeCueListId fb |> Either.map Some
+          then Result.succeed None
+          else Id.decodeCueListId fb |> Result.map Some
         with exn ->
-          Either.succeed None
+          Result.succeed None
 
       let! lastcalled =
         try
           if fb.LastCalledIdLength = 0
-          then Either.succeed None
-          else Id.decodeLastCalledId fb |> Either.map Some
+          then Result.succeed None
+          else Id.decodeLastCalledId fb |> Result.map Some
         with exn ->
-          Either.succeed None
+          Result.succeed None
 
       let! lastcaller =
         try
           if fb.LastCallerIdLength = 0
-          then Either.succeed None
-          else Id.decodeLastCallerId fb |> Either.map Some
+          then Result.succeed None
+          else Id.decodeLastCallerId fb |> Result.map Some
         with exn ->
-          Either.succeed None
+          Result.succeed None
 
       let! id = Id.decodeId fb
       let! call = Id.decodeCallId fb
@@ -252,7 +252,7 @@ type CuePlayer =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte[]) : Either<DiscoError,CuePlayer> =
+  static member FromBytes (bytes: byte[]) : DiscoResult<CuePlayer> =
     Binary.createBuffer bytes
     |> CuePlayerFB.GetRootAsCuePlayerFB
     |> CuePlayer.FromFB
@@ -278,12 +278,12 @@ type CuePlayer =
 
   #if !FABLE_COMPILER && !DISCO_NODES
 
-  static member Load(path: FilePath) : Either<DiscoError,CuePlayer> =
+  static member Load(path: FilePath) : DiscoResult<CuePlayer> =
     DiscoData.load path
 
   // ** LoadAll
 
-  static member LoadAll(basePath: FilePath) : Either<DiscoError,CuePlayer array> =
+  static member LoadAll(basePath: FilePath) : DiscoResult<CuePlayer array> =
     basePath </> filepath Constants.CUEPLAYER_DIR
     |> DiscoData.loadAll
 

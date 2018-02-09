@@ -176,8 +176,8 @@ type WorkerContext() =
 
       sock.OnMessage <- fun (ev: MessageEvent<ArrayBuffer>) ->
         match toBytes ev.Data |> Binary.decode with
-        | Right sm   -> self.OnSocketMessage sm
-        | Left error ->
+        | Ok sm   -> self.OnSocketMessage sm
+        | Error error ->
           sprintf "Unable to parse received message. %A" error
           |> self.Log LogLevel.Err
 

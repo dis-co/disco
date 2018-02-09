@@ -16,7 +16,7 @@ module StateTests =
 
   let test_apply_fstree_add_correctly =
     testCase "should apply fstree add correctly" <| fun _ ->
-      either {
+      result {
         let initial = State.Empty
         let tree = FsTreeTesting.deepTree 2
         let state = State.addFsTree tree initial
@@ -26,7 +26,7 @@ module StateTests =
 
   let test_apply_fsentry_add_correctly =
     testCase "should apply fsentry add correctly" <| fun _ ->
-      either {
+      result {
         let tree = FsTreeTesting.deepTree 2
         let initial = State.addFsTree tree State.Empty
         let directory =
@@ -51,7 +51,7 @@ module StateTests =
 
   let test_apply_fsentry_remove_correctly =
     testCase "should apply fsentry remove correctly" <| fun _ ->
-      either {
+      result {
         let tree = FsTreeTesting.deepTree 2
         let initial = State.addFsTree tree State.Empty
         let entry =

@@ -275,19 +275,19 @@ ConfigChangeEntry = %s
 
   // ** FromYaml
 
-  static member FromYaml (yaml: RaftStateYaml) : Either<DiscoError, RaftState> =
-    either {
+  static member FromYaml (yaml: RaftStateYaml): DiscoResult<RaftState> =
+    result {
       let! id = DiscoId.TryParse yaml.Member
 
       let! leader =
         if isNull yaml.Leader
-        then Right None
-        else DiscoId.TryParse yaml.Leader |> Either.map Some
+        then Ok None
+        else DiscoId.TryParse yaml.Leader |> Result.map Some
 
       let! votedfor =
         if isNull yaml.VotedFor
-        then Right None
-        else DiscoId.TryParse yaml.VotedFor |> Either.map Some
+        then Ok None
+        else DiscoId.TryParse yaml.VotedFor |> Result.map Some
 
       return {
         Member            = Member.create id

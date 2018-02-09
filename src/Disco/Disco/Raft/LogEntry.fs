@@ -384,12 +384,12 @@ type LogEntry =
   /// - fb: LogFB FlatBuffer object
   /// - sibling: an sibling (None also legal, for the first mem), or the previous error
   ///
-  /// Returns: Either<DiscoError, RaftLogEntry option>
+  /// Returns: DiscoResult<RaftLogEntry option>
   static member ParseLogFB (fb: LogFB)
-                           (sibling: Either<DiscoError,LogEntry option>)
-                           : Either<DiscoError,LogEntry option> =
+                           (sibling: DiscoResult<LogEntry option>)
+                           : DiscoResult<LogEntry option> =
       match fb.EntryType with
-      | LogTypeFB.ConfigurationFB -> either {
+      | LogTypeFB.ConfigurationFB -> result {
           // the previous log entry. An error, if occurred previously
           let! previous = sibling
 
@@ -403,7 +403,7 @@ type LogEntry =
             let! mems =
               let arr = Array.zeroCreate logentry.MembersLength
               Array.fold
-                (fun (m: Either<DiscoError,int * RaftMember array>) _ -> either {
+                (fun (m: DiscoResult<int * RaftMember array>) _ -> result {
                   let! (i, arr) = m
                   let! mem =
                     let value = logentry.Members(i)
@@ -412,13 +412,13 @@ type LogEntry =
                     else
                       "Could not parse empty MemberFB value"
                       |> Error.asParseError "StateMachine.ParseLogFB"
-                      |> Either.fail
+                      |> Result.fail
                   arr.[i] <- mem
                   return (i + 1, arr)
                 })
-                (Right (0, arr))
+                (Ok (0, arr))
                 arr
-              |> Either.map snd
+              |> Result.map snd
 
             let! id = Id.decodeId logentry
 
@@ -429,10 +429,10 @@ type LogEntry =
           else
             return! "Could not parse empty LogTypeFB.ConfigurationFB"
                     |> Error.asParseError "StateMachine.ParseLogFB"
-                    |> Either.fail
+                    |> Result.fail
         }
 
-      | LogTypeFB.JointConsensusFB -> either {
+      | LogTypeFB.JointConsensusFB -> result {
           // the previous entry, or an error. short-circuits here on error.
           let! previous = sibling
 
@@ -445,7 +445,7 @@ type LogEntry =
             let! changes =
               let arr = Array.zeroCreate logentry.ChangesLength
               Array.fold
-                (fun (m: Either<DiscoError, int * ConfigChange array>) _ -> either {
+                (fun (m: DiscoResult<int * ConfigChange array>) _ -> result {
                   let! (i, changes) = m // pull the index and array out
                   let! change =
                     let value = logentry.Changes(i)
@@ -455,13 +455,13 @@ type LogEntry =
                     else
                       "Could not parse empty ConfigChangeFB value"
                       |> Error.asParseError "StateMachine.FromFB"
-                      |> Either.fail
+                      |> Result.fail
                   changes.[i] <- change
                   return (i + 1, changes)
                 })
-                (Right (0, arr))
+                (Ok (0, arr))
                 arr
-              |> Either.map snd
+              |> Result.map snd
             let! id = Id.decodeId logentry
             return (id, 1<index> * logentry.Index, 1<term> * logentry.Term, changes, previous)
                    |> JointConsensus
@@ -470,11 +470,11 @@ type LogEntry =
             return!
               "Could not parse empty LogTypeFB.JointConsensusFB"
               |> Error.asParseError "StateMachine.ParseLogFB"
-              |> Either.fail
+              |> Result.fail
 
         }
 
-      | LogTypeFB.LogEntryFB -> either {
+      | LogTypeFB.LogEntryFB -> result {
           let! previous = sibling
 
           let entry = fb.Entry<LogEntryFB>()
@@ -491,15 +491,15 @@ type LogEntry =
               return!
                 "Could not parse empty StateMachineFB"
                 |> Error.asParseError "StateMachine.ParseLogFB"
-                |> Either.fail
+                |> Result.fail
           else
             return!
               "Could not parse empty LogTypeFB.LogEntry"
               |> Error.asParseError "StateMachine.ParseLogFB"
-              |> Either.fail
+              |> Result.fail
         }
 
-      | LogTypeFB.SnapshotFB -> either {
+      | LogTypeFB.SnapshotFB -> result {
           // Snapshots don't have ancestors, so move ahead right away
           let entry = fb.Entry<SnapshotFB>()
           if entry.HasValue then
@@ -513,7 +513,7 @@ type LogEntry =
               let! mems =
                 let arr = Array.zeroCreate logentry.MembersLength
                 Array.fold
-                  (fun (m: Either<DiscoError, int * RaftMember array>) _ -> either {
+                  (fun (m: DiscoResult<int * RaftMember array>) _ -> result {
                     let! (i, mems) = m
 
                     let! mem =
@@ -524,14 +524,14 @@ type LogEntry =
                       else
                         "Could not parse empty RaftMemberFB"
                         |> Error.asParseError "StateMachine.ParseLogFB"
-                        |> Either.fail
+                        |> Result.fail
 
                     mems.[i] <- mem
                     return (i + 1, mems)
                   })
-                  (Right (0, arr))
+                  (Ok (0, arr))
                   arr
-                |> Either.map snd
+                |> Result.map snd
 
               return
                 Some $ Snapshot(
@@ -546,18 +546,18 @@ type LogEntry =
               return!
                 "Could not parse empty StateMachineFB"
                 |> Error.asParseError "StateMachine.ParseLogFB"
-                |> Either.fail
+                |> Result.fail
           else
             return!
               "Could not parse empty LogTypeFB.SnapshotFB"
               |> Error.asParseError "StateMachine.ParseLogFB"
-              |> Either.fail
+              |> Result.fail
         }
 
       | x ->
         sprintf "Could not parse unknown LogTypeFB; %A" x
         |> Error.asParseError "StateMachine.ParseLogFB"
-        |> Either.fail
+        |> Result.fail
 
   // ** FromFB
 
@@ -573,8 +573,8 @@ type LogEntry =
   /// - log: previous RaftLogEntry value to reconstruct the chain of events
   ///
   /// Returns: RaftLogEntry option
-  static member FromFB (logs: LogFB array) : Either<DiscoError, LogEntry option> =
-    Array.foldBack LogEntry.ParseLogFB logs (Right None)
+  static member FromFB (logs: LogFB array): DiscoResult<LogEntry option> =
+    Array.foldBack LogEntry.ParseLogFB logs (Ok None)
 
   // ** AssetPath
 
@@ -595,7 +595,7 @@ type LogEntry =
   member log.Save (basePath: FilePath) =
     match log with
     | Snapshot(id, idx, term, lastidx, lastterm, mems, _) ->
-      either {
+      result {
         let serializer = Serializer()
         let path = basePath </> Asset.path log
         use! repo = Git.Repo.repository basePath
@@ -615,7 +615,7 @@ type LogEntry =
     | _ ->
       "Only snapshots can be saved"
       |> Error.asAssetError "LogEntry.Save"
-      |> Either.fail
+      |> Result.fail
 
   #endif
 

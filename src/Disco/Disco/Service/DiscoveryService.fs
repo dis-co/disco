@@ -89,7 +89,7 @@ module DiscoveryService =
       |> Discovery.toDiscoveredService
 
     match service with
-    | Right parsed ->
+    | Ok parsed ->
       parsed.Id
       |> sprintf "resolved new service %O"
       |> Logger.debug (tag "addResolved")
@@ -97,7 +97,7 @@ module DiscoveryService =
       parsed
       |> Msg.Discovered
       |> agent.Post
-    | Left _ -> ()
+    | Error _ -> ()
 
   // ** serviceAdded
 
@@ -142,11 +142,11 @@ module DiscoveryService =
       let service = Discovery.toDiscoverableService discoverable
       service.Response.Add(serviceRegistered agent discoverable)
       service.Register()
-      Either.succeed service
+      Result.succeed service
     with | exn ->
       exn.Message
       |> Error.asOther (tag "registerService")
-      |> Either.fail
+      |> Result.fail
 
   // ** unregisterService
 
@@ -165,12 +165,12 @@ module DiscoveryService =
       let browser = new ServiceBrowser()
       browser.ServiceAdded.AddHandler(new ServiceBrowseEventHandler(serviceAdded agent))
       browser.ServiceRemoved.AddHandler(new ServiceBrowseEventHandler(serviceRemoved agent))
-      browser |> Either.succeed
+      browser |> Result.succeed
     with
       | exn ->
         exn.Message
         |> Error.asOther (tag "makeBrowser")
-        |> Either.fail
+        |> Result.fail
 
   // ** handleStop
 
@@ -205,8 +205,8 @@ module DiscoveryService =
              { ServiceType = ServiceType.WebSocket; Port = machine.WsPort   } |]
         ExtraMetadata = Array.empty }
     match registerService agent discoverable with
-    | Right service -> { state with RegisterService = Some service }
-    | Left error ->
+    | Ok service -> { state with RegisterService = Some service }
+    | Error error ->
       error
       |> sprintf "error registering busy service: %O"
       |> Logger.err (tag "handleRegister")
@@ -229,8 +229,8 @@ module DiscoveryService =
              { ServiceType = ServiceType.WebSocket; Port = machine.WsPort   } |]
         ExtraMetadata = Array.empty }
     match registerService agent discoverable with
-    | Right service -> { state with RegisterService = Some service }
-    | Left error ->
+    | Ok service -> { state with RegisterService = Some service }
+    | Error error ->
       error
       |> sprintf "error registering idle service: %O"
       |> Logger.err (tag "handleUnRegister")
@@ -316,14 +316,14 @@ module DiscoveryService =
 
     { new IDiscoveryService with
         member self.Start() =
-          either {
+          result {
             let! browser = makeBrowser agent
             store.Update { state with Browser = browser }
 
             do! try
                   browser
                   |> startBrowser
-                  |> Either.succeed
+                  |> Result.succeed
                 with
                   | exn ->
                     tryDispose browser ignore
@@ -334,7 +334,7 @@ module DiscoveryService =
                     Logger.err (tag "Start") msg
                     msg
                     |> Error.asOther (tag "Start")
-                    |> Either.fail
+                    |> Result.fail
 
             agent.Post Msg.Start
             return ()

@@ -148,17 +148,17 @@ type RGBAValue =
         Green = green
         Blue = blue
         Alpha = alpha }
-      |> Either.succeed
+      |> Result.succeed
     | Parsing.RGB (red, green, blue) ->
       { Red = red
         Green = green
         Blue = blue
         Alpha = 255uy }
-      |> Either.succeed
+      |> Result.succeed
     | _ ->
       System.String.Format("Cannot parse {0} as RGB(A)", value)
       |> Error.asParseError "RGBAValue.TryParse"
-      |> Either.fail
+      |> Result.fail
 
   // ** ToOffset
 
@@ -179,18 +179,18 @@ type RGBAValue =
 
   // ** FromFB
 
-  static member FromFB(fb: RGBAValueFB) : Either<DiscoError,RGBAValue> =
+  static member FromFB(fb: RGBAValueFB) : DiscoResult<RGBAValue> =
     try
       { Red   = fb.Red
       ; Green = fb.Green
       ; Blue  = fb.Blue
       ; Alpha = fb.Alpha
-      } |> Right
+      } |> Ok
     with
       | exn ->
         exn.Message
         |> Error.asParseError "RGBAValue.FromFB"
-        |> Either.fail
+        |> Result.fail
 
   // ** ToBytes
 
@@ -291,18 +291,18 @@ type HSLAValue =
 
   // ** FromFB
 
-  static member FromFB(fb: HSLAValueFB) : Either<DiscoError,HSLAValue> =
+  static member FromFB(fb: HSLAValueFB) : DiscoResult<HSLAValue> =
     try
       { Hue        = fb.Hue
       ; Saturation = fb.Saturation
       ; Lightness  = fb.Lightness
       ; Alpha      = fb.Alpha
-      } |> Right
+      } |> Ok
     with
       | exn ->
         exn.Message
         |> Error.asParseError "HSLAValue.FromFB"
-        |> Either.fail
+        |> Result.fail
 
   // ** ToBytes
 
@@ -333,7 +333,7 @@ type ColorSpace =
   static member TryParse(value:string) =
     value
     |> RGBAValue.TryParse
-    |> Either.map ColorSpace.RGBA
+    |> Result.map ColorSpace.RGBA
 
   // ** Black
 
@@ -372,25 +372,25 @@ type ColorSpace =
 
   // ** FromFB
 
-  static member FromFB(fb: ColorSpaceFB) : Either<DiscoError,ColorSpace> =
+  static member FromFB(fb: ColorSpaceFB) : DiscoResult<ColorSpace> =
 #if FABLE_COMPILER
     match fb.ValueType with
     | x when x = ColorSpaceTypeFB.RGBAValueFB ->
       RGBAValueFB.Create()
       |> fb.Value
       |> RGBAValue.FromFB
-      |> Either.map RGBA
+      |> Result.map RGBA
 
     | x when x = ColorSpaceTypeFB.HSLAValueFB ->
       HSLAValueFB.Create()
       |> fb.Value
       |> HSLAValue.FromFB
-      |> Either.map HSLA
+      |> Result.map HSLA
 
     | x ->
       sprintf "Could not deserialize %A" x
       |> Error.asParseError "ColorSpace.FromFB"
-      |> Either.fail
+      |> Result.fail
 
 #else
     // On .NET side, System.Nullables are used. Hard to emulate rn.
@@ -400,27 +400,27 @@ type ColorSpace =
       if v.HasValue then
         v.Value
         |> RGBAValue.FromFB
-        |> Either.map RGBA
+        |> Result.map RGBA
       else
         "Could not parse RGBAValue"
         |> Error.asParseError "ColorSpace.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | ColorSpaceTypeFB.HSLAValueFB ->
       let v = fb.Value<HSLAValueFB>()
       if v.HasValue then
         v.Value
         |> HSLAValue.FromFB
-        |> Either.map HSLA
+        |> Result.map HSLA
       else
         "Could not parse RGBAValue"
         |> Error.asParseError "ColorSpace.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | x ->
       sprintf "Could not parse ColorSpaceFB. Unknown type: %A" x
       |> Error.asParseError "ColorSpace.FromFB"
-      |> Either.fail
+      |> Result.fail
 
 #endif
 
@@ -469,17 +469,17 @@ type ColorSpace =
         Green = yml.Channel2;
         Blue = yml.Channel3;
         Alpha = yml.Alpha
-      } |> Right
+      } |> Ok
     | "HSLA" ->
       HSLA {
         Hue = yml.Channel1;
         Saturation = yml.Channel2;
         Lightness = yml.Channel3;
         Alpha = yml.Alpha
-      } |> Right
+      } |> Ok
     | x ->
       sprintf "Could not parse ColorYaml. Unknown type: %s" x
       |> Error.asParseError "ColorSpace.FromYaml"
-      |> Either.fail
+      |> Result.fail
 
 #endif

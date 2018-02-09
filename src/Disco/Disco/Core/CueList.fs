@@ -45,19 +45,19 @@ type CueListYaml() =
     yaml
 
   member yaml.ToCueList() =
-    either {
+    result {
       let! items =
         let arr = Array.zeroCreate yaml.Items.Length
         Array.fold
-          (fun (m: Either<DiscoError,int * CueGroup array>) itemish -> either {
+          (fun (m: DiscoResult<int * CueGroup array>) itemish -> result {
             let! (i, arr) = m
             let! (item: CueGroup) = Yaml.fromYaml itemish
             arr.[i] <- item
             return (i + 1, arr)
           })
-          (Right (0, arr))
+          (Ok (0, arr))
           yaml.Items
-        |> Either.map snd
+        |> Result.map snd
 
       let! id = DiscoId.TryParse yaml.Id
 
@@ -122,12 +122,12 @@ type CueList =
 
   // ** FromFB
 
-  static member FromFB(fb: CueListFB) : Either<DiscoError, CueList> =
-    either {
+  static member FromFB(fb: CueListFB) : DiscoResult<CueList> =
+    result {
       let! items =
         let arr = Array.zeroCreate fb.ItemsLength
         Array.fold
-          (fun (m: Either<DiscoError,int * CueGroup array>) _ -> either {
+          (fun (m: DiscoResult<int * CueGroup array>) _ -> result {
             let! (i, items) = m
 
             #if FABLE_COMPILER
@@ -140,15 +140,15 @@ type CueList =
               else
                 "Could not parse empty CueGroupFB"
                 |> Error.asParseError "CueList.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             items.[i] <- item
             return (i + 1, items)
           })
-          (Right (0, arr))
+          (Ok (0, arr))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       let! id = Id.decodeId fb
 
@@ -180,7 +180,7 @@ type CueList =
 
   // ** FromYaml
 
-  static member FromYaml(yml: CueListYaml) : Either<DiscoError,CueList> =
+  static member FromYaml(yml: CueListYaml) : DiscoResult<CueList> =
     yml.ToCueList()
 
   // ** AssetPath
@@ -202,12 +202,12 @@ type CueList =
   // | |__| (_) | (_| | (_| |
   // |_____\___/ \__,_|\__,_|
 
-  static member Load(path: FilePath) : Either<DiscoError, CueList> =
+  static member Load(path: FilePath) : DiscoResult<CueList> =
     DiscoData.load path
 
   // ** LoadAll
 
-  static member LoadAll(basePath: FilePath) : Either<DiscoError, CueList array> =
+  static member LoadAll(basePath: FilePath) : DiscoResult<CueList array> =
     basePath </> filepath CUELIST_DIR
     |> DiscoData.loadAll
 

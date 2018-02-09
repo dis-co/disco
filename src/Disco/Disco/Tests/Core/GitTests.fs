@@ -36,7 +36,7 @@ module GitTests =
     let project =
       let p =
         Project.create tmpdir "Test Project" machine
-        |> Either.get
+        |> Result.get
       in { p with Config = config }
 
     machine, tmpdir, project, mem, project
@@ -88,7 +88,7 @@ module GitTests =
 
   let test_server_startup =
     testCase "Server startup" <| fun _ ->
-      either {
+      result {
         let uuid, tmpdir, project, mem, path =
           mkEnvironment 10000us
 
@@ -101,7 +101,7 @@ module GitTests =
 
   let test_server_startup_should_error_on_eaddrinuse =
     testCase "Server should fail on EADDRINUSE" <| fun _ ->
-      either {
+      result {
         let uuid, tmpdir, project, mem, path =
           mkEnvironment 10001us
 
@@ -121,8 +121,8 @@ module GitTests =
 
         use gitserver2 = GitServer.create mem path
         do! match gitserver2.Start() with
-            | Right ()   -> Left (Other("test","Should have failed to start"))
-            | Left error -> Right ()
+            | Ok ()   -> Error (Other("test","Should have failed to start"))
+            | Error error -> Ok ()
 
         expect "Should not be runnning" true Service.isStopped gitserver2.Status
       }
@@ -130,7 +130,7 @@ module GitTests =
 
   let test_server_availability =
     testCase "Server availability" <| fun _ ->
-      either {
+      result {
         let port = 10002us
         let started = new WaitEvent()
 
@@ -157,7 +157,7 @@ module GitTests =
           |> unwrap
           |> Git.Repo.clone target
 
-        expect "Should have successfully clone project" true Either.isSuccess repo
+        expect "Should have successfully clone project" true Result.isSuccess repo
       }
       |> noError
 

@@ -25,7 +25,7 @@ module RemoveMemberShouldSplitCluster =
 
   let test =
     testCase "ensure follower forwards fstree to leader" <| fun _ ->
-      either {
+      result {
         use electionDone = new WaitEvent()
         use appendDone = new WaitEvent()
         use pushDone = new WaitEvent()

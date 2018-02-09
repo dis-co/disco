@@ -58,7 +58,7 @@ type LogLevel =
   // ** TryParse
 
   static member TryParse (str: string) =
-    Either.tryWith (Error.asParseError "LogLevel.TryParse") <| fun _ ->
+    Result.tryWith (Error.asParseError "LogLevel.TryParse") <| fun _ ->
       str |> LogLevel.Parse
 
   // ** ToString
@@ -108,7 +108,7 @@ type Tier =
   // ** TryParse
 
   static member TryParse (str: string) =
-    Either.tryWith (Error.asParseError "Tier.TryParse") <| fun _ ->
+    Result.tryWith (Error.asParseError "Tier.TryParse") <| fun _ ->
       str |> Tier.Parse
 
 // * LogEventYaml
@@ -192,7 +192,7 @@ type LogEvent =
 
   // ** FromFB
 
-  static member FromFB(fb: LogEventFB) = either {
+  static member FromFB(fb: LogEventFB) = result {
       let! id = Id.decodeMachineId fb
       let! tier = Tier.TryParse fb.Tier
       let! level = LogLevel.TryParse fb.LogLevel
@@ -230,8 +230,8 @@ type LogEvent =
 
   // ** FromYaml
 
-  static member FromYaml(yaml: LogEventYaml) : Either<DiscoError,LogEvent> =
-    either {
+  static member FromYaml(yaml: LogEventYaml) : DiscoResult<LogEvent> =
+    result {
       let! id = DiscoId.TryParse yaml.MachineId
       let! level = LogLevel.TryParse yaml.LogLevel
       let! tier = Tier.TryParse yaml.Tier
@@ -577,24 +577,24 @@ module LogFile =
       log
       |> string
       |> file.Stream.WriteLine
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         exn.Message
         |> Error.asIOError (tag "write")
-        |> Either.fail
+        |> Result.fail
 
   // ** create
 
   let create (machine: MachineId) (path: FilePath) =
-    either {
+    result {
       try
         let ts = DateTime.Now
         let fn = String.Format("disco-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix(), ts)
         do! if Directory.exists path |> not then
               Directory.createDirectory path
-              |> Either.ignore
-            else Either.succeed ()
+              |> Result.ignore
+            else Result.succeed ()
         let fp = Path.Combine(unwrap path, fn)
         let writer = File.AppendText fp
         writer.AutoFlush <- true
@@ -607,7 +607,7 @@ module LogFile =
           return!
             exn.Message
             |> Error.asIOError (tag "create")
-            |> Either.fail
+            |> Result.fail
     }
 
 #endif

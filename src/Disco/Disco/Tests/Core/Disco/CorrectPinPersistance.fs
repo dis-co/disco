@@ -34,7 +34,7 @@ module CorrectPinPersistance =
     then pending testName
     else
       testCase testName <| fun _ ->
-        either {
+        result {
           use started = new WaitEvent()
           use appendDone = new WaitEvent()
           use createDone = new WaitEvent()

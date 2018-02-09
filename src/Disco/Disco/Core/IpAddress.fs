@@ -57,28 +57,28 @@ type IpAddress =
     #if FABLE_COMPILER
     try
       IpAddress.Parse str
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         sprintf "Unable to parse IP: %s Cause: %s" str exn.Message
         |> Disco.Core.Error.asParseError "IpAddress.Parse"
-        |> Either.fail
+        |> Result.fail
     #else
     try
       let ip = IPAddress.Parse(str)
       match ip.AddressFamily with
-      | Sockets.AddressFamily.InterNetwork   -> IPv4Address str |> Right
-      | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Right
+      | Sockets.AddressFamily.InterNetwork   -> IPv4Address str |> Ok
+      | Sockets.AddressFamily.InterNetworkV6 -> IPv6Address str |> Ok
       | fam ->
         sprintf "Unable to parse IP: %s Unsupported AddressFamily: %A" str fam
         |> Error.asParseError "IpAddress.Parse"
-        |> Either.fail
+        |> Result.fail
 
     with
       | exn ->
         sprintf "Unable to parse IP: %s Cause: %s" str exn.Message
         |> Error.asParseError "IpAddress.Parse"
-        |> Either.fail
+        |> Result.fail
     #endif
 
   // ** ofIPAddress

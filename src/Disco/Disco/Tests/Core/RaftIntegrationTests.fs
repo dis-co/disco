@@ -27,7 +27,7 @@ module RaftIntegrationTests =
 
   let test_validate_correct_req_socket_tracking =
     testCase "validate correct req socket tracking" <| fun _ ->
-      either {
+      result {
         let machine1 = MachineConfig.create "127.0.0.1" None
         let machine2 = MachineConfig.create "127.0.0.1" None
 
@@ -87,7 +87,7 @@ module RaftIntegrationTests =
 
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
-      either {
+      result {
         use started = new WaitEvent()
         let port = port 12000us
         let machine = MachineConfig.create "127.0.0.1" None
@@ -132,8 +132,8 @@ module RaftIntegrationTests =
           }
 
         do! match follower.Start() with
-            | Right _ -> Left (Other("test","follower should have failed"))
-            | Left _ -> Right ()
+            | Ok _ -> Error (Other("test","follower should have failed"))
+            | Error _ -> Ok ()
 
         expect "Should be failed" true Service.hasFailed follower.Status
       }
@@ -141,7 +141,7 @@ module RaftIntegrationTests =
 
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
-      either {
+      result {
         use check1 = new WaitEvent()
 
         let setState (id: DiscoId) (are: WaitEvent) = function
@@ -209,7 +209,7 @@ module RaftIntegrationTests =
 
   let test_log_snapshotting_should_clean_all_logs =
     testCase "log snapshotting should clean all logs" <| fun _ ->
-      either {
+      result {
         use snapshotCheck = new WaitEvent()
         use expectedCheck = new WaitEvent()
 
@@ -269,7 +269,7 @@ module RaftIntegrationTests =
 
   let test_validate_add_member_works =
     testCase "validate add member works" <| fun _ ->
-      either {
+      result {
         use added = new WaitEvent()
         use configured = new WaitEvent()
         use check1 = new WaitEvent()

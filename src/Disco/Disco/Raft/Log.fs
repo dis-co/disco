@@ -94,9 +94,9 @@ type Log =
   /// ### Signature:
   /// - logs: LogFB array
   ///
-  /// Returns: Either<DiscoError, RaftLog>
-  static member FromFB (logs: LogFB array) : Either<DiscoError, Log> =
-    either {
+  /// Returns: DiscoResult<RaftLog>
+  static member FromFB (logs: LogFB array) : DiscoResult<Log> =
+    result {
       let! entries = LogEntry.FromFB logs
       match entries with
       | Some entries as value ->

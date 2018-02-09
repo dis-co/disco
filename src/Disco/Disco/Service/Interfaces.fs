@@ -68,7 +68,7 @@ type IDiscoveryService =
   inherit IDisposable
   abstract Services: Map<ServiceId,DiscoveredService>
   abstract Subscribe: (DiscoveryEvent -> unit) -> IDisposable
-  abstract Start: unit -> Either<DiscoError,unit>
+  abstract Start: unit -> DiscoResult<unit>
   abstract Register: project:DiscoProject -> unit
   abstract UnRegister: unit -> unit
 
@@ -97,7 +97,7 @@ type IGitServer =
   inherit IDisposable
   abstract Status    : ServiceStatus
   abstract Subscribe : (DiscoEvent -> unit) -> IDisposable
-  abstract Start     : unit -> Either<DiscoError,unit>
+  abstract Start     : unit -> DiscoResult<unit>
 
 // * IFsWatcher
 
@@ -116,7 +116,7 @@ type IRaftSnapshotCallbacks =
 type IRaftServer =
   inherit IDisposable
   inherit ISink<DiscoEvent>
-  abstract Start         : unit -> Either<DiscoError, unit>
+  abstract Start         : unit -> DiscoResult<unit>
   abstract Member        : RaftMember
   abstract MemberId      : MemberId
   abstract Append        : StateMachine -> unit
@@ -143,18 +143,18 @@ type IWebSocketServer =
   abstract Sessions     : Map<SessionId,Session>
   abstract Broadcast    : StateMachine -> unit
   abstract Multicast    : except:SessionId -> StateMachine -> unit
-  abstract BuildSession : SessionId -> Session -> Either<DiscoError,Session>
+  abstract BuildSession : SessionId -> Session -> Result<Session,DiscoError>
   abstract Subscribe    : (DiscoEvent -> unit) -> System.IDisposable
-  abstract Start        : unit -> Either<DiscoError, unit>
+  abstract Start        : unit -> DiscoResult<unit>
 
 // * IAssetService
 
 type IAssetService =
   inherit IDisposable
   abstract State: FsTree option
-  abstract Start: unit -> Either<DiscoError, unit>
+  abstract Start: unit -> DiscoResult<unit>
   abstract Subscribe: (DiscoEvent -> unit) -> IDisposable
-  abstract Stop: unit -> Either<DiscoError, unit>
+  abstract Stop: unit -> DiscoResult<unit>
 
 // * IApiServerCallbacks
 
@@ -166,7 +166,7 @@ type IApiServerCallbacks =
 type IApiServer =
   inherit IDisposable
   inherit ISink<DiscoEvent>
-  abstract Start: unit -> Either<DiscoError,unit>
+  abstract Start: unit -> DiscoResult<unit>
   abstract Subscribe: (DiscoEvent -> unit) -> IDisposable
   abstract Clients: Map<ClientId,DiscoClient>
   abstract SendSnapshot: unit -> unit
@@ -176,7 +176,7 @@ type IApiServer =
 
 type IHttpServer =
   inherit System.IDisposable
-  abstract Start: unit -> Either<DiscoError,unit>
+  abstract Start: unit -> DiscoResult<unit>
 
 // * DiscoServiceOptions
 
@@ -205,12 +205,12 @@ type IDiscoService =
   abstract AssetService:  IAssetService
   abstract RemoveMachine: MemberId         -> unit
   abstract SocketServer:  IWebSocketServer
-  abstract Start:         unit -> Either<DiscoError,unit>
+  abstract Start:         unit -> DiscoResult<unit>
   abstract State:         State
   abstract Status:        ServiceStatus
   abstract Subscribe:     (DiscoEvent -> unit) -> IDisposable
-  // abstract JoinCluster   : IpAddress  -> uint16 -> Either<DiscoError,unit>
-  // abstract LeaveCluster  : unit       -> Either<DiscoError,unit>
+  // abstract JoinCluster   : IpAddress  -> uint16 -> DiscoResult<unit>
+  // abstract LeaveCluster  : unit       -> DiscoResult<unit>
 
 // * DiscoOptions
 
@@ -227,6 +227,6 @@ type IDisco =
   abstract HttpServer: IHttpServer
   abstract DiscoveryService: IDiscoveryService option
   abstract DiscoService: IDiscoService option
-  abstract SaveProject: unit -> Either<DiscoError,unit>
-  abstract LoadProject: Name * UserName * Password * (Name * SiteId) option -> Either<DiscoError,unit>
-  abstract UnloadProject: unit -> Either<DiscoError,unit>
+  abstract SaveProject: unit -> DiscoResult<unit>
+  abstract LoadProject: Name * UserName * Password * (Name * SiteId) option -> DiscoResult<unit>
+  abstract UnloadProject: unit -> DiscoResult<unit>
