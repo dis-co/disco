@@ -58,8 +58,8 @@ type PinView(props) =
 
   member this.valueAt(i) =
     match this.props.slices with
-    | Some slices -> slices.[index i].Value
-    | None -> this.props.pin.Slices.[index i].Value
+    | Some slices -> slices.[i].Value
+    | None -> this.props.pin.Slices.[i].Value
 
   // ** renderRows
 
@@ -112,11 +112,11 @@ type PinView(props) =
         }
       if rowCount > 1 then
         td [ClassName "disco-flex-row"] [
-          createElement("div", options, this.valueAt(0))
+          createElement("div", options, this.valueAt(0<index>))
           this.renderArrow()
         ]
       else
-        td [] [createElement("div", options, this.valueAt(0))]
+        td [] [createElement("div", options, this.valueAt(0<index>))]
     let head =
       tr [ClassName "disco-pin-child"] [
         td [
@@ -175,7 +175,7 @@ type PinView(props) =
             }
           yield tr [Key (string i); ClassName "disco-pin-child"] [
             td [] [str label]
-            td [] [createElement("div", options, this.valueAt(i))]
+            td [] [createElement("div", options, this.valueAt(1<index> * i))]
           ]
       ]
     else tbody [] [head]

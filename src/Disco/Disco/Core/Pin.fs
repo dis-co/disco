@@ -2825,36 +2825,36 @@ type Slice =
     #if FABLE_COMPILER
     | x when x = SliceTypeFB.StringFB ->
       let slice = StringFB.Create() |> fb.Slice
-      StringSlice(index fb.Index, slice.Value)
+      StringSlice(1<index> * fb.Index, slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.DoubleFB ->
       let slice = DoubleFB.Create() |> fb.Slice
-      NumberSlice(index fb.Index, slice.Value)
+      NumberSlice(1<index> * fb.Index, slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.BoolFB ->
       let slice = BoolFB.Create() |> fb.Slice
-      BoolSlice(index fb.Index, slice.Trigger, slice.Value)
+      BoolSlice(1<index> * fb.Index, slice.Trigger, slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.ByteFB ->
       let slice = ByteFB.Create() |> fb.Slice
-      ByteSlice(index fb.Index,String.decodeBase64 slice.Value)
+      ByteSlice(1<index> * fb.Index,String.decodeBase64 slice.Value)
       |> Either.succeed
 
     | x when x = SliceTypeFB.KeyValueFB ->
       either {
         let slice = KeyValueFB.Create() |> fb.Slice
         let! prop = Property.FromFB slice
-        return EnumSlice(index fb.Index,prop)
+        return EnumSlice(1<index> * fb.Index,prop)
       }
 
     | x when x = SliceTypeFB.ColorSpaceFB ->
       either {
         let slice = ColorSpaceFB.Create() |> fb.Slice
         let! color = ColorSpace.FromFB slice
-        return ColorSlice(index fb.Index, color)
+        return ColorSlice(1<index> * fb.Index, color)
       }
 
     | x ->
@@ -4356,10 +4356,9 @@ module PinYaml =
         |> Error.asParseError "PynYml.FromYaml"
         |> Either.fail
 
-    with
-      | exn ->
-        sprintf "Could not parse PinYml: %s" exn.Message
-        |> Error.asParseError "PynYml.FromYaml"
-        |> Either.fail
+    with exn ->
+      sprintf "Could not parse PinYml: %s" exn.Message
+      |> Error.asParseError "PynYml.FromYaml"
+      |> Either.fail
 
 #endif

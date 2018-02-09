@@ -32,7 +32,7 @@ let findPinByName(model: Model, name: string) =
         if unwrap p.Name = pinName then Some p else None)))
 
 let getPinValueAt(pin: Pin, idx: int): obj =
-    let slice = pin.Slices.At(index idx)
+    let slice = pin.Slices.At(1<index> * idx)
     slice.Value
 
 let renderWidget(id, name, headFn, bodyFn, dispatch, model): React.ReactElement =
