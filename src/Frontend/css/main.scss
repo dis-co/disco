@@ -4,6 +4,9 @@
 @import "PanelLeft";
 @import "Pin";
 
+$concrete: #f2f2f2;
+$white: #ffffff;
+
 * {
   font-size: 11px;
   line-height: 14px;
@@ -24,6 +27,79 @@ html, body {
   user-select: none;
   background: #aaa;
 }
+
+.log-container{
+  height: 100%;
+  width:  100%;
+  overflow: auto;
+}
+
+
+
+.log-table{
+    
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: space-between;
+    border: 1px solid $concrete;
+    font-size: 1rem;
+    margin: 0.5rem;
+    line-height: 1.5;
+  
+  .Table-header {
+    display: none;
+    font-weight: bold;
+  }
+  @media(min-width: 500px) {
+    .Table-header {
+      font-weight: 700;
+      background-color: $concrete;
+    }
+    .Table-row {
+      display: flex;
+      flex-flow: row nowrap;
+      &:nth-of-type(even) {
+        background-color: $white;
+      }
+      &:nth-of-type(odd) {
+        background-color: $concrete;
+      }
+    }
+    }
+  
+  .Table-row {
+    width: 100%;
+    &:nth-of-type(even) {
+      background-color: $concrete;
+    }
+    &:nth-of-type(odd) {
+      background-color: $white;
+    }
+
+  }
+  .Table-row-item {
+    display: flex;
+    flex-flow: row nowrap;
+    flex-grow: 1;
+    flex-basis: 0;
+    padding: 0.5em;
+    //Instead of the line below you could use @include word-break($value)
+    word-break: break-word;
+    &.log-col-time{
+      flex: 0 0 80px;
+    }
+    &.log-col-message{
+      flex: auto;
+    }
+    &.log-col-tag{
+      flex: 0 0 70px;
+    }
+    &.log-col-loglevel{
+      flex: 0 0 70px;
+    }
+  }
+}
+  
 
 .disco-output {
   background: #fff;
