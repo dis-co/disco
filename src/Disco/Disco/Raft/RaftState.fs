@@ -775,3 +775,37 @@ module RaftState =
     match state.OldPeers with
     | Some peers -> numVotesForConfig state.Member state.VotedFor peers
     |      _     -> 0
+
+  // ** handleConfiguration
+
+  let handleConfiguration mems (state: RaftState) =
+    let parting =
+      mems
+      |> Array.map Member.id
+      |> Array.contains state.Member.Id
+      |> not
+
+    let peers =
+      if parting
+      // we have been kicked out of the configuration
+      then Map [(state.Member.Id, state.Member)]
+      // we are still part of the new cluster configuration
+      else
+        mems
+        |> Array.map toPair
+        |> Map.ofArray
+
+    state
+    |> RaftState.setPeers peers
+    |> RaftState.setOldPeers None
+
+  // ** handleJointConsensus
+
+  let handleJointConsensus (changes) (state:RaftState) =
+    state
+    |> RaftState.applyChanges changes
+    |> RaftState.setOldPeers (Some state.Peers)
+
+  // ** selfIncluded
+
+  let selfIncluded state = Map.containsKey state.Member.Id state.Peers

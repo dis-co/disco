@@ -53,12 +53,17 @@ module AddPreviousMemberShouldPull =
 
         use lobs = Logger.subscribe Logger.stdout
 
-        let handler = function
+        let handler mem cmd =
+          match cmd with
+          | DiscoEvent.FileSystem _ -> ()
+          | DiscoEvent.Append(_, LogMsg _) -> ()
+          | cmd -> printfn "%s: %O" mem cmd
+          cmd |> function
           | DiscoEvent.LeaderChanged leader -> printfn "leader: changed! %A" leader
           | DiscoEvent.ConfigurationDone members     -> configurationDone.Set()
           | DiscoEvent.Append(_, CommandBatch batch) -> updateDone.Set()
           | DiscoEvent.Append(_, LogMsg p) -> ()
-          | ev -> () // printfn "ev: %A" ev
+          | ev -> ()
 
         let! repo1 = Project.repository project1
 
@@ -76,7 +81,7 @@ module AddPreviousMemberShouldPull =
           SiteId = None
         }
 
-        use oobs1 = service1.Subscribe handler
+        use oobs1 = service1.Subscribe (handler "machine1")
         do! service1.Start()
 
         //  ____
@@ -95,7 +100,7 @@ module AddPreviousMemberShouldPull =
           SiteId = None
         }
 
-        use oobs2 = service2.Subscribe handler
+        use oobs2 = service2.Subscribe (handler "machine2")
         do! service2.Start()
 
         ///  _____

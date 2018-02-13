@@ -290,14 +290,13 @@ module Log =
 
   let make term data = LogEntry.make term data
 
-  // ** mkConfig
+  // ** configuration
 
-  let mkConfig term nodes = LogEntry.mkConfig term nodes
+  let configuration = LogEntry.configuration
 
-  // ** mkConfigChange
+  // ** jointConsensus
 
-  let mkConfigChange term changes =
-    LogEntry.mkConfigChange term changes
+  let jointConsensus = LogEntry.jointConsensus
 
   let calculateChanges oldnodes newnodes =
     LogEntry.calculateChanges oldnodes newnodes

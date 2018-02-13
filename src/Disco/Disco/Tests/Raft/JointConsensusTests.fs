@@ -250,7 +250,7 @@ module JointConsensus =
           |> Array.take (n / 2)
           |> Array.map snd
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange 1<term>
+          |> Log.jointConsensus 1<term>
 
         let! idx = currentIndex ()
         ci := idx
@@ -400,7 +400,7 @@ module JointConsensus =
           mems
           |> Array.map snd
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange 1<term>
+          |> Log.jointConsensus 1<term>
 
         let! idx = currentIndex ()
         ci := idx
@@ -586,7 +586,7 @@ module JointConsensus =
           |> Array.map snd
           |> Array.skip (n / 2)
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange !trm
+          |> Log.jointConsensus !trm
 
         let! response = Raft.receiveEntry entry
         for peer in peers do
@@ -691,7 +691,7 @@ module JointConsensus =
           |> Array.map snd
           |> Array.append [| self |]
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange !trm
+          |> Log.jointConsensus !trm
 
         let! response = Raft.receiveEntry entry
 
@@ -760,7 +760,7 @@ module JointConsensus =
           |> Array.map snd
           |> Array.append [| self |]
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange 1<term>
+          |> Log.jointConsensus 1<term>
 
         let! response = Raft.receiveEntry entry
 
@@ -844,7 +844,7 @@ module JointConsensus =
           |> Array.map snd
           |> Array.take (n / 2)
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange !trm
+          |> Log.jointConsensus !trm
 
         let! response = Raft.receiveEntry entry
 
@@ -922,7 +922,7 @@ module JointConsensus =
           |> Array.map snd
           |> Array.append [| self |]
           |> Log.calculateChanges peers
-          |> Log.mkConfigChange 1<term>
+          |> Log.jointConsensus 1<term>
 
 
         let! response = Raft.receiveEntry entry

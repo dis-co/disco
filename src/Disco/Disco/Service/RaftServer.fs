@@ -367,7 +367,7 @@ module rec RaftServer =
       state.Raft.Peers
       |> Map.toArray
       |> Array.map snd
-      |> Log.mkConfig state.Raft.CurrentTerm
+      |> Log.configuration state.Raft.CurrentTerm
       |> appendEntry state
     match result with
     | Ok (entry, newstate) ->
@@ -396,7 +396,7 @@ module rec RaftServer =
     if RaftState.isLeader state.Raft then
       mems
       |> Array.map ConfigChange.MemberAdded
-      |> Log.mkConfigChange state.Raft.CurrentTerm
+      |> Log.jointConsensus state.Raft.CurrentTerm
       |> appendEntry state
     else
       let msg = "Unable to add new member. Not leader."
@@ -422,7 +422,7 @@ module rec RaftServer =
 
     mems
     |> Array.map ConfigChange.MemberRemoved
-    |> Log.mkConfigChange state.Raft.CurrentTerm
+    |> Log.jointConsensus state.Raft.CurrentTerm
     |> appendEntry state
 
   // ** removeMember

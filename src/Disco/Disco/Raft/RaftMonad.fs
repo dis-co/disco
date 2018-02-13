@@ -206,6 +206,18 @@ module RaftMonad =
     |> Logger.log level (tag site)
     |> returnM
 
+  // ** logMap
+
+  let logMap level location reason items =
+    let prefix =
+      match level with
+      | Err -> "Failed: (" + reason + ") "
+      | _ -> reason
+    items
+    |> List.fold (fun m (item,value) -> m + "[" + item + "=" + value + "] ") prefix
+    |> Logger.log level (tag location)
+    |> returnM
+
   // ** logDebug
 
   let logDebug site str = logMsg site Debug str
@@ -289,6 +301,20 @@ module RaftMonad =
   // ** configChangeEntry
 
   let configChangeEntry () = zoom RaftState.configChangeEntry
+
+  // ** setConfigChangeEntry
+
+  let setConfigChangeEntry change =
+    raft {
+      let! current = configChangeEntry()
+      do! modify (RaftState.setConfigChangeEntry change)
+      match current, change with
+      | None, Some _ ->
+        do! logDebug "setConfigChangeEntry" "setting ConfigChangeEntry to JointConsensus"
+      | Some _, None ->
+        do! logDebug "setConfigChangeEntry" "resetting ConfigChangeEntry"
+      | _ -> return ()
+    }
 
   // ** persistVote
 
@@ -478,6 +504,12 @@ module RaftMonad =
       do env.MemberRemoved mem
     }
 
+  // ** notifyChange
+
+  let notifyChange (env: IRaftCallbacks) = function
+    | MemberAdded   mem -> do env.MemberAdded   mem
+    | MemberRemoved mem -> do env.MemberRemoved mem
+
   // ** applyChanges
 
   let applyChanges changes =
@@ -485,9 +517,7 @@ module RaftMonad =
       do! modify (RaftState.applyChanges changes)
       let! env = read
       for change in changes do
-        match change with
-        | MemberAdded mem   -> do env.MemberAdded mem
-        | MemberRemoved mem -> do env.MemberRemoved mem
+        do notifyChange env change
     }
 
   // ** addMembers
@@ -742,3 +772,23 @@ module RaftMonad =
   // ** numVotesForMeOldConfig
 
   let numVotesForMeOldConfig () = zoom RaftState.numVotesForMeOldConfig
+
+  // ** handleConfiguration
+
+  let handleConfiguration mems = modify (RaftState.handleConfiguration mems)
+
+  // ** handleJointConsensus
+
+  let handleJointConsensus changes = modify (RaftState.handleJointConsensus changes)
+
+  // ** calculateChanges
+
+  let calculateChanges oldPeers =
+    raft {
+      let! currentPeers = peers()
+      return RaftState.calculateChanges oldPeers currentPeers
+    }
+
+  // ** selfIncluded
+
+  let selfIncluded () = zoom RaftState.selfIncluded

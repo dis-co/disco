@@ -23,43 +23,13 @@ module rec Raft =
 
   // ** rand
 
-  let private rand = new System.Random()
+  let private rand = System.Random()
 
-  // ** handleConfiguration
-
-  let private handleConfiguration mems (state: RaftState) =
-    let parting =
-      mems
-      |> Array.map (fun (mem: RaftMember) -> mem.Id)
-      |> Array.contains state.Member.Id
-      |> not
-
-    let peers =
-      if parting
-      // we have been kicked out of the configuration
-      then Map [(state.Member.Id, state.Member)]
-      // we are still part of the new cluster configuration
-      else
-        mems
-        |> Array.map toPair
-        |> Map.ofArray
-
-    state
-    |> RaftState.setPeers peers
-    |> RaftState.setOldPeers None
-
-  // ** handleJointConsensus
-
-  let private handleJointConsensus (changes) (state:RaftState) =
-    state
-    |> RaftState.applyChanges changes
-    |> RaftState.setOldPeers (Some state.Peers)
-
-  // ** createResponse
+  // ** createAppendResponse
 
   /// Preliminary Checks on the AppendEntry value
 
-  let private createResponse (nid: MemberId option) (msg: AppendEntries) =
+  let private createAppendResponse (nid: MemberId option) (msg: AppendEntries) =
     raft {
       let! term = currentTerm ()
       let! current = currentIndex ()
@@ -190,19 +160,21 @@ module rec Raft =
       let! current = currentIndex ()
 
       if current < msg.PrevLogIdx then
-        do! msg.PrevLogIdx
-            |> sprintf "Failed (ci: %d) < (prev log idx: %d)" current
-            |> logError "receiveAppendEntries"
+        do! logMap Err "receiveAppendEntries" "current index < previous log index" [
+              "previous log term", string msg.PrevLogTerm
+              "current index", string current
+              "prevous log index", string msg.PrevLogIdx
+            ]
         return resp
       else
         let term = LogEntry.term entry
         if term <> msg.PrevLogTerm then
-          do! sprintf "Failed (term %d) != (prev log term %d) (ci: %d) (prev log idx: %d)"
-                  term
-                  msg.PrevLogTerm
-                  current
-                  msg.PrevLogIdx
-              |> logError "receiveAppendEntries"
+          do! logMap Err "receiveAppendEntries" "term mismatch" [
+                "term", string term
+                "previous log term", string msg.PrevLogTerm
+                "current index", string current
+                "prevous log index", string msg.PrevLogIdx
+              ]
           do! removeEntry msg.PrevLogIdx
           return AppendResponse.setCurrentIndex (msg.PrevLogIdx - 1<index>) resp
         else
@@ -283,18 +255,15 @@ module rec Raft =
       // log this if any entries are to be processed
       if Option.isSome msg.Entries then
         let! current = currentIndex ()
-
-        do! sprintf "from: %A term: %d (ci: %d) (lc-idx: %d) (pli: %d) (plt: %d) (entries: %d)"
-              nid
-              msg.Term
-              current
-              msg.LeaderCommit
-              msg.PrevLogIdx
-              msg.PrevLogTerm
-              (Option.get msg.Entries |> LogEntry.depth)    // let the world know
-            |> logDebug "receiveAppendEntries"
-
-      let! result = createResponse nid msg  // check terms et al match, fail otherwise
+        do! logMap Debug "receiveAppendEntries" ("from: " + string nid) [
+              "term", string msg.Term
+              "current index", string current
+              "leader commit", string msg.LeaderCommit
+              "previous log term", string msg.PrevLogTerm
+              "prevous log index", string msg.PrevLogIdx
+              "num entries", string (Option.map LogEntry.depth msg.Entries)
+            ]
+      let! result = createAppendResponse nid msg  // check terms et al match, fail otherwise
 
       match result with
       | Ok resp ->
@@ -555,11 +524,11 @@ module rec Raft =
         let! term = currentTerm()
         let! idx = log () >>= (Log.index >> returnM)
 
-        do! term
-            |> sprintf "(id: %A) (idx: %d) (term: %d)"
-              (LogEntry.id entry)
-              (idx + 1<index>)
-            |> logDebug "receiveEntry"
+        do! logMap Debug "receiveEntry" "" [
+              "id", string (LogEntry.id entry)
+              "index", string (idx + 1<index>)
+              "term", string term
+            ]
 
         let response = EntryResponse.create 0<term> 0<index>
 
@@ -588,32 +557,59 @@ module rec Raft =
           |> failM
     }
 
-  // ** notifyChange
-
-  let notifyChange (cbs: IRaftCallbacks) change =
-    match change with
-      | MemberAdded(mem)   -> cbs.MemberAdded   mem
-      | MemberRemoved(mem) -> cbs.MemberRemoved mem
-
   // ** applyEntry
 
   let applyEntry (cbs: IRaftCallbacks) = function
     | JointConsensus(_,_,_,changes,_) ->
       Array.iter (notifyChange cbs) changes
       cbs.JointConsensus changes
-    | Configuration(_,_,_,mems,_) -> cbs.Configured mems
+    | Configuration(_,_,_,mems,_) ->
+      cbs.Configured mems
     | LogEntry(_,_,_,data,_) -> cbs.ApplyLog data
     | Snapshot(_,_,_,_,_,_,data) as snapshot ->
       cbs.PersistSnapshot snapshot
       cbs.ApplyLog data
+
+  // ** applyLogs
+
+  let applyLogs entries =
+    raft {
+      let! env = read
+      let! state = get
+      // Apply log chain in the order it arrived
+      let state, change =
+        LogEntry.foldr
+          (fun (state, current) -> function
+            | Configuration(_,_,_,mems,_) as config ->
+              // set the peers map
+              let newstate = RaftState.handleConfiguration mems state
+              // when a new configuration is added, under certain circumstances a mem change
+              // might not have been applied yet, so calculate those dangling changes
+              let changes = RaftState.calculateChanges state.Peers newstate.Peers
+              // apply the entry by calling the callback
+              do applyEntry env config
+              (newstate, None)
+            | JointConsensus(_,_,_,changes,_) as config ->
+              let state = RaftState.handleJointConsensus changes state
+              do applyEntry env config
+              (state, Some (LogEntry.head config))
+            | entry ->
+              do applyEntry env entry
+              (state, current))
+          (state, state.ConfigChangeEntry)
+          entries
+      do! put state
+      do! setConfigChangeEntry change
+    }
+
 
   // ** applyEntries
 
   let applyEntries () =
     raft {
       let! state = get
-      let lai = state.LastAppliedIdx
-      let coi = state.CommitIndex
+      let! lai = lastAppliedIndex()
+      let! coi = commitIndex ()
       if lai <> coi then
         let logIdx = lai + 1<index>
         let! result = entriesUntil logIdx
@@ -628,41 +624,10 @@ module rec Raft =
           do! logInfo "applyEntries" str
 
           // Apply log chain in the order it arrived
-          let state, change =
-            LogEntry.foldr
-              (fun (state, current) -> function
-                | Configuration(_,_,_,mems,_) as config ->
-                  // set the peers map
-                  let newstate = handleConfiguration mems state
-                  // when a new configuration is added, under certain circumstances a mem change
-                  // might not have been applied yet, so calculate those dangling changes
-                  let changes = RaftState.calculateChanges state.Peers newstate.Peers
-                  // apply dangling changes
-                  do Array.iter (notifyChange cbs) changes
-                  // apply the entry by calling the callback
-                  do applyEntry cbs config
-                  (newstate, None)
-                | JointConsensus(_,_,_,changes,_) as config ->
-                  let state = handleJointConsensus changes state
-                  do applyEntry cbs config
-                  (state, Some (LogEntry.head config))
-                | entry ->
-                  do applyEntry cbs entry
-                  (state, current))
-              (state, state.ConfigChangeEntry)
-              entries
-
-          do! match change with
-              | Some _ -> "setting ConfigChangeEntry to JointConsensus"
-              | None   -> "resetting ConfigChangeEntry"
-              |> logDebug "applyEntries"
-
-          do! put { state with ConfigChangeEntry = change }
+          do! applyLogs entries
 
           if LogEntry.contains LogEntry.isConfiguration entries then
-            let selfIncluded (state: RaftState) =
-              Map.containsKey state.Member.Id state.Peers
-            let! included = selfIncluded |> zoom
+            let! included = selfIncluded ()
             if not included then
               let str =
                 string state.Member.Id
@@ -678,17 +643,17 @@ module rec Raft =
             /// done we need to create a snapshot of the raft log, which won't contain those commands.
             do! doSnapshot()
 
-          let! state = get
+          let! peers = peers()
           if not (RaftState.isLeader state) && LogEntry.contains LogEntry.isConfiguration entries then
             do! logDebug "applyEntries" "not leader and new configuration is applied. Updating mems."
-            for kv in state.Peers do
-              if kv.Value.Status <> Running then
-                do! updateMember { kv.Value with Status = Running; Voting = true }
+            for KeyValue(_, peer) in peers do
+              if peer.Status <> Running then
+                do! updateMember { peer with Status = Running; Voting = true }
 
           let idx = LogEntry.index entries
           do! logDebug "applyEntries" <| sprintf "setting LastAppliedIndex to %d" idx
           do! setLastAppliedIndex idx
-        | _ ->
+        | None ->
           do! logDebug "applyEntries" (sprintf "no log entries found for index %d" logIdx)
     }
 

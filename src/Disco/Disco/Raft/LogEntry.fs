@@ -866,7 +866,7 @@ module LogEntry =
   /// | |_| | | | | |_| | | |___ >  < (__| | |_| | (_| | | | | | (_| |
   ///  \__,_|_| |_|\__|_|_|_____/_/\_\___|_|\__,_|\__,_|_|_| |_|\__, |
   ///                                                           |___/
-  /// ### Complextiy: O(n)
+  /// ### Complexity: O(n)
 
   let rec untilExcluding idx = function
     | Snapshot _ as curr -> Some curr
@@ -921,23 +921,19 @@ module LogEntry =
   let make term data =
     LogEntry(DiscoId.Create(), 0<index>, term, data, None)
 
-  // ** mkConfig
+  // ** configuration
 
   /// Add an Configuration log entry onto the queue
-  ///
-  /// ### Complexity: 0(1)
 
-  let mkConfig term mems =
+  let configuration term mems =
     Configuration(DiscoId.Create(), 0<index>, term, mems, None)
 
-  // ** mkConfigChange
+  // ** jointConsensus
 
   /// Add an intermediate configuration entry for 2-phase commit onto
   /// the log queue
-  ///
-  /// ### Complexity: 0(1)
 
-  let mkConfigChange term changes =
+  let jointConsensus term changes =
     JointConsensus(DiscoId.Create(), 0<index>, term, changes, None)
 
   // ** calculateChanges
