@@ -158,10 +158,11 @@ module CommandLine =
         Tier = Tier.Service
         UseColors = termSupportsColors
         Level = LogLevel.Debug
+        Fields = LogEventFields.Default
       }
-   
+
       do! Metrics.init machine
-    
+
       use _ = Logger.subscribe Logger.stdout
 
       let! discoService = Disco.create post {

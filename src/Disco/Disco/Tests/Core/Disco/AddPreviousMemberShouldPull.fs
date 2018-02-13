@@ -24,7 +24,7 @@ open Common
 module AddPreviousMemberShouldPull =
 
   let test =
-    testCase "ensure previous member pulls from leader" <| fun _ ->
+    ftestCase "ensure previous member pulls from leader" <| fun _ ->
       result {
         use configurationDone = new WaitEvent()
         use updateDone = new WaitEvent()
@@ -51,18 +51,24 @@ module AddPreviousMemberShouldPull =
         do! FileSystem.copyDir project1.Path path2
         do! project2.Save path2
 
+        do Logger.setFields {
+          LogEventFields.Default with
+            LogLevel = false
+            Time = false
+            Id = false
+            Tier = false
+        }
+
         use lobs = Logger.subscribe Logger.stdout
 
         let handler mem cmd =
           match cmd with
           | DiscoEvent.FileSystem _ -> ()
           | DiscoEvent.Append(_, LogMsg _) -> ()
-          | cmd -> printfn "%s: %O" mem cmd
+          | cmd -> Logger.debug mem (string cmd)
           cmd |> function
-          | DiscoEvent.LeaderChanged leader -> printfn "leader: changed! %A" leader
           | DiscoEvent.ConfigurationDone members     -> configurationDone.Set()
           | DiscoEvent.Append(_, CommandBatch batch) -> updateDone.Set()
-          | DiscoEvent.Append(_, LogMsg p) -> ()
           | ev -> ()
 
         let! repo1 = Project.repository project1
