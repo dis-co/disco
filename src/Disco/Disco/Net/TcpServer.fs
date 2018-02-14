@@ -265,9 +265,6 @@ module TcpServer =
       if args.SocketError <> SocketError.Success then
         do onError "onSend" state args
       else
-        args.BytesTransferred
-        |> String.format "sent {0} bytes"
-        |> Logger.debug (tag "onSend")
         do returnArgs state args
       do dispose listener
 

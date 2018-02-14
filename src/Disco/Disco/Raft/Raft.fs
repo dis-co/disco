@@ -602,7 +602,6 @@ module rec Raft =
       do! setConfigChangeEntry change
     }
 
-
   // ** applyEntries
 
   let applyEntries () =
@@ -626,26 +625,36 @@ module rec Raft =
           // Apply log chain in the order it arrived
           do! applyLogs entries
 
+
+          /// The cluster was just re-configured, and if any of (possibly) just removed members were
+          /// to be added again, the replay log they would receive when joining would cause them to
+          /// be automatically being removed again. This is why, after the configuration changes are
+          /// done we need to create a snapshot of the raft log, which won't contain those commands.
           if LogEntry.contains LogEntry.isConfiguration entries then
+            /// If self was removed from the cluster, reset node to Follower state.
             let! included = selfIncluded ()
             if not included then
-              let str =
-                string state.Member.Id
-                |> sprintf "self (%s) not included in new configuration"
-              do! logDebug "applyEntries" str
+              do! logDebug "applyEntries" $
+                    String.format
+                      "self ({0}) not included in new configuration"
+                      state.Member.Id
               do! setLeader None
               do! becomeFollower ()
-            /// snapshot now:
-            ///
-            /// the cluster was just re-configured, and if any of (possibly) just removed members were
-            /// to be added again, the replay log they would receive when joining would cause them to
-            /// be automatically being removed again. this is why, after the configuration changes are
-            /// done we need to create a snapshot of the raft log, which won't contain those commands.
+
+            /// Do Snapshot Now!
+            let! self = self()
             do! doSnapshot()
 
+            /// Install the snapshot on all followers to ensure consistency.
+            if self.State = Leader then
+              let! peers = peers()
+              for KeyValue(peerId,peer) in peers do
+                if peerId <> self.Id then
+                  do! sendInstallSnapshot peer
+
           let! peers = peers()
-          if not (RaftState.isLeader state) && LogEntry.contains LogEntry.isConfiguration entries then
-            do! logDebug "applyEntries" "not leader and new configuration is applied. Updating mems."
+          if not (RaftState.isLeader state) && LogEntry.contains LogEntry.isConfiguration entries
+          then
             for KeyValue(_, peer) in peers do
               if peer.Status <> Running then
                 do! updateMember { peer with Status = Running; Voting = true }
