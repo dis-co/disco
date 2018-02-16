@@ -1275,9 +1275,23 @@ module State =
     | UpdateDiscoveredService service -> addOrUpdateService    service state
     | RemoveDiscoveredService service -> removeService         service state
 
-    | Command AppCommand.Save         -> onSave state
+    | Command AppCommand.Save -> onSave state
 
-    | _ -> state
+    | DataSnapshot snapshot   -> snapshot
+
+    | UnloadProject                     /// handled one level up in Store.Dispatch
+    | UpdateClock   _                   /// not handled in-state for now
+    | SetLogLevel   _                   /// TODO: should eventually be saved in MachineConfig
+    | LogMsg        _                   /// logs bear no relevance to the state
+    | CommandBatch  _                   /// handled separately by folding of commands
+    | CallCue       _                   /// the service resolves the cue
+    | AddMachine    _                   /// raft commands which are not handled
+    | UpdateMachine _
+    | RemoveMachine _
+    | Command AppCommand.Undo           /// application commands handled one level up
+    | Command AppCommand.Redo
+    | Command AppCommand.Reset -> state
+
 
   // ** processBatch
 
@@ -1473,34 +1487,28 @@ type Store(state : State)=
 
   // ** Dispatch
 
-  /// ## Dispatch
-  ///
   /// Disgroup an action (StateMachine command) to be executed against the current version of the
   /// `State` to produce the next `State`.
   ///
   /// Then notify all listeners of the change, and record a history item for this change.
   ///
-  /// ### Signature:
   /// - ev: `StateMachine` - command to apply to the `State`
-  ///
-  /// Returns: unit
-  member self.Dispatch (ev : StateMachine) : unit =
-    let andRender (newstate: State) =
-      state <- newstate                   // 1) create new state
-      self.Notify(ev)                    // 2) notify all
-      history.Append({ Event = ev        // 3) store this action and new state
-                       State = state })  // 4) append to undo history
+
+  member self.Dispatch ev =
+    let updateState (newstate: State) =
+      state <- newstate   // 1) create new state
+      self.Notify(ev)     // 2) notify all
+      history.Append
+        { Event = ev      // 3) store this action and new state
+          State = state } // 4) append to undo history
 
     match ev with
     | Command (AppCommand.Redo)  -> self.Redo()
     | Command (AppCommand.Undo)  -> self.Undo()
     | Command (AppCommand.Reset) -> ()   // do nothing for now
-
     | UnloadProject              -> self.Notify(ev) // This event doesn't actually modify the state
-
-    | CommandBatch batch         -> State.processBatch state batch |> andRender
-
-    | other                      -> State.update state other |> andRender
+    | CommandBatch batch         -> State.processBatch state batch |> updateState
+    | other                      -> State.update state other |> updateState
 
   // ** Subscribe
 
