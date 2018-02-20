@@ -238,12 +238,7 @@ module rec RaftServer =
             (callbacks.PrepareSnapshot())
 
         member self.RetrieveSnapshot () = callbacks.RetrieveSnapshot()
-
-        member self.PersistSnapshot log =
-          log
-          |> DiscoEvent.PersistSnapshot
-          |> Msg.Notify
-          |> agent.Post
+        member self.PersistSnapshot log = callbacks.PersistSnapshot log
 
         member self.ApplyLog cmd =
           cmd
@@ -484,14 +479,14 @@ module rec RaftServer =
     if RaftState.isLeader state.Raft then  // I'm leader, so I try to append command
       match appendCommand state cmd with
       | Ok (entry, newstate) ->     // command was appended, now queue a message and the later
-        entry                         // response to check its committed status, eventually
-        |> AppendEntryResponse         // timing out or responding to the server
+        entry                      // response to check its committed status, eventually
+        |> AppendEntryResponse      // timing out or responding to the server
         |> Binary.encode
         |> Response.fromRequest raw
         |> fun response -> Msg.ReqCommitted(DateTime.Now, entry, response)
         |> agent.Post
         newstate
-      | Error (err, newstate) ->        // Request was unsuccessful, respond immeditately
+      | Error (err, newstate) ->   // Request was unsuccessful, respond immeditately
         (state.Raft.Member.Id, err)
         |> ErrorResponse
         |> Binary.encode
@@ -561,6 +556,7 @@ module rec RaftServer =
       |> Binary.encode
       |> Response.fromRequest raw
       |> state.Server.Respond
+      do Logger.err (tag "processInstallSnapshot") error.Message
       updateRaft state newstate
 
   // ** doRedirect

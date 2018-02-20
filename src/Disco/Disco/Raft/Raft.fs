@@ -420,12 +420,12 @@ module rec Raft =
 
   // ** sendInstallSnapshot
 
-  let sendInstallSnapshot mem =
+  let sendInstallSnapshot mem snapshot =
     raft {
       let! env = read
       let! term = currentTerm()
       let! leader = self () >>= (Member.id >> returnM)
-      match env.RetrieveSnapshot () with
+      match snapshot with
       | Some (Snapshot(_,idx,term,_,_,_,_) as snapshot) ->
         env.SendInstallSnapshot mem {
           Term      = term
@@ -434,7 +434,9 @@ module rec Raft =
           LastTerm  = term
           Data      = snapshot
         }
-      | _ -> ()
+      | other ->
+        "Snapshot malformatted: " + string other
+        |> Logger.err (tag "sendInstallSnapshot")
     }
 
   // ** responseCommitted
@@ -491,7 +493,8 @@ module rec Raft =
             else
               // because this mem is way behind in the cluster, get it up to speed
               // with a snapshot
-              do! sendInstallSnapshot mem
+              let! snapshot = generateSnapshot ()
+              do! sendInstallSnapshot mem snapshot
 
         do! updateCommitIndex ()
         let! term = currentTerm ()
@@ -641,16 +644,17 @@ module rec Raft =
               do! setLeader None
               do! becomeFollower ()
 
-            /// Do Snapshot Now!
             let! self = self()
-            do! doSnapshot()
+            let! currentlyLeader = isLeader()
 
             /// Install the snapshot on all followers to ensure consistency.
-            if self.State = Leader then
+            if currentlyLeader then
+              let! snapshot = generateSnapshot()
+              /// Do Snapshot Now!
               let! peers = peers()
               for KeyValue(peerId,peer) in peers do
                 if peerId <> self.Id then
-                  do! sendInstallSnapshot peer
+                  do! sendInstallSnapshot peer snapshot
 
           let! peers = peers()
           if not (RaftState.isLeader state) && LogEntry.contains LogEntry.isConfiguration entries
@@ -692,7 +696,7 @@ module rec Raft =
       do! setTimeoutElapsed 0<ms>
 
       match is.Data with
-      | Snapshot(_,idx,_,_,_,mems, _) as snapshot ->
+      | Snapshot(_,idx,_,_,_,mems, DataSnapshot data) as snapshot ->
 
         // IMPROVEMENT: implementent chunked transmission as per paper
         do cbs.PersistSnapshot snapshot
@@ -711,28 +715,25 @@ module rec Raft =
 
         // update log with snapshot and possibly merge existing entries
         match remaining with
-          | Some entries ->
-            do! Log.empty
-                |> Log.append is.Data
-                |> Log.append entries
-                |> setLog
-          | _ ->
-            do! updateLogEntries is.Data |> modify
+        | Some entries ->
+          do! Log.empty
+              |> Log.append is.Data
+              |> Log.append entries
+              |> setLog
+        | _ ->
+          do! updateLogEntries is.Data |> modify
 
         // set the current leader to mem which sent snapshot
         do! setLeader (Some is.LeaderId)
 
         // apply all entries in the new log
-        let! state = get
+        let! log = log()
 
-        match state.Log.Data with
-        | Some data ->
-          LogEntry.foldr (fun _ entry -> applyEntry cbs entry) () data
-        | _ -> failwith "Fatal. Snapshot applied, but log is empty. Aborting."
+        do Option.iter (LogEntry.foldr (fun _ entry -> applyEntry cbs entry) ()) log.Data
 
         // reset the counters,to apply all entries in the log
-        do! setLastAppliedIndex (Log.index state.Log)
-        do! setCommitIndex (Log.index state.Log)
+        do! setLastAppliedIndex (Log.index log)
+        do! setCommitIndex (Log.index log)
 
         // construct reply
         let! term = currentTerm ()
@@ -752,9 +753,9 @@ module rec Raft =
           |> failM
     }
 
-  // ** doSnapshot
+  // ** generateSnapshot
 
-  let doSnapshot () =
+  let generateSnapshot () =
     raft {
       let! cbs = read
       let! state = get
@@ -762,9 +763,15 @@ module rec Raft =
       | Some snapshot ->
         do! setLog snapshot
         match snapshot.Data with
-        | Some snapshot -> cbs.PersistSnapshot snapshot
-        | _ -> ()
-      | _ -> ()
+        | Some snapshot ->
+          do cbs.PersistSnapshot snapshot
+          return (Some snapshot)
+        | None ->
+          do! logError "generateSnapshot" "generated snapshot has not data"
+          return None
+      | None ->
+        do! logError "generateSnapshot" "no snapshot was generated"
+        return None
     }
 
   // ** maybeSnapshot
@@ -773,7 +780,7 @@ module rec Raft =
     raft {
       let! state = get
       if Log.length state.Log >= int state.MaxLogDepth then
-        do! doSnapshot ()
+        do! generateSnapshot () >>= ignoreM
     }
 
   // ** maybeSetIndex

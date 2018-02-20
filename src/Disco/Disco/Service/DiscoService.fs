@@ -137,7 +137,8 @@ module DiscoService =
     fun _ _ -> function
     | DiscoEvent.Append(_, Command AppCommand.Undo) -> store.State.Store.Undo()
     | DiscoEvent.Append(_, Command AppCommand.Redo) -> store.State.Store.Redo()
-    | DiscoEvent.Append(_, cmd) -> store.State.Store.Dispatch cmd
+    | DiscoEvent.Append(_, LogMsg _) -> ()
+    | DiscoEvent.Append(_, cmd) -> do store.State.Store.Dispatch cmd
     | _ -> ()
 
   // ** statePersistor
@@ -325,31 +326,6 @@ module DiscoService =
         })
     | _ -> ()
 
-  // ** preActions
-
-  let private preActions (store: IAgentStore<DiscoState>) =
-    [| Pipeline.createHandler (stateMutator store)
-       Pipeline.createHandler (pinResetHandler store) |]
-
-  // ** processors
-
-  let private processors (store: IAgentStore<DiscoState>) =
-    [| Pipeline.createHandler (statePersistor  store)
-       Pipeline.createHandler (mappingResolver store)
-       Pipeline.createHandler (logPersistor    store) |]
-
-  // ** publishers
-
-  let private publishers (store: IAgentStore<DiscoState>) =
-    [| Pipeline.createHandler (createPublisher store.State.ApiServer)
-       Pipeline.createHandler (createPublisher store.State.SocketServer)
-       Pipeline.createHandler (commandResolver store) |]
-
-  // ** postActions
-
-  let private postActions (store: IAgentStore<DiscoState>) =
-    [| Pipeline.createHandler (subscriptionNotifier store) |]
-
   // ** sendLocalData
 
   /// ## Send local data to leader upon connection.
@@ -358,11 +334,9 @@ module DiscoService =
   /// browser sessions or locally connected client instances. These pieces of data need to be
   /// replicated to the leader once connected. IF those clients/sessions already exist, they
   /// will simply be ignored.
+
   let private sendLocalData (socket: ITcpClient) (store: IAgentStore<DiscoState>) =
-    let mem =
-      match Config.getActiveMember store.State.Store.State.Project.Config with
-      | Some clusterMem -> [ AddMember clusterMem ]
-      | None -> List.empty
+    let mem = [ AddMember $ Machine.toClusterMember store.State.Machine ]
     let sessions =
       store.State.SocketServer.Sessions
       |> Map.toList
@@ -406,7 +380,7 @@ module DiscoService =
 
   /// Create a communication socket with the current Raft leader. Its important to note that
   /// the current members Id *must* be used to set up the client socket.
-  let private makeLeader (leader: RaftMember) (store: IAgentStore<DiscoState>) =
+  let private makeLeader (leader:RaftMember) (store: IAgentStore<DiscoState>) =
     let socket = TcpClient.create {
       Tag = "DiscoService.Leader.TcpClient"
       ClientId = store.State.Member.Id  // IMPORTANT: this must be the current member's Id
@@ -414,11 +388,57 @@ module DiscoService =
       PeerPort = leader.RaftPort
       Timeout = int Constants.REQ_TIMEOUT * 1<ms>
     }
-    handleLeaderEvents socket store
-    |> socket.Subscribe
-    |> ignore
-    socket.Connect()
+    do handleLeaderEvents socket store
+       |> socket.Subscribe
+       |> ignore
+    do socket.Connect()
     Some { Member = leader; Socket = socket }
+
+  // ** maybeCreateLeader
+
+  let private maybeCreateLeader (store: IAgentStore<DiscoState>) =
+    let newLeader =
+      match store.State.Leader, store.State.RaftServer.Leader with
+      | Some { Member = currentLeader }, Some raftLeader ->
+        if currentLeader.Id <> raftLeader.Id && raftLeader.Id <> store.State.Member.Id
+        then
+          do Option.iter dispose store.State.Leader
+          // create redirect socket if we have new leader other than this current node
+          match Map.tryFind raftLeader.Id store.State.RaftServer.Raft.Peers with
+          | Some leader -> makeLeader leader store
+          | None ->
+            "Could not start re-direct socket: no leader"
+            |> Logger.debug (tag "maybeCreateLeader")
+            None
+        else
+          "Leader socket exists for current leader."
+          |> Logger.debug (tag "maybeCreateLeader")
+          store.State.Leader
+      | None, Some raftLeader ->
+        /// /// this service is currently leader, so append the local fstree
+        /// Option.iter
+        ///   (AddFsTree >> DiscoEvent.appendService >> Pipeline.push pipeline)
+        ///   store.State.AssetService.State
+        if raftLeader.Id <> store.State.Member.Id
+        then
+          // create redirect socket if we have new leader other than this current node
+          match Map.tryFind raftLeader.Id store.State.RaftServer.Raft.Peers with
+          | Some leader -> makeLeader leader store
+          | None ->
+            "Could not start re-direct socket: no leader"
+            |> Logger.debug (tag "maybeCreateLeader")
+            None
+        else
+          "Currently leader, not creating socket."
+          |> Logger.debug (tag "maybeCreateLeader")
+          store.State.Leader
+      | Some current, None ->
+        do dispose current
+        "No current leader, disposing current socket."
+        |> Logger.debug (tag "maybeCreateLeader")
+        None
+      | None, None -> None
+    store.Update { store.State with Leader = newLeader }
 
   // ** processEvent
 
@@ -427,9 +447,7 @@ module DiscoService =
   /// Events that need to be treated differently than normal state machine comand events come from
   /// RaftServer and are used to e.g. wire up communication with the leader for forwarding state
   /// machine commands to the leader.
-  let private processEvent (store: IAgentStore<DiscoState>) pipeline ev =
-    Observable.onNext store.State.Subscriptions ev
-    match ev with
+  let private processEvent (store: IAgentStore<DiscoState>) _ _ = function
     | DiscoEvent.EnterJointConsensus changes ->
       changes
       |> Array.map
@@ -446,21 +464,6 @@ module DiscoService =
       |> Logger.debug (tag "processEvent")
 
     | DiscoEvent.ConfigurationDone mems ->
-      let ids = Array.map Member.id mems
-      let project = State.project store.State.Store.State
-      let config = Project.config project
-      match Config.getActiveSite config with
-      | None -> ()                       /// this should ever happen
-      | Some activeSite ->
-        activeSite
-        |> ClusterConfig.members
-        |> Map.filter (fun id _ -> Array.contains id ids)
-        |> flip ClusterConfig.setMembers activeSite
-        |> flip Config.updateSite config
-        |> flip Project.setConfig project
-        |> UpdateProject
-        |> DiscoEvent.appendService
-        |> Pipeline.push pipeline
       mems
       |> Array.map (Member.id >> string)
       |> Array.fold (fun s id -> s + " " + id) "New Configuration with: "
@@ -472,41 +475,44 @@ module DiscoService =
       |> Logger.debug (tag "processEvent")
 
     | DiscoEvent.LeaderChanged leader ->
-      printfn "[DISCO]: leader changed! %A" leader
       leader
       |> String.format "Leader changed to {0}"
       |> Logger.debug (tag "leaderChanged")
+      do maybeCreateLeader store
 
-      printfn "disposing old leader socket"
-      Option.iter dispose store.State.Leader
-
-      let newLeader =
-        match leader with
-        | Some leaderId when leaderId <> store.State.Member.Id ->
-          // create redirect socket if we have new leader other than this current node
-          match store.State.RaftServer.Leader with
-          | Some leader -> makeLeader leader store
-          | None ->
-            "Could not start re-direct socket: no leader"
-            |> Logger.debug (tag "leaderChanged")
-            None
-        | Some _ ->
-          /// this service is currently leader, so append the local fstree
-          Option.iter
-            (AddFsTree >> DiscoEvent.appendService >> Pipeline.push pipeline)
-            store.State.AssetService.State
-          None
-        | None -> None
-
-      store.Update { store.State with Leader = newLeader }
-
-    | DiscoEvent.PersistSnapshot log ->
-      match Persistence.persistSnapshot store.State.Store.State log with
-      | Error error -> Logger.err (tag "persistSnapshot") (string error)
-      | _ -> ()
+    | DiscoEvent.Append(_, DataSnapshot _) ->
+      match store.State.Leader with
+      | Some leader -> do sendLocalData leader.Socket store
+      | None -> do maybeCreateLeader store
 
     | DiscoEvent.RaftError error -> Logger.err (tag "processEvents") error.Message
     | _ -> ()
+
+  // ** preActions
+
+  let private preActions (store: IAgentStore<DiscoState>) =
+    [| Pipeline.createHandler (stateMutator store)
+       Pipeline.createHandler (pinResetHandler store) |]
+
+  // ** processors
+
+  let private processors (store: IAgentStore<DiscoState>) =
+    [| Pipeline.createHandler (statePersistor  store)
+       Pipeline.createHandler (mappingResolver store)
+       Pipeline.createHandler (logPersistor    store) |]
+
+  // ** publishers
+
+  let private publishers (store: IAgentStore<DiscoState>) =
+    [| Pipeline.createHandler (createPublisher store.State.ApiServer)
+       Pipeline.createHandler (createPublisher store.State.SocketServer)
+       Pipeline.createHandler (commandResolver store) |]
+
+  // ** postActions
+
+  let private postActions (store: IAgentStore<DiscoState>) =
+    [| Pipeline.createHandler (processEvent store)
+       Pipeline.createHandler (subscriptionNotifier store) |]
 
   // ** forwardCommand
 
@@ -599,10 +605,10 @@ module DiscoService =
 
   let private dispatchEvent store pipeline cmd =
     cmd |> dispatchStrategy |> function
-    | Process   -> processEvent store pipeline cmd
+    | Process
+    | Publish   -> publishEvent pipeline cmd
     | Replicate -> replicateEvent store cmd
     | Ignore    -> Observable.onNext store.State.Subscriptions cmd
-    | Publish   -> publishEvent pipeline cmd
 
   // ** createDispatcher
 
@@ -669,14 +675,14 @@ module DiscoService =
   let private persistSnapshot (state: DiscoState) (log: LogEntry) =
     match Persistence.persistSnapshot state.Store.State log with
     | Error error -> Logger.err (tag "persistSnapshot") (string error)
-    | _ -> ()
-    state
+    | Ok () -> Logger.debug (tag "persistSnapshot") "successfully persisted snapshot"
 
   // ** makeRaftCallbacks
 
   let private makeRaftCallbacks (store: IAgentStore<DiscoState>) =
     { new IRaftSnapshotCallbacks with
         member self.PrepareSnapshot () = Some store.State.Store.State
+        member self.PersistSnapshot log = persistSnapshot store.State log
         member self.RetrieveSnapshot () = retrieveSnapshot store.State }
 
   // ** makeApiCallbacks

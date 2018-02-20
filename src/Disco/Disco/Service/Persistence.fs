@@ -76,7 +76,7 @@ module Persistence =
       let! state = Yaml.decode data
       return
         { state with
-            Member          = ClusterMember.toRaftMember mem
+            MemberId        = mem.Id
             Peers           = Map.map (fun _ -> ClusterMember.toRaftMember) mems
             MaxLogDepth     = options.Raft.MaxLogDepth
             RequestTimeout  = options.Raft.RequestTimeout

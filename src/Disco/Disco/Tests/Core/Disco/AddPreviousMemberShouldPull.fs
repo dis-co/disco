@@ -24,9 +24,10 @@ open Common
 module AddPreviousMemberShouldPull =
 
   let test =
-    ftestCase "ensure previous member pulls from leader" <| fun _ ->
+    testCase "ensure previous member pulls from leader" <| fun _ ->
       result {
         use configurationDone = new WaitEvent()
+        use snapshotDone = new WaitEvent()
         use updateDone = new WaitEvent()
 
         let machine1 = mkMachine 4000us
@@ -36,7 +37,7 @@ module AddPreviousMemberShouldPull =
         let mem2 = Machine.toClusterMember machine2
 
         let site1 = mkSite [ mem1 ]
-        let site2 = mkSite [ mem2 ]
+        let site2 = mkSite [ mem2 ] |> ClusterConfig.setName (name "Ohai!")
 
         let! project1 = mkProject machine1 site1
 
@@ -68,6 +69,7 @@ module AddPreviousMemberShouldPull =
           | cmd -> Logger.debug mem (string cmd)
           cmd |> function
           | DiscoEvent.ConfigurationDone members     -> configurationDone.Set()
+          | DiscoEvent.Append(_, DataSnapshot _)     -> snapshotDone.Set()
           | DiscoEvent.Append(_, CommandBatch batch) -> updateDone.Set()
           | ev -> ()
 
@@ -87,7 +89,7 @@ module AddPreviousMemberShouldPull =
           SiteId = None
         }
 
-        use oobs1 = service1.Subscribe (handler "machine1")
+        use oobs1 = service1.Subscribe (handler "TEST-MACHINE1")
         do! service1.Start()
 
         //  ____
@@ -106,7 +108,7 @@ module AddPreviousMemberShouldPull =
           SiteId = None
         }
 
-        use oobs2 = service2.Subscribe (handler "machine2")
+        use oobs2 = service2.Subscribe (handler "TEST-MACHINE2")
         do! service2.Start()
 
         ///  _____
@@ -119,15 +121,36 @@ module AddPreviousMemberShouldPull =
 
         do! waitFor "configurationDone" configurationDone
 
-        printfn "leader1: %A" service1.RaftServer.Raft.CurrentLeader
-        printfn "leader2: %A" service2.RaftServer.Raft.CurrentLeader
+        do! waitFor "snapshotDone" snapshotDone
+        do! waitFor "snapshotDone" snapshotDone
 
+        do! waitFor "updateDone" updateDone
         do! waitFor "updateDone" updateDone
 
         Expect.equal
           service1.State.Project.Config.Sites
           service2.State.Project.Config.Sites
           "Cluster Sites should be equal"
+
+        Expect.equal
+          (service1.RaftServer.Raft.Peers |> Map.count)
+          2
+          "Raft peers of Service 1 Should have 2 Members"
+
+        Expect.equal
+          (service2.RaftServer.Raft.Peers |> Map.count)
+          2
+          "Raft peers of Service 2 Should have 2 Members"
+
+        Expect.equal
+          (service1.State.Project.Config |> Config.getActiveSite |> Option.map (ClusterConfig.members >> Map.count))
+          (Some 2)
+          "ActiveSite of Service 1 Should have 2 Members"
+
+        Expect.equal
+          (service2.State.Project.Config |> Config.getActiveSite |> Option.map (ClusterConfig.members >> Map.count))
+          (Some 2)
+          "ActiveSite of Service 2 Should also have 2 Members"
 
         dispose service1
         dispose service2

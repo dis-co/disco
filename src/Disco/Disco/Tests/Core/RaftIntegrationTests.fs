@@ -64,6 +64,7 @@ module RaftIntegrationTests =
         let! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
         do! leader.Start()
@@ -72,6 +73,7 @@ module RaftIntegrationTests =
         let! follower = RaftServer.create followercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
         do! follower.Start()
@@ -110,6 +112,7 @@ module RaftIntegrationTests =
         use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
 
@@ -128,6 +131,7 @@ module RaftIntegrationTests =
         use! follower = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
 
@@ -186,6 +190,7 @@ module RaftIntegrationTests =
         use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
 
@@ -196,6 +201,7 @@ module RaftIntegrationTests =
         use! follower = RaftServer.create followercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
 
@@ -238,6 +244,7 @@ module RaftIntegrationTests =
         use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() =
                 snapshotCheck.Set() |> ignore
                 Some store.State
@@ -339,6 +346,7 @@ module RaftIntegrationTests =
         use! leader = RaftServer.create leadercfg {
           new IRaftSnapshotCallbacks with
             member self.RetrieveSnapshot() = None
+            member self.PersistSnapshot _ = ()
             member self.PrepareSnapshot() = None
         }
 
@@ -349,6 +357,7 @@ module RaftIntegrationTests =
         use! follower = RaftServer.create followercfg {
           new IRaftSnapshotCallbacks with
             member self.RetrieveSnapshot() = None
+            member self.PersistSnapshot _ = ()
             member self.PrepareSnapshot() = None
         }
 

@@ -1125,6 +1125,18 @@ module State =
   // | |___| | |  __/ | | | |_
   //  \____|_|_|\___|_| |_|\__|
 
+  // ** updateRaftMember
+
+  let updateRaftMember (mem: RaftMember) (state: State) =
+    match Project.findMember mem.Id state.Project with
+    | Ok clusterMember ->
+      let mem =
+        clusterMember
+        |> ClusterMember.setState mem.State
+        |> ClusterMember.setStatus mem.Status
+      { state with Project = Project.updateMember mem state.Project }
+    | _ -> state
+
   // ** addClient
 
   let addClient (client: DiscoClient) (state: State) =
@@ -1212,6 +1224,11 @@ module State =
   let onSave (state: State) =
     { state with PinGroups = PinGroupMap.mapPins (Pin.setDirty false) state.PinGroups }
 
+  // ** processBatch
+
+  let processBatch (state: State) (Transaction batch) =
+    List.fold update state batch
+
   // ** update
 
   let update (state: State) = function
@@ -1248,6 +1265,9 @@ module State =
     | UpdateMember      mem           -> updateMember   mem     state
     | RemoveMember      mem           -> removeMember   mem.Id  state
 
+    | UpdateMachine     mem           -> updateRaftMember mem     state
+    | RemoveMachine     mem           -> removeMember     mem.Id  state
+
     | AddClient      client           -> addClient      client  state
     | UpdateClient   client           -> updateClient   client  state
     | RemoveClient   client           -> removeClient   client  state
@@ -1278,25 +1298,17 @@ module State =
     | Command AppCommand.Save -> onSave state
 
     | DataSnapshot snapshot   -> snapshot
+    | CommandBatch batch      -> processBatch state batch
 
     | UnloadProject                     /// handled one level up in Store.Dispatch
     | UpdateClock   _                   /// not handled in-state for now
     | SetLogLevel   _                   /// TODO: should eventually be saved in MachineConfig
     | LogMsg        _                   /// logs bear no relevance to the state
-    | CommandBatch  _                   /// handled separately by folding of commands
     | CallCue       _                   /// the service resolves the cue
-    | AddMachine    _                   /// raft commands which are not handled
-    | UpdateMachine _
-    | RemoveMachine _
+    | AddMachine    _                   /// not handled since we don't know how to convert to ClusterMember
     | Command AppCommand.Undo           /// application commands handled one level up
     | Command AppCommand.Redo
     | Command AppCommand.Reset -> state
-
-
-  // ** processBatch
-
-  let processBatch (state: State) (batch: Transaction) =
-    List.fold update state batch.Commands
 
   // ** initialize
 
@@ -1424,19 +1436,13 @@ type History (action: StoreAction) =
 // |____/ \__\___/|_|  \___|
 //
 
-/// ## Store
-///
 /// The `Store` centrally manages all state changes and notifies interested parties of changes to
 /// the carried state (e.g. views, socket transport). Clients of the `Store` can subscribe to change
 /// notifications by regis a callback handler. `Store` is used in all parts of the Disco cluster
 /// application, from the front-end, at the service level, to all registered clients. `StateMachine`
 /// commands replicated via `Raft` are applied in the same order to it to ensure that all parties
 /// have the same data.
-///
-/// ### Signature:
-/// - state: `State` - the intitial state to use for the store
-///
-/// Returns: Store
+
 type Store(state : State)=
 
   let mutable state = state
@@ -1507,7 +1513,6 @@ type Store(state : State)=
     | Command (AppCommand.Undo)  -> self.Undo()
     | Command (AppCommand.Reset) -> ()   // do nothing for now
     | UnloadProject              -> self.Notify(ev) // This event doesn't actually modify the state
-    | CommandBatch batch         -> State.processBatch state batch |> updateState
     | other                      -> State.update state other |> updateState
 
   // ** Subscribe

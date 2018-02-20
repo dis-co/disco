@@ -103,7 +103,6 @@ type DiscoEvent =
   | EnterJointConsensus of changes:ConfigChange array
   | LeaderChanged       of leader:MemberId option
   | StateChanged        of oldstate:MemberState * newstate:MemberState
-  | PersistSnapshot     of log:LogEntry
   | RaftError           of error:DiscoError
   | Status              of ServiceStatus
   | GitPull             of remote:IpAddress
@@ -122,7 +121,6 @@ type DiscoEvent =
     | EnterJointConsensus _  -> "EnterJointConsensus"
     | LeaderChanged       _  -> "LeaderChanged"
     | StateChanged        _  -> "StateChanged"
-    | PersistSnapshot     _  -> "PersistSnapshot"
     | RaftError           _  -> "RaftError"
     | Status              _  -> "Status"
     | SessionOpened       _  -> "SessionOpened"
@@ -142,7 +140,6 @@ type DiscoEvent =
       | EnterJointConsensus _
       | LeaderChanged       _
       | StateChanged        _
-      | PersistSnapshot     _
       | RaftError           _
       | SessionOpened       _
       | SessionClosed       _
@@ -177,7 +174,6 @@ type DiscoEvent =
       | EnterJointConsensus _
       | StateChanged        _
       | LeaderChanged       _
-      | PersistSnapshot     _
       | RaftError           _                                -> Process
 
       //   ____ _ _
