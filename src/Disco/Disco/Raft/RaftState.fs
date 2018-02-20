@@ -112,9 +112,7 @@ type RaftStateYaml() =
 
 type RaftState =
   { /// this server's own RaftMember information
-    Member            : RaftMember
-    /// this server's current Raft state, i.e. follower, leader or candidate
-    State             : MemberState
+    MemberId          : MemberId
     /// the server's current term, a monotonic counter for election cycles
     CurrentTerm       : Term
     /// tracks the current Leader Id, or None if there isn't currently a leader
@@ -145,13 +143,9 @@ type RaftState =
 
   // ** optics
 
-  static member Member_ =
-    (fun (rs:RaftState) -> rs.Member),
-    (fun mem (rs:RaftState) -> { rs with Member = mem })
-
-  static member State_ =
-    (fun (rs:RaftState) -> rs.State),
-    (fun state (rs:RaftState) -> { rs with State = state })
+  static member MemberId_ =
+    (fun (rs:RaftState) -> rs.MemberId),
+    (fun memberId (rs:RaftState) -> { rs with MemberId = memberId })
 
   static member CurrentTerm_ =
     (fun (rs:RaftState) -> rs.CurrentTerm),
@@ -226,7 +220,7 @@ RequestTimeout    = %A
 ConfigChangeEntry = %s
 "
       (self.Member.ToString())
-      self.State
+      self.Member.State
       self.CurrentTerm
       self.CurrentLeader
       (Map.count self.Peers)
@@ -248,6 +242,16 @@ ConfigChangeEntry = %s
     match self.CurrentLeader with
     | Some lid -> self.Member.Id = lid
     | _ -> false
+
+  // ** Member
+
+  member self.Member: RaftMember =
+    match Map.tryFind self.MemberId self.Peers with
+    | Some mem -> mem
+    | None ->
+      match Option.bind (Map.tryFind self.MemberId) self.OldPeers with
+      | Some mem -> mem
+      | None -> failwith "could not find current member in peers map."
 
   // ** ToYaml
 
@@ -289,12 +293,12 @@ ConfigChangeEntry = %s
         then Ok None
         else DiscoId.TryParse yaml.VotedFor |> Result.map Some
 
+      let mem = Member.create id
       return {
-        Member            = Member.create id
-        State             = Follower
+        MemberId          = id
         CurrentTerm       = yaml.Term
         CurrentLeader     = leader
-        Peers             = Map.empty
+        Peers             = Map [ (id, mem) ]
         OldPeers          = None
         VotedFor          = votedfor
         Log               = Log.empty
@@ -320,8 +324,9 @@ module RaftState =
 
   // ** getters
 
-  let self = Optic.get RaftState.Member_
-  let state = Optic.get RaftState.State_
+  let self (state: RaftState) = state.Member
+  let state = self >> Member.state
+  let memberId = Optic.get RaftState.MemberId_
   let currentTerm = Optic.get RaftState.CurrentTerm_
   let currentLeader = Optic.get RaftState.CurrentLeader_
   let peers = Optic.get RaftState.Peers_
@@ -338,8 +343,7 @@ module RaftState =
 
   // ** setters
 
-  let setSelf = Optic.set RaftState.Member_
-  let setState = Optic.set RaftState.State_
+  let setMemberId = Optic.set RaftState.MemberId_
   let setCurrentTerm = Optic.set RaftState.CurrentTerm_
   let setCurrentLeader = Optic.set RaftState.CurrentLeader_
   let setPeers = Optic.set RaftState.Peers_
@@ -354,11 +358,26 @@ module RaftState =
   let setMaxLogDepth = Optic.set RaftState.MaxLogDepth_
   let setConfigChangeEntry = Optic.set RaftState.ConfigChangeEntry_
 
+  // ** setSelf
+
+  let setSelf (mem: RaftMember) state =
+    state
+    |> peers
+    |> Map.add mem.Id mem
+    |> flip setPeers state
+    |> setMemberId mem.Id
+
+  // ** setState
+
+  let setState memState (state:RaftState) =
+    state.Member
+    |> Member.setState memState
+    |> flip setSelf state
+
   // ** create
 
   let create (self: RaftMember) =
-    { Member            = self
-      State             = Follower
+    { MemberId          = self.Id
       CurrentTerm       = 0<term>
       CurrentLeader     = None
       Peers             = Map.ofList [(self.Id, self)]
@@ -390,15 +409,15 @@ module RaftState =
 
   // ** isFollower
 
-  let isFollower state = state.State = Follower
+  let isFollower (state:RaftState) = state.Member.State = Follower
 
   // ** isCandidate
 
-  let isCandidate state = state.State = Candidate
+  let isCandidate (state:RaftState) = state.Member.State = Candidate
 
   // ** isLeader
 
-  let isLeader state = state.State = Leader
+  let isLeader (state:RaftState) = state.Member.State = Leader
 
   // ** inJointConsensus
 
@@ -808,4 +827,4 @@ module RaftState =
 
   // ** selfIncluded
 
-  let selfIncluded state = Map.containsKey state.Member.Id state.Peers
+  let selfIncluded state = Map.containsKey state.MemberId state.Peers

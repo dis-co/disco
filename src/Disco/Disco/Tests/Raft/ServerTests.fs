@@ -968,15 +968,15 @@ module ServerTests =
   let candidate_will_not_respond_to_voterequest_if_it_has_already_voted =
     testCase "candidate will not respond to voterequest if it has already voted" <| fun _ ->
       raft {
-        let! raft' = get
+        let! self = self()
         let peer = Member.create (DiscoId.Create())
         let vote : VoteRequest =
           { Term = 0<term>                // term must be equal or lower that raft's
-            Candidate = raft'.Member    // term for this to work
+            Candidate = self              // term for this to work
             LastLogIndex = 0<index>
             LastLogTerm = 0<term> }
         do! addMember peer
-        do! voteFor (Some raft'.Member)
+        do! voteFor (Some self)
         let! resp = Raft.receiveVoteRequest peer.Id vote
         expect "Should have failed" true VoteResponse.declined resp
       }
@@ -1022,7 +1022,7 @@ module ServerTests =
         expect "should have last log index be 3" 3<index> VoteRequest.lastLogIndex vote
         expect "should have last term be 5" 5<term> VoteRequest.term vote
         expect "should have last log term be 3" 3<term> VoteRequest.lastLogTerm vote
-        expect "should have candidate id be me" self VoteRequest.candidate vote
+        expect "should have candidate id be me" (Member.id self) (VoteRequest.candidate >> Member.id) vote
       }
       |> runWithRaft raft' cbs
       |> noError
@@ -1963,7 +1963,7 @@ module ServerTests =
 
       raft {
         let! raft' = get
-        let nid = Some raft'.Member.Id
+        let nid = Some raft'.MemberId
         let pid = Some peer.Id
         do! addMember peer
         do! setState Leader

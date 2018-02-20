@@ -207,7 +207,7 @@ module rec Raft =
 
   let private shouldCommit peers state resp =
     let folder (votes: int) nid (mem: RaftMember) =
-      if nid = state.Member.Id || not (Member.isVoting mem)
+      if nid = state.MemberId || not (Member.isVoting mem)
       then votes
       elif mem.MatchIndex > 0<index> then
         match RaftState.entryAt mem.MatchIndex state with
@@ -885,7 +885,7 @@ module rec Raft =
 
       /// Process the vote if current state of our Raft must be candidate..
       else
-        match state.State with
+        match state.Member.State with
         | Leader -> return ()
         | Follower ->
           /// ...otherwise we respond with the respective RaftError.

@@ -125,7 +125,7 @@ module Scenarios =
 
     raft {
       let! raft' = get
-      let receiver = Map.find raft'.Member.Id peers
+      let receiver = Map.find raft'.MemberId peers
 
       let inbox = (!receiver).Inbox
       let outbox = (!receiver).Inbox
@@ -219,7 +219,7 @@ module Scenarios =
         while anyMsgs senders do
           for idx in 0UL .. (numPeers - 1UL) do
             let srv = servers.[int idx]
-            __logg <| sprintf "[raft: %d] [state: %A]" idx (fst srv).State
+            __logg <| sprintf "[raft: %d] [state: %A]" idx (fst srv).Member.State
 
             pollMsgs senders
             |> evalRaft (fst srv) (snd srv)
