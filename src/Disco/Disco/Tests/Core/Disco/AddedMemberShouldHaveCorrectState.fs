@@ -21,10 +21,10 @@ open Disco.Net
 
 open Common
 
-module AddPreviousMemberShouldPull =
+module AddedMemberShouldHaveCorrectState =
 
   let test =
-    testCase "ensure previous member pulls from leader" <| fun _ ->
+    testCase "added member should have correct state" <| fun _ ->
       result {
         use configurationDone = new WaitEvent()
         use snapshotDone = new WaitEvent()
@@ -63,9 +63,9 @@ module AddPreviousMemberShouldPull =
         /// use lobs = Logger.subscribe Logger.stdout
 
         let handler = function
-          | DiscoEvent.ConfigurationDone members     -> configurationDone.Set()
-          | DiscoEvent.Append(_, DataSnapshot _)     -> snapshotDone.Set()
-          | DiscoEvent.Append(_, CommandBatch batch) -> updateDone.Set()
+          | DiscoEvent.ConfigurationDone members          -> configurationDone.Set()
+          | DiscoEvent.Append(_, DataSnapshot _)          -> snapshotDone.Set()
+          | DiscoEvent.Append(_, CommandBatch batch)      -> updateDone.Set()
           | ev -> ()
 
         let! repo1 = Project.repository project1
@@ -76,7 +76,7 @@ module AddPreviousMemberShouldPull =
         // | |
         // |_| start
 
-        let! service1 = DiscoService.create {
+        use! service1 = DiscoService.create {
           Machine = machine1
           ProjectName = project1.Name
           UserName = User.Admin.UserName
@@ -95,7 +95,7 @@ module AddPreviousMemberShouldPull =
 
         let! repo2 = Project.repository project2
 
-        let! service2 = DiscoService.create {
+        use! service2 = DiscoService.create {
           Machine = machine2
           ProjectName = project2.Name
           UserName = User.Admin.UserName
@@ -105,6 +105,7 @@ module AddPreviousMemberShouldPull =
 
         use oobs2 = service2.Subscribe handler
         do! service2.Start()
+
 
         ///  _____
         /// |___ /
@@ -151,8 +152,5 @@ module AddPreviousMemberShouldPull =
           (service2.State.Project.Config |> Config.getActiveSite |> Option.map (ClusterConfig.members >> Map.count))
           (Some 2)
           "ActiveSite of Service 2 Should also have 2 Members"
-
-        dispose service1
-        dispose service2
       }
       |> noError
