@@ -52,22 +52,17 @@ module AddPreviousMemberShouldPull =
         do! FileSystem.copyDir project1.Path path2
         do! project2.Save path2
 
-        do Logger.setFields {
-          LogEventFields.Default with
-            LogLevel = false
-            Time = false
-            Id = false
-            Tier = false
-        }
+        /// do Logger.setFields {
+        ///   LogEventFields.Default with
+        ///     LogLevel = false
+        ///     Time = false
+        ///     Id = false
+        ///     Tier = false
+        /// }
 
-        use lobs = Logger.subscribe Logger.stdout
+        /// use lobs = Logger.subscribe Logger.stdout
 
-        let handler mem cmd =
-          match cmd with
-          | DiscoEvent.FileSystem _ -> ()
-          | DiscoEvent.Append(_, LogMsg _) -> ()
-          | cmd -> Logger.debug mem (string cmd)
-          cmd |> function
+        let handler = function
           | DiscoEvent.ConfigurationDone members     -> configurationDone.Set()
           | DiscoEvent.Append(_, DataSnapshot _)     -> snapshotDone.Set()
           | DiscoEvent.Append(_, CommandBatch batch) -> updateDone.Set()
@@ -89,7 +84,7 @@ module AddPreviousMemberShouldPull =
           SiteId = None
         }
 
-        use oobs1 = service1.Subscribe (handler "TEST-MACHINE1")
+        use oobs1 = service1.Subscribe handler
         do! service1.Start()
 
         //  ____
@@ -108,7 +103,7 @@ module AddPreviousMemberShouldPull =
           SiteId = None
         }
 
-        use oobs2 = service2.Subscribe (handler "TEST-MACHINE2")
+        use oobs2 = service2.Subscribe handler
         do! service2.Start()
 
         ///  _____
@@ -126,6 +121,11 @@ module AddPreviousMemberShouldPull =
 
         do! waitFor "updateDone" updateDone
         do! waitFor "updateDone" updateDone
+
+        // we have to wait here because under some circumstances (when LeaderChange happens, and new
+        // leader socket gets created and local state is forwarded to the leader) CommandBatch gets
+        // sent 3x rather than 2x causing the next expectations to fail.
+        do updateDone.WaitOne(System.TimeSpan.FromSeconds 2.0) |> ignore
 
         Expect.equal
           service1.State.Project.Config.Sites
