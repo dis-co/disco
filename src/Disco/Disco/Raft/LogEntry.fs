@@ -871,15 +871,15 @@ module LogEntry =
   let rec untilExcluding idx = function
     | Snapshot _ as curr -> Some curr
 
-    | Configuration(id,index,term,mems,Some prev) when idx >= index -> None
+    | Configuration(_,index,_,_,Some _) when idx >= index -> None
     | Configuration(id,index,term,mems,Some prev) ->
       Some $ Configuration(id,index,term,mems,untilExcluding idx prev)
 
-    | JointConsensus(id,index,term,changes,Some prev) when idx >= index -> None
+    | JointConsensus(_,index,_,_,Some _) when idx >= index -> None
     | JointConsensus(id,index,term,changes,Some prev) ->
       Some $ JointConsensus(id,index,term,changes,untilExcluding idx prev)
 
-    | LogEntry(id,index,term,data,Some prev) when idx >= index -> None
+    | LogEntry(_,index,_,_,Some _) when idx >= index -> None
     | LogEntry(id,index,term,data,Some prev) ->
       Some $ LogEntry(id,index,term,data,untilExcluding idx prev)
 

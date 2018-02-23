@@ -67,6 +67,7 @@ type ClientIdNode() =
           Tier = Tier.Client
           UseColors = false
           Level = LogLevel.Debug
+          Fields = LogEventFields.Default
         }
 
         self.OutClientId.[0] <- id
