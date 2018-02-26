@@ -608,6 +608,7 @@ Usage:
       Tier = Tier.Client
       UseColors = true
       Level = LogLevel.Debug
+      Fields = LogEventFields.Default
     }
 
     let result =
