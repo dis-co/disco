@@ -105,27 +105,30 @@ let getViewLogs (model: Model) (cfg: UserConfig) =
       | Direction.Descending -> res * -1)
   | None -> viewLogs
 
-let body dispatch model =
-  let viewLogs =
-    getViewLogs model model.userConfig
-  from Table
-    %["rowsCount" => viewLogs.Length
-      "rowHeight" => 30
-      "headerHeight" => 30
-      "width" => 700
-      "height" => 600]
-    [ yield! Columns.sortable |> Seq.choose (fun col ->
-        match Map.tryFind col model.userConfig.logColumns with
-        | Some true -> makeSortableColumn dispatch model.userConfig viewLogs col |> Some
-        | Some false | None -> None)
-      yield from Column
-        %["width" => getWidth Columns.Message
-          "header" => from Cell %[] [str Columns.Message]
-          "cell" => fun (props: obj) ->
-            // %["style" => %["whiteSpace"=>"nowrap"]]
-            from Cell props [readLog Columns.Message viewLogs.[!!props?rowIndex] |> str]
-         ] []
+let renderLogEvent (ev: LogEvent) = 
+
+    div [Class "Table-row"] [
+      div [Class "Table-row-item log-col-time"] [ str (string ev.Time) ]
+      div [Class "Table-row-item log-col-loglevel"] [ str (string ev.LogLevel)]
+      div [Class "Table-row-item log-col-tag"] [ str ev.Tag]
+      div [Class "Table-row-item log-col-message"] [ str ev.Message ]
     ]
+  
+let renderHeader = 
+  div [Class "Table-row Table-header"] [
+    div [Class "Table-row-item log-col-time"] [ str "Time" ]
+    div [Class "Table-row-item log-col-loglevel"] [ str "Log Level"]
+    div [Class "Table-row-item log-col-tag"] [ str "Tag"]
+    div [Class "Table-row-item log-col-message"] [ str "Message" ]
+  ]
+
+let body dispatch model =
+  let events = 
+    List.map renderLogEvent model.logs
+  div [Class "log-container"]  [
+    div [Class "log-table"] (renderHeader :: events)
+  ]
+  
 
 let dropdown title values generator =
   div [Class "disco-dropdown"] [
@@ -207,7 +210,7 @@ let createWidget (id: System.Guid) =
       { i = id; ``static`` = false
         x = 0; y = 0
         w = 8; h = 6
-        minW = 6
+        minW = 430
         minH = 2 }
     member this.Render(dispatch, model) =
       lazyViewWith
