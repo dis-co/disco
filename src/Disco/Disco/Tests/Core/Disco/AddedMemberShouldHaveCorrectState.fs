@@ -126,7 +126,7 @@ module AddedMemberShouldHaveCorrectState =
         // we have to wait here because under some circumstances (when LeaderChange happens, and new
         // leader socket gets created and local state is forwarded to the leader) CommandBatch gets
         // sent 3x rather than 2x causing the next expectations to fail.
-        do updateDone.WaitOne(System.TimeSpan.FromSeconds 2.0) |> ignore
+        do updateDone.WaitOne(System.TimeSpan.FromSeconds 30.0) |> ignore
 
         Expect.equal
           service1.State.Project.Config.Sites
