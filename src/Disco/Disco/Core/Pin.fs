@@ -63,16 +63,16 @@ type Behavior =
 
   static member TryParse (str: string) =
     match String.toLower str with
-    | "string" | "simple" -> Right Simple
-    | "multiline" -> Right MultiLine
-    | "filename"  -> Right FileName
-    | "directory" -> Right Directory
-    | "url"       -> Right Url
-    | "ip"        -> Right IP
+    | "string" | "simple" -> Ok Simple
+    | "multiline" -> Ok MultiLine
+    | "filename"  -> Ok FileName
+    | "directory" -> Ok Directory
+    | "url"       -> Ok Url
+    | "ip"        -> Ok IP
     | _ ->
       sprintf "Invalid Behavior value: %s" str
       |> Error.asParseError "Behavior.TryParse"
-      |> Either.fail
+      |> Result.fail
 
   // ** ToString
 
@@ -97,30 +97,30 @@ type Behavior =
   static member FromFB (fb: BehaviorFB) =
     #if FABLE_COMPILER
     match fb with
-    | x when x = BehaviorFB.SimpleFB    -> Right Simple
-    | x when x = BehaviorFB.MultiLineFB -> Right MultiLine
-    | x when x = BehaviorFB.FileNameFB  -> Right FileName
-    | x when x = BehaviorFB.DirectoryFB -> Right Directory
-    | x when x = BehaviorFB.UrlFB       -> Right Url
-    | x when x = BehaviorFB.IPFB        -> Right IP
+    | x when x = BehaviorFB.SimpleFB    -> Ok Simple
+    | x when x = BehaviorFB.MultiLineFB -> Ok MultiLine
+    | x when x = BehaviorFB.FileNameFB  -> Ok FileName
+    | x when x = BehaviorFB.DirectoryFB -> Ok Directory
+    | x when x = BehaviorFB.UrlFB       -> Ok Url
+    | x when x = BehaviorFB.IPFB        -> Ok IP
     | x ->
       sprintf "Cannot parse Behavior. Unknown type: %A" x
       |> Error.asParseError "Behavior.FromFB"
-      |> Either.fail
+      |> Result.fail
 
     #else
 
     match fb with
-    | BehaviorFB.SimpleFB    -> Right Simple
-    | BehaviorFB.MultiLineFB -> Right MultiLine
-    | BehaviorFB.FileNameFB  -> Right FileName
-    | BehaviorFB.DirectoryFB -> Right Directory
-    | BehaviorFB.UrlFB       -> Right Url
-    | BehaviorFB.IPFB        -> Right IP
+    | BehaviorFB.SimpleFB    -> Ok Simple
+    | BehaviorFB.MultiLineFB -> Ok MultiLine
+    | BehaviorFB.FileNameFB  -> Ok FileName
+    | BehaviorFB.DirectoryFB -> Ok Directory
+    | BehaviorFB.UrlFB       -> Ok Url
+    | BehaviorFB.IPFB        -> Ok IP
     | x ->
       sprintf "Cannot parse Behavior. Unknown type: %A" x
       |> Error.asParseError "Behavior.FromFB"
-      |> Either.fail
+      |> Result.fail
 
     #endif
 
@@ -177,12 +177,12 @@ type PinConfiguration =
     try
       str
       |> PinConfiguration.Parse
-      |> Either.succeed
+      |> Result.succeed
     with
       | x ->
         x.Message
         |> Error.asParseError "PinConfiguration.TryParse"
-        |> Either.fail
+        |> Result.fail
 
   // ** ToOffset
 
@@ -197,22 +197,22 @@ type PinConfiguration =
   static member FromFB(fb: PinConfigurationFB) =
     #if FABLE_COMPILER
     match fb with
-    | x when x = PinConfigurationFB.SinkFB   -> Right Sink
-    | x when x = PinConfigurationFB.SourceFB -> Right Source
-    | x when x = PinConfigurationFB.PresetFB -> Right Preset
+    | x when x = PinConfigurationFB.SinkFB   -> Ok Sink
+    | x when x = PinConfigurationFB.SourceFB -> Ok Source
+    | x when x = PinConfigurationFB.PresetFB -> Ok Preset
     | x ->
       sprintf "Unknown PinConfigurationFB value: %A" x
       |> Error.asParseError "PinConfiguration.FromFB"
-      |> Either.fail
+      |> Result.fail
     #else
     match fb with
-    | PinConfigurationFB.SinkFB   -> Right Sink
-    | PinConfigurationFB.SourceFB -> Right Source
-    | PinConfigurationFB.PresetFB -> Right Preset
+    | PinConfigurationFB.SinkFB   -> Ok Sink
+    | PinConfigurationFB.SourceFB -> Ok Source
+    | PinConfigurationFB.PresetFB -> Ok Preset
     | x ->
       sprintf "Unknown PinConfigurationFB value: %A" x
       |> Error.asParseError "PinConfiguration.FromFB"
-      |> Either.fail
+      |> Result.fail
     #endif
 
 // * VecSize
@@ -256,12 +256,12 @@ type VecSize =
     try
       str
       |> VecSize.Parse
-      |> Either.succeed
+      |> Result.succeed
     with
       | x ->
         x.Message
         |> Error.asParseError "VecSize.TryParse"
-        |> Either.fail
+        |> Result.fail
 
   // ** ToOffset
 
@@ -282,21 +282,21 @@ type VecSize =
   static member FromFB(fb: VecSizeFB) =
     #if FABLE_COMPILER
     match fb.Type with
-    | x when x = VecSizeTypeFB.DynamicFB -> Right Dynamic
+    | x when x = VecSizeTypeFB.DynamicFB -> Ok Dynamic
     | x when x = VecSizeTypeFB.FixedFB ->
-      Right (Fixed fb.Size)
+      Ok (Fixed fb.Size)
     | x ->
       sprintf "Unknown VecSizeFB value: %A" x
       |> Error.asParseError "VecSize.FromFB"
-      |> Either.fail
+      |> Result.fail
     #else
     match fb.Type with
-    | VecSizeTypeFB.DynamicFB -> Right Dynamic
-    | VecSizeTypeFB.FixedFB -> Right (Fixed fb.Size)
+    | VecSizeTypeFB.DynamicFB -> Ok Dynamic
+    | VecSizeTypeFB.FixedFB -> Ok (Fixed fb.Size)
     | x ->
       sprintf "Unknown PinConfigurationFB value: %A" x
       |> Error.asParseError "PinConfiguration.FromFB"
-      |> Either.fail
+      |> Result.fail
     #endif
 
 // * Pin
@@ -506,49 +506,49 @@ type Pin =
 
   // ** FromFB
 
-  static member FromFB(fb: PinFB) : Either<DiscoError,Pin> =
+  static member FromFB(fb: PinFB) : DiscoResult<Pin> =
     #if FABLE_COMPILER
     match fb.PinType with
     | x when x = PinTypeFB.StringPinFB ->
       StringPinFB.Create()
       |> fb.Pin
       |> StringPinD.FromFB
-      |> Either.map StringPin
+      |> Result.map StringPin
 
     | x when x = PinTypeFB.NumberPinFB ->
       NumberPinFB.Create()
       |> fb.Pin
       |> NumberPinD.FromFB
-      |> Either.map NumberPin
+      |> Result.map NumberPin
 
     | x when x = PinTypeFB.BoolPinFB ->
       BoolPinFB.Create()
       |> fb.Pin
       |> BoolPinD.FromFB
-      |> Either.map BoolPin
+      |> Result.map BoolPin
 
     | x when x = PinTypeFB.BytePinFB ->
       BytePinFB.Create()
       |> fb.Pin
       |> BytePinD.FromFB
-      |> Either.map BytePin
+      |> Result.map BytePin
 
     | x when x = PinTypeFB.EnumPinFB ->
       EnumPinFB.Create()
       |> fb.Pin
       |> EnumPinD.FromFB
-      |> Either.map EnumPin
+      |> Result.map EnumPin
 
     | x when x = PinTypeFB.ColorPinFB ->
       ColorPinFB.Create()
       |> fb.Pin
       |> ColorPinD.FromFB
-      |> Either.map ColorPin
+      |> Result.map ColorPin
 
     | x ->
       sprintf "%A is not a valid PinTypeFB" x
       |> Error.asParseError "PinFB.FromFB"
-      |> Either.fail
+      |> Result.fail
 
     #else
 
@@ -558,71 +558,71 @@ type Pin =
       if v.HasValue then
         v.Value
         |> StringPinD.FromFB
-        |> Either.map StringPin
+        |> Result.map StringPin
       else
         "StringPinFB has no value"
         |> Error.asParseError "PinFB.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | PinTypeFB.NumberPinFB ->
       let v = fb.Pin<NumberPinFB>()
       if v.HasValue then
         v.Value
         |> NumberPinD.FromFB
-        |> Either.map NumberPin
+        |> Result.map NumberPin
       else
         "NumberPinFB has no value"
         |> Error.asParseError "PinFB.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | PinTypeFB.BoolPinFB ->
       let v = fb.Pin<BoolPinFB>()
       if v.HasValue then
         v.Value
         |> BoolPinD.FromFB
-        |> Either.map BoolPin
+        |> Result.map BoolPin
       else
         "BoolPinFB has no value"
         |> Error.asParseError "PinFB.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | PinTypeFB.BytePinFB ->
       let v = fb.Pin<BytePinFB>()
       if v.HasValue then
         v.Value
         |> BytePinD.FromFB
-        |> Either.map BytePin
+        |> Result.map BytePin
       else
         "BytePinFB has no value"
         |> Error.asParseError "PinFB.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | PinTypeFB.EnumPinFB ->
       let v = fb.Pin<EnumPinFB>()
       if v.HasValue then
         v.Value
         |> EnumPinD.FromFB
-        |> Either.map EnumPin
+        |> Result.map EnumPin
       else
         "EnumPinFB has no value"
         |> Error.asParseError "PinFB.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | PinTypeFB.ColorPinFB ->
       let v = fb.Pin<ColorPinFB>()
       if v.HasValue then
         v.Value
         |> ColorPinD.FromFB
-        |> Either.map ColorPin
+        |> Result.map ColorPin
       else
         "ColorPinFB has no value"
         |> Error.asParseError "PinFB.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | x ->
       sprintf "PinTypeFB not recognized: %A" x
       |> Error.asParseError "PinFB.FromFB"
-      |> Either.fail
+      |> Result.fail
 
     #endif
 
@@ -632,7 +632,7 @@ type Pin =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: byte[]) : Either<DiscoError,Pin> =
+  static member FromBytes(bytes: byte[]) : DiscoResult<Pin> =
     Binary.createBuffer bytes
     |> PinFB.GetRootAsPinFB
     |> Pin.FromFB
@@ -666,63 +666,64 @@ module Pin =
 
   #if FABLE_COMPILER
 
-  let inline parseComplexValues< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<DiscoError, ^t>)
+  let inline parseComplexValues< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> DiscoResult< ^t>)
                                             and ^b : (member ValuesLength : int)
                                             and ^b : (member Values : int -> ^a)>
                                             (fb: ^b)
-                                            : Either<DiscoError, ^t array> =
+                                            : DiscoResult< ^t array> =
     let len = (^b : (member ValuesLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
-      (fun (result: Either<DiscoError,int * ^t array>) _ -> either {
-
-          let! (i, slices) = result
+      (fun (res: DiscoResult<int * ^t array>) _ ->
+        result {
+          let! (i, slices) = res
 
           // In Javascript, Flatbuffer types are not modeled as nullables,
           // hence parsing code is much simpler
           let! slice =
             let value = (^b : (member Values : int -> ^a) (fb, i))
-            (^t : (static member FromFB : ^a -> Either<DiscoError, ^t>) value)
+            (^t : (static member FromFB : ^a -> DiscoResult< ^t>) value)
 
           // add the slice to the array> at its correct position
           slices.[i] <- slice
           return (i + 1, slices)
       })
-      (Right (0, arr))
+      (Ok (0, arr))
       arr
-    |> Either.map snd
+    |> Result.map snd
 
   #else
 
-  let inline parseComplexValues< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> Either<DiscoError, ^t>)
+  let inline parseComplexValues< ^a, ^b, ^t when ^t : (static member FromFB : ^a -> DiscoResult< ^t>)
                                             and ^b : (member ValuesLength : int)
                                             and ^b : (member Values : int -> Nullable< ^a >)>
                                             (fb: ^b)
-                                            : Either<DiscoError, ^t array> =
+                                            : DiscoResult< ^t array> =
     let len = (^b : (member ValuesLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
-      (fun (result: Either<DiscoError,int * ^t array>) _ -> either {
-          let! (i, slices) = result
+      (fun (res: DiscoResult<int * ^t array>) _ ->
+        result {
+          let! (i, slices) = res
 
           // In .NET, Flatbuffers are modelled with nullables, hence
           // parsing is slightly more elaborate
           let! slice =
             let value = (^b : (member Values : int -> Nullable< ^a >) (fb, i))
             if value.HasValue then
-              (^t : (static member FromFB : ^a -> Either<DiscoError, ^t>) value.Value)
+              (^t : (static member FromFB : ^a -> DiscoResult< ^t>) value.Value)
             else
               "Could not parse empty slice"
               |> Error.asParseError (sprintf "ParseSlices of %s" (typeof< ^t >).Name)
-              |> Either.fail
+              |> Result.fail
 
           // add the slice to the array> at its correct position
           slices.[i] <- slice
           return (i + 1, slices)
       })
-      (Right (0, arr))
+      (Ok (0, arr))
       arr
-    |> Either.map snd
+    |> Result.map snd
 
   #endif
 
@@ -733,37 +734,35 @@ module Pin =
   let inline parseSimpleValues< ^a, ^b when ^b : (member ValuesLength : int)
                                        and  ^b : (member Values : int -> ^a)>
                                        (fb: ^b)
-                                       : Either<DiscoError, ^a array> =
+                                       : DiscoResult< ^a array> =
     let len = (^b : (member ValuesLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
-      (fun (result: Either<DiscoError,int * ^a array>) _ -> either {
-
-          let! (i, slices) = result
-
+      (fun (res: DiscoResult<int * ^a array>) _ ->
+        result {
+          let! (i, slices) = res
           // In Javascript, Flatbuffer types are not modeled as nullables,
           // hence parsing code is much simpler
           let slice = (^b : (member Values : int -> ^a) (fb, i))
-
           // add the slice to the array> at its correct position
           slices.[i] <- slice
           return (i + 1, slices)
       })
-      (Right (0, arr))
+      (Ok (0, arr))
       arr
-    |> Either.map snd
+    |> Result.map snd
 
   #else
 
   let inline parseSimpleValues< ^a, ^b when ^b : (member ValuesLength : int)
                                        and ^b : (member Values : int -> ^a)>
                                        (fb: ^b)
-                                       : Either<DiscoError, ^a array> =
+                                       : DiscoResult< ^a array> =
     let len = (^b : (member ValuesLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
-      (fun (result: Either<DiscoError,int * ^a array>) _ -> either {
-          let! (i, slices) = result
+      (fun (res: DiscoResult<int * ^a array>) _ -> result {
+          let! (i, slices) = res
 
           // In .NET, Flatbuffers are modelled with nullables, hence
           // parsing is slightly more elaborate
@@ -775,9 +774,9 @@ module Pin =
           slices.[i] <- slice
           return (i + 1, slices)
       })
-      (Right (0, arr))
+      (Ok (0, arr))
       arr
-    |> Either.map snd
+    |> Result.map snd
 
   #endif
 
@@ -796,7 +795,7 @@ module Pin =
     else
       "Cannot parse empty VecSize"
       |> Error.asParseError "VecSize.FromFB"
-      |> Either.fail
+      |> Result.fail
   #endif
 
   // ** parseLabels
@@ -805,21 +804,21 @@ module Pin =
   let inline parseLabels< ^a when ^a : (member LabelsLength : int)
                              and  ^a : (member Labels : int -> string)>
                             (fb: ^a)
-                            : Either<DiscoError, string array> =
+                            : DiscoResult< string array> =
     let len = (^a : (member LabelsLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
-      (fun (result: Either<DiscoError,int * string array>) _ -> either {
-          let! (i, labels) = result
+      (fun (res: DiscoResult<int * string array>) _ -> result {
+          let! (i, labels) = res
           let value =
             try (^a : (member Labels : int -> string) (fb, i))
             with | _ -> null
           labels.[i] <- value
           return (i + 1, labels)
         })
-      (Right (0, arr))
+      (Ok (0, arr))
       arr
-    |> Either.map snd
+    |> Result.map snd
 
   // ** parseTags
 
@@ -831,30 +830,30 @@ module Pin =
                            and  ^a : (member Tags : int -> Nullable<KeyValueFB>)>
                            #endif
                       (fb: ^a)
-                      : Either<DiscoError, Property array> =
+                      : DiscoResult< Property array> =
     let len = (^a : (member TagsLength : int) fb)
     let arr = Array.zeroCreate len
     Array.fold
-      (fun (result: Either<DiscoError,int * Property array>) _ -> either {
-          let! (i, arr) = result
+      (fun (res: DiscoResult<int * Property array>) _ -> result {
+          let! (i, arr) = res
           #if FABLE_COMPILER
           let prop = (^a : (member Tags: int -> KeyValueFB) fb, i)
           #else
           let! prop =
             let nullable = (^a : (member Tags: int -> Nullable<KeyValueFB>) fb,i)
             if nullable.HasValue then
-              Either.succeed nullable.Value
+              Result.succeed nullable.Value
             else
               "Cannot parse empty property"
               |> Error.asParseError "EnumPin.FromFB"
-              |> Either.fail
+              |> Result.fail
           #endif
           arr.[i] <- { Key = prop.Key; Value = prop.Value }
           return (i + 1, arr)
         })
-      (Right (0, arr))
+      (Ok (0, arr))
       arr
-    |> Either.map snd
+    |> Result.map snd
 
   // ** parseProperties
 
@@ -865,11 +864,11 @@ module Pin =
                                  and  ^a : (member Properties: int -> Nullable<KeyValueFB>)>
                                  #endif
                             (fb: ^a)
-                            : Either<DiscoError, Property array> =
+                            : DiscoResult< Property array> =
         let len = (^a : (member PropertiesLength: int) fb)
         let properties = Array.zeroCreate len
         Array.fold
-          (fun (m: Either<DiscoError, int * Property array>) _ -> either {
+          (fun (m: DiscoResult< int * Property array>) _ -> result {
             let! (i, arr) = m
             #if FABLE_COMPILER
             let prop = (^a : (member Properties: int -> KeyValueFB) fb, i)
@@ -877,18 +876,18 @@ module Pin =
             let! prop =
               let nullable = (^a : (member Properties: int -> Nullable<KeyValueFB>) fb,i)
               if nullable.HasValue then
-                Either.succeed nullable.Value
+                Result.succeed nullable.Value
               else
                 "Cannot parse empty property"
                 |> Error.asParseError "EnumPin.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
             arr.[i] <- { Key = prop.Key; Value = prop.Value }
             return (i + 1, arr)
           })
-          (Right (0, properties))
+          (Ok (0, properties))
           properties
-        |> Either.map snd
+        |> Result.map snd
 
   // ** emtpyLabels
 
@@ -1723,8 +1722,8 @@ type NumberPinD =
 
   // ** FromFB
 
-  static member FromFB(fb: NumberPinFB) : Either<DiscoError,NumberPinD> =
-    either {
+  static member FromFB(fb: NumberPinFB) : DiscoResult<NumberPinD> =
+    result {
       let! id = Id.decodeId fb
       let! groupId = Id.decodePinGroupId fb
       let! clientId = Id.decodeClientId fb
@@ -1736,7 +1735,7 @@ type NumberPinD =
       let! slices =
         fb
         |> Pin.parseSimpleValues
-        |> Either.map (Array.map double)
+        |> Result.map (Array.map double)
 
       return {
         Id               = id
@@ -1764,7 +1763,7 @@ type NumberPinD =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: byte[]) : Either<DiscoError,NumberPinD> =
+  static member FromBytes(bytes: byte[]) : DiscoResult<NumberPinD> =
     Binary.createBuffer bytes
     |> NumberPinFB.GetRootAsNumberPinFB
     |> NumberPinD.FromFB
@@ -1921,8 +1920,8 @@ type StringPinD =
 
   // ** FromFB
 
-  static member FromFB(fb: StringPinFB) : Either<DiscoError,StringPinD> =
-    either {
+  static member FromFB(fb: StringPinFB) : DiscoResult<StringPinD> =
+    result {
       let! id = Id.decodeId fb
       let! groupId = Id.decodePinGroupId fb
       let! clientId = Id.decodeClientId fb
@@ -1957,7 +1956,7 @@ type StringPinD =
 
   // ** FromStrings
 
-  static member FromStrings(bytes: byte[]) : Either<DiscoError,StringPinD> =
+  static member FromStrings(bytes: byte[]) : DiscoResult<StringPinD> =
     Binary.createBuffer bytes
     |> StringPinFB.GetRootAsStringPinFB
     |> StringPinD.FromFB
@@ -2057,8 +2056,8 @@ type BoolPinD =
 
   // ** FromFB
 
-  static member FromFB(fb: BoolPinFB) : Either<DiscoError,BoolPinD> =
-    either {
+  static member FromFB(fb: BoolPinFB) : DiscoResult<BoolPinD> =
+    result {
       let! id = Id.decodeId fb
       let! groupId = Id.decodePinGroupId fb
       let! clientId = Id.decodeClientId fb
@@ -2091,7 +2090,7 @@ type BoolPinD =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: byte[]) : Either<DiscoError,BoolPinD> =
+  static member FromBytes(bytes: byte[]) : DiscoResult<BoolPinD> =
     Binary.createBuffer bytes
     |> BoolPinFB.GetRootAsBoolPinFB
     |> BoolPinD.FromFB
@@ -2253,8 +2252,8 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
   // ** FromFB
 
-  static member FromFB(fb: BytePinFB) : Either<DiscoError,BytePinD> =
-    either {
+  static member FromFB(fb: BytePinFB) : DiscoResult<BytePinD> =
+    result {
       let! id = Id.decodeId fb
       let! group = Id.decodePinGroupId fb
       let! client = Id.decodeClientId fb
@@ -2265,7 +2264,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
       let! slices =
         fb
         |> Pin.parseSimpleValues
-        |> Either.map (Array.map String.decodeBase64)
+        |> Result.map (Array.map String.decodeBase64)
 
       return {
         Id               = id
@@ -2289,7 +2288,7 @@ type [<CustomEquality;CustomComparison>] BytePinD =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: byte[]) : Either<DiscoError,BytePinD> =
+  static member FromBytes(bytes: byte[]) : DiscoResult<BytePinD> =
     Binary.createBuffer bytes
     |> BytePinFB.GetRootAsBytePinFB
     |> BytePinD.FromFB
@@ -2391,8 +2390,8 @@ type EnumPinD =
 
   // ** FromFB
 
-  static member FromFB(fb: EnumPinFB) : Either<DiscoError,EnumPinD> =
-    either {
+  static member FromFB(fb: EnumPinFB) : DiscoResult<EnumPinD> =
+    result {
       let! id = Id.decodeId fb
       let! group = Id.decodePinGroupId fb
       let! client = Id.decodeClientId fb
@@ -2405,7 +2404,7 @@ type EnumPinD =
       let! properties =
         let properties = Array.zeroCreate fb.PropertiesLength
         Array.fold
-          (fun (m: Either<DiscoError, int * Property array>) _ -> either {
+          (fun (m: DiscoResult< int * Property array>) _ -> result {
             let! (i, arr) = m
             #if FABLE_COMPILER
             let prop = fb.Properties(i)
@@ -2413,18 +2412,18 @@ type EnumPinD =
             let! prop =
               let nullable = fb.Properties(i)
               if nullable.HasValue then
-                Either.succeed nullable.Value
+                Result.succeed nullable.Value
               else
                 "Cannot parse empty property"
                 |> Error.asParseError "EnumPin.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
             arr.[i] <- { Key = prop.Key; Value = prop.Value }
             return (i + 1, arr)
           })
-          (Right (0, properties))
+          (Ok (0, properties))
           properties
-        |> Either.map snd
+        |> Result.map snd
 
       return {
         Id               = id
@@ -2449,7 +2448,7 @@ type EnumPinD =
 
   // ** FromEnums
 
-  static member FromEnums(bytes: byte[]) : Either<DiscoError,EnumPinD> =
+  static member FromEnums(bytes: byte[]) : DiscoResult<EnumPinD> =
     Binary.createBuffer bytes
     |> EnumPinFB.GetRootAsEnumPinFB
     |> EnumPinD.FromFB
@@ -2545,8 +2544,8 @@ type ColorPinD =
 
   // ** FromFB
 
-  static member FromFB(fb: ColorPinFB) : Either<DiscoError,ColorPinD> =
-    either {
+  static member FromFB(fb: ColorPinFB) : DiscoResult<ColorPinD> =
+    result {
       let! id = Id.decodeId fb
       let! group = Id.decodePinGroupId fb
       let! client = Id.decodeClientId fb
@@ -2577,7 +2576,7 @@ type ColorPinD =
 
   // ** FromColors
 
-  static member FromColors(bytes: byte[]) : Either<DiscoError,ColorPinD> =
+  static member FromColors(bytes: byte[]) : DiscoResult<ColorPinD> =
     Binary.createBuffer bytes
     |> ColorPinFB.GetRootAsColorPinFB
     |> ColorPinD.FromFB
@@ -2825,47 +2824,47 @@ type Slice =
 
   // ** FromFB
 
-  static member FromFB(fb: SliceFB) : Either<DiscoError,Slice>  =
+  static member FromFB(fb: SliceFB) : DiscoResult<Slice>  =
     match fb.SliceType with
     #if FABLE_COMPILER
     | x when x = SliceTypeFB.StringFB ->
       let slice = StringFB.Create() |> fb.Slice
-      StringSlice(index fb.Index, slice.Value)
-      |> Either.succeed
+      StringSlice(1<index> * fb.Index, slice.Value)
+      |> Result.succeed
 
     | x when x = SliceTypeFB.DoubleFB ->
       let slice = DoubleFB.Create() |> fb.Slice
-      NumberSlice(index fb.Index, slice.Value)
-      |> Either.succeed
+      NumberSlice(1<index> * fb.Index, slice.Value)
+      |> Result.succeed
 
     | x when x = SliceTypeFB.BoolFB ->
       let slice = BoolFB.Create() |> fb.Slice
-      BoolSlice(index fb.Index, slice.Trigger, slice.Value)
-      |> Either.succeed
+      BoolSlice(1<index> * fb.Index, slice.Trigger, slice.Value)
+      |> Result.succeed
 
     | x when x = SliceTypeFB.ByteFB ->
       let slice = ByteFB.Create() |> fb.Slice
-      ByteSlice(index fb.Index,String.decodeBase64 slice.Value)
-      |> Either.succeed
+      ByteSlice(1<index> * fb.Index,String.decodeBase64 slice.Value)
+      |> Result.succeed
 
     | x when x = SliceTypeFB.KeyValueFB ->
-      either {
+      result {
         let slice = KeyValueFB.Create() |> fb.Slice
         let! prop = Property.FromFB slice
-        return EnumSlice(index fb.Index,prop)
+        return EnumSlice(1<index> * fb.Index,prop)
       }
 
     | x when x = SliceTypeFB.ColorSpaceFB ->
-      either {
+      result {
         let slice = ColorSpaceFB.Create() |> fb.Slice
         let! color = ColorSpace.FromFB slice
-        return ColorSlice(index fb.Index, color)
+        return ColorSlice(1<index> * fb.Index, color)
       }
 
     | x ->
       sprintf "Could not parse slice. Unknown slice type %A" x
       |> Error.asParseError "Slice.FromFB"
-      |> Either.fail
+      |> Result.fail
 
     #else
 
@@ -2873,76 +2872,76 @@ type Slice =
       let slice = fb.Slice<StringFB>()
       if slice.HasValue then
         let value = slice.Value
-        StringSlice(index fb.Index, value.Value)
-        |> Either.succeed
+        StringSlice(1<index> * fb.Index, value.Value)
+        |> Result.succeed
       else
         "Could not parse StringSlice"
         |> Error.asParseError "Slice.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | SliceTypeFB.DoubleFB   ->
       let slice = fb.Slice<DoubleFB>()
       if slice.HasValue then
         let value = slice.Value
-        NumberSlice(index fb.Index,value.Value)
-        |> Either.succeed
+        NumberSlice(fb.Index * 1<index>,value.Value)
+        |> Result.succeed
       else
         "Could not parse NumberSlice"
         |> Error.asParseError "Slice.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | SliceTypeFB.BoolFB     ->
       let slice = fb.Slice<BoolFB>()
       if slice.HasValue then
         let value = slice.Value
-        BoolSlice(index fb.Index, value.Trigger, value.Value)
-        |> Either.succeed
+        BoolSlice(fb.Index * 1<index>, value.Trigger, value.Value)
+        |> Result.succeed
       else
         "Could not parse BoolSlice"
         |> Error.asParseError "Slice.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | SliceTypeFB.ByteFB     ->
       let slice = fb.Slice<ByteFB>()
       if slice.HasValue then
         let value = slice.Value
-        ByteSlice(index fb.Index, String.decodeBase64 value.Value)
-        |> Either.succeed
+        ByteSlice(fb.Index * 1<index>, String.decodeBase64 value.Value)
+        |> Result.succeed
       else
         "Could not parse ByteSlice"
         |> Error.asParseError "Slice.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | SliceTypeFB.KeyValueFB     ->
       let slice = fb.Slice<KeyValueFB>()
       if slice.HasValue then
-        either {
+        result {
           let value = slice.Value
           let! prop = Property.FromFB value
-          return EnumSlice(index fb.Index, prop)
+          return EnumSlice(fb.Index * 1<index>, prop)
         }
       else
         "Could not parse EnumSlice"
         |> Error.asParseError "Slice.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | SliceTypeFB.ColorSpaceFB    ->
       let slice = fb.Slice<ColorSpaceFB>()
       if slice.HasValue then
-        either {
+        result {
           let value = slice.Value
           let! color = ColorSpace.FromFB value
-          return ColorSlice(index fb.Index, color)
+          return ColorSlice(fb.Index * 1<index>, color)
         }
       else
         "Could not parse ColorSlice"
         |> Error.asParseError "Slice.FromFB"
-        |> Either.fail
+        |> Result.fail
 
     | x ->
       sprintf "Cannot parse slice. Unknown slice type: %A" x
       |> Error.asParseError "Slice.FromFB"
-      |> Either.fail
+      |> Result.fail
 
     #endif
 
@@ -2952,7 +2951,7 @@ type Slice =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: byte[]) : Either<DiscoError,Slice> =
+  static member FromBytes(bytes: byte[]) : DiscoResult<Slice> =
     Binary.createBuffer bytes
     |> SliceFB.GetRootAsSliceFB
     |> Slice.FromFB
@@ -3107,12 +3106,12 @@ type Slices =
 
   member self.Map (f: Slice -> 'a) : 'a array =
     match self with
-    | StringSlices (_,_,arr) -> Array.mapi (fun i el -> StringSlice (index i, el) |> f) arr
-    | NumberSlices (_,_,arr) -> Array.mapi (fun i el -> NumberSlice (index i, el) |> f) arr
-    | BoolSlices (_,_,t,arr) -> Array.mapi (fun i el -> BoolSlice   (index i, t, el) |> f) arr
-    | ByteSlices   (_,_,arr) -> Array.mapi (fun i el -> ByteSlice   (index i, el) |> f) arr
-    | EnumSlices   (_,_,arr) -> Array.mapi (fun i el -> EnumSlice   (index i, el) |> f) arr
-    | ColorSlices  (_,_,arr) -> Array.mapi (fun i el -> ColorSlice  (index i, el) |> f) arr
+    | StringSlices (_,_,arr) -> Array.mapi (fun i el -> StringSlice (1<index> * i, el) |> f) arr
+    | NumberSlices (_,_,arr) -> Array.mapi (fun i el -> NumberSlice (1<index> * i, el) |> f) arr
+    | BoolSlices (_,_,t,arr) -> Array.mapi (fun i el -> BoolSlice   (1<index> * i, t, el) |> f) arr
+    | ByteSlices   (_,_,arr) -> Array.mapi (fun i el -> ByteSlice   (1<index> * i, el) |> f) arr
+    | EnumSlices   (_,_,arr) -> Array.mapi (fun i el -> EnumSlice   (1<index> * i, el) |> f) arr
+    | ColorSlices  (_,_,arr) -> Array.mapi (fun i el -> ColorSlice  (1<index> * i, el) |> f) arr
 
   #if !FABLE_COMPILER
 
@@ -3337,16 +3336,16 @@ type Slices =
 
   // ** FromFB
 
-  static member inline FromFB(fb: SlicesFB) : Either<DiscoError,Slices> =
-    either {
+  static member inline FromFB(fb: SlicesFB) : DiscoResult<Slices> =
+    result {
       let! id = Id.decodePinId fb
       let! client =
         try
           if fb.ClientIdLength = 0
-          then Either.succeed None
-          else Id.decodeClientId fb |> Either.map Some
+          then Result.succeed None
+          else Id.decodeClientId fb |> Result.map Some
         with exn ->
-          Either.succeed None
+          Result.succeed None
       return!
         //      _ ____
         //     | / ___|
@@ -3359,79 +3358,79 @@ type Slices =
           let slices = StringsFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
           Array.fold
-            (fun (m: Either<DiscoError,string array * int>) _ -> either {
+            (fun (m: DiscoResult<string array * int>) _ -> result {
                 let! (parsed,idx) = m
                 parsed.[idx] <- slices.Values(idx)
                 return parsed, idx + 1 })
-            (Right (arr, 0))
+            (Ok (arr, 0))
             arr
-          |> Either.map (fun (strings, _) -> StringSlices(id,client,strings))
+          |> Result.map (fun (strings, _) -> StringSlices(id,client,strings))
         | x when x = SlicesTypeFB.DoublesFB ->
           let slices = DoublesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
           Array.fold
-            (fun (m: Either<DiscoError,double array * int>) _ -> either {
+            (fun (m: DiscoResult<double array * int>) _ -> result {
                 let! (parsed,idx) = m
                 parsed.[idx] <- slices.Values(idx)
                 return parsed, idx + 1 })
-            (Right (arr, 0))
+            (Ok (arr, 0))
             arr
-          |> Either.map (fun (doubles,_) -> NumberSlices(id,client,doubles))
+          |> Result.map (fun (doubles,_) -> NumberSlices(id,client,doubles))
         | x when x = SlicesTypeFB.BoolsFB ->
           let slices = BoolsFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
           Array.fold
-            (fun (m: Either<DiscoError,bool array * int>) _ -> either {
+            (fun (m: DiscoResult<bool array * int>) _ -> result {
                 let! (parsed,idx) = m
                 parsed.[idx] <- slices.Values(idx)
                 return parsed, idx + 1 })
-            (Right (arr, 0))
+            (Ok (arr, 0))
             arr
-          |> Either.map (fun (bools,_) -> BoolSlices(id,client,slices.Trigger,bools))
+          |> Result.map (fun (bools,_) -> BoolSlices(id,client,slices.Trigger,bools))
         | x when x = SlicesTypeFB.BytesFB ->
           let slices = BytesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
           Array.fold
-            (fun (m: Either<DiscoError,byte[] array * int>) _ -> either {
+            (fun (m: DiscoResult<byte[] array * int>) _ -> result {
                 let! (parsed,idx) = m
                 let bytes = slices.Values(idx) |> String.decodeBase64
                 parsed.[idx] <- bytes
                 return parsed, idx + 1 })
-            (Right (arr, 0))
+            (Ok (arr, 0))
             arr
-          |> Either.map (fun (bytes,_) -> ByteSlices(id,client,bytes))
+          |> Result.map (fun (bytes,_) -> ByteSlices(id,client,bytes))
         | x when x = SlicesTypeFB.KeyValuesFB ->
           let slices = KeyValuesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
           Array.fold
-            (fun (m: Either<DiscoError,Property array * int>) _ -> either {
+            (fun (m: DiscoResult<Property array * int>) _ -> result {
                 let! (parsed,idx) = m
                 let! prop =
                   let value = slices.Values(idx)
                   Property.FromFB value
                 parsed.[idx] <- prop
                 return parsed, idx + 1 })
-            (Right (arr, 0))
+            (Ok (arr, 0))
             arr
-          |> Either.map (fun (props,_) -> EnumSlices(id,client,props))
+          |> Result.map (fun (props,_) -> EnumSlices(id,client,props))
         | x when x = SlicesTypeFB.ColorSpacesFB ->
           let slices = ColorSpacesFB.Create() |> fb.Slices
           let arr = Array.zeroCreate slices.ValuesLength
           Array.fold
-            (fun (m: Either<DiscoError,ColorSpace array * int>) _ -> either {
+            (fun (m: DiscoResult<ColorSpace array * int>) _ -> result {
                 let! (parsed,idx) = m
                 let! color =
                   let value = slices.Values(idx)
                   ColorSpace.FromFB value
                 parsed.[idx] <- color
                 return parsed, idx + 1 })
-            (Right (arr, 0))
+            (Ok (arr, 0))
             arr
-          |> Either.map (fun (colors,_) -> ColorSlices(id,client,colors))
+          |> Result.map (fun (colors,_) -> ColorSlices(id,client,colors))
         | x ->
           sprintf "unknown slices type: %O" x
           |> Error.asParseError "Slices.FromFB"
-          |> Either.fail
+          |> Result.fail
 
         //    _   _ _____ _____
         //   | \ | | ____|_   _|
@@ -3448,79 +3447,79 @@ type Slices =
             let slices = slicesish.Value
             let arr = Array.zeroCreate slices.ValuesLength
             Array.fold
-              (fun (m: Either<DiscoError,string array * int>) _ -> either {
+              (fun (m: DiscoResult<string array * int>) _ -> result {
                   let! (parsed,idx) = m
                   let value =
                     try slices.Values(idx)
                     with | _ -> null
                   parsed.[idx] <- value
                   return parsed, idx + 1 })
-              (Right (arr, 0))
+              (Ok (arr, 0))
               arr
-            |> Either.map (fun (strings, _) -> StringSlices(id, client, strings))
+            |> Result.map (fun (strings, _) -> StringSlices(id, client, strings))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
-            |> Either.fail
+            |> Result.fail
         | SlicesTypeFB.DoublesFB ->
           let slicesish = fb.Slices<DoublesFB>()
           if slicesish.HasValue then
             let slices = slicesish.Value
             let arr = Array.zeroCreate slices.ValuesLength
             Array.fold
-              (fun (m: Either<DiscoError,double array * int>) _ -> either {
+              (fun (m: DiscoResult<double array * int>) _ -> result {
                   let! (parsed,idx) = m
                   parsed.[idx] <- slices.Values(idx)
                   return parsed, idx + 1 })
-              (Right (arr, 0))
+              (Ok (arr, 0))
               arr
-            |> Either.map (fun (doubles,_) -> NumberSlices(id, client, doubles))
+            |> Result.map (fun (doubles,_) -> NumberSlices(id, client, doubles))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
-            |> Either.fail
+            |> Result.fail
         | SlicesTypeFB.BoolsFB ->
           let slicesish = fb.Slices<BoolsFB>()
           if slicesish.HasValue then
             let slices = slicesish.Value
             let arr = Array.zeroCreate slices.ValuesLength
             Array.fold
-              (fun (m: Either<DiscoError,bool array * int>) _ -> either {
+              (fun (m: DiscoResult<bool array * int>) _ -> result {
                   let! (parsed,idx) = m
                   parsed.[idx] <- slices.Values(idx)
                   return parsed, idx + 1 })
-              (Right (arr, 0))
+              (Ok (arr, 0))
               arr
-            |> Either.map (fun (bools,_) -> BoolSlices(id, client, slices.Trigger, bools))
+            |> Result.map (fun (bools,_) -> BoolSlices(id, client, slices.Trigger, bools))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
-            |> Either.fail
+            |> Result.fail
         | SlicesTypeFB.BytesFB ->
           let slicesish = fb.Slices<BytesFB>()
           if slicesish.HasValue then
             let slices = slicesish.Value
             let arr = Array.zeroCreate slices.ValuesLength
             Array.fold
-              (fun (m: Either<DiscoError,byte[] array * int>) _ -> either {
+              (fun (m: DiscoResult<byte[] array * int>) _ -> result {
                   let! (parsed,idx) = m
                   let bytes = slices.Values(idx) |> String.decodeBase64
                   parsed.[idx] <- bytes
                   return parsed, idx + 1 })
-              (Right (arr, 0))
+              (Ok (arr, 0))
               arr
-            |> Either.map (fun (bytes,_) -> ByteSlices(id, client, bytes))
+            |> Result.map (fun (bytes,_) -> ByteSlices(id, client, bytes))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
-            |> Either.fail
+            |> Result.fail
         | SlicesTypeFB.KeyValuesFB ->
           let slicesish = fb.Slices<KeyValuesFB>()
           if slicesish.HasValue then
             let slices = slicesish.Value
             let arr = Array.zeroCreate slices.ValuesLength
             Array.fold
-              (fun (m: Either<DiscoError,Property array * int>) _ -> either {
+              (fun (m: DiscoResult<Property array * int>) _ -> result {
                   let! (parsed,idx) = m
                   let! prop =
                     let propish = slices.Values(idx)
@@ -3530,23 +3529,23 @@ type Slices =
                     else
                       "could not parse empty property"
                       |> Error.asParseError "Slices.FromFB"
-                      |> Either.fail
+                      |> Result.fail
                   parsed.[idx] <- prop
                   return parsed, idx + 1 })
-              (Right (arr, 0))
+              (Ok (arr, 0))
               arr
-            |> Either.map (fun (props,_) -> EnumSlices(id, client, props))
+            |> Result.map (fun (props,_) -> EnumSlices(id, client, props))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
-            |> Either.fail
+            |> Result.fail
         | SlicesTypeFB.ColorSpacesFB ->
           let slicesish = fb.Slices<ColorSpacesFB>()
           if slicesish.HasValue then
             let slices = slicesish.Value
             let arr = Array.zeroCreate slices.ValuesLength
             Array.fold
-              (fun (m: Either<DiscoError,ColorSpace array * int>) _ -> either {
+              (fun (m: DiscoResult<ColorSpace array * int>) _ -> result {
                   let! (parsed,idx) = m
                   let! color =
                     let colorish = slices.Values(idx)
@@ -3556,20 +3555,20 @@ type Slices =
                     else
                       "could not parse empty colorspace"
                       |> Error.asParseError "Slices.FromFB"
-                      |> Either.fail
+                      |> Result.fail
                   parsed.[idx] <- color
                   return parsed, idx + 1 })
-              (Right (arr, 0))
+              (Ok (arr, 0))
               arr
-            |> Either.map (fun (colors,_) -> ColorSlices(id,client,colors))
+            |> Result.map (fun (colors,_) -> ColorSlices(id,client,colors))
           else
             "empty slices value"
             |> Error.asParseError "Slices.FromFB"
-            |> Either.fail
+            |> Result.fail
         | x ->
           sprintf "unknown slices type: %O" x
           |> Error.asParseError "Slices.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
     }
 
@@ -3580,7 +3579,7 @@ type Slices =
 
   // ** FromBytes
 
-  static member FromBytes(raw: byte[]) : Either<DiscoError,Slices> =
+  static member FromBytes(raw: byte[]) : DiscoResult<Slices> =
     Binary.createBuffer raw
     |> SlicesFB.GetRootAsSlicesFB
     |> Slices.FromFB
@@ -3730,17 +3729,17 @@ module SliceYaml =
 
   // ** toSlice
 
-  let toSlice (yml: SliceYaml) : Either<DiscoError,Slice> =
+  let toSlice (yml: SliceYaml) : DiscoResult<Slice> =
     match yml.SliceType with
     | "StringSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (String)") <| fun _ ->
+      Result.tryWith (Error.asParseError "SliceYaml.ToSlice (String)") <| fun _ ->
         let parse (str: obj) =
           match str with
           | null -> null
           | _ -> str :?> String
-        StringSlice(index yml.Index, parse yml.Value)
+        StringSlice(1<index> * yml.Index, parse yml.Value)
     | "NumberSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Number)") <| fun _ ->
+      Result.tryWith (Error.asParseError "SliceYaml.ToSlice (Number)") <| fun _ ->
         let parse (value: obj) =
           try
             match value with
@@ -3755,26 +3754,26 @@ module SliceYaml =
               |> sprintf "normalizing to 0.0. offending value: %A reason: %s" value
               |> Logger.err "toSlices (Number)"
               0.0
-        NumberSlice(index yml.Index, parse yml.Value)
+        NumberSlice(1<index> * yml.Index, parse yml.Value)
     | "BoolSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Bool)") <| fun _ ->
-        BoolSlice(index yml.Index, yml.Trigger, yml.Value :?> bool)
+      Result.tryWith (Error.asParseError "SliceYaml.ToSlice (Bool)") <| fun _ ->
+        BoolSlice(1<index> * yml.Index, yml.Trigger, yml.Value :?> bool)
     | "ByteSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Byte)") <| fun _ ->
-        ByteSlice(index yml.Index, yml.Value |> string |> Convert.FromBase64String)
+      Result.tryWith (Error.asParseError "SliceYaml.ToSlice (Byte)") <| fun _ ->
+        ByteSlice(1<index> * yml.Index, yml.Value |> string |> Convert.FromBase64String)
     | "EnumSlice" ->
-      Either.tryWith (Error.asParseError "SliceYaml.ToSlice (Enum)") <| fun _ ->
+      Result.tryWith (Error.asParseError "SliceYaml.ToSlice (Enum)") <| fun _ ->
         let pyml = yml.Value :?> PropertyYaml
-        EnumSlice(index yml.Index, { Key = pyml.Key; Value = pyml.Value })
+        EnumSlice(1<index> * yml.Index, { Key = pyml.Key; Value = pyml.Value })
     | "ColorSlice" ->
-      either {
+      result {
         let! color = Yaml.fromYaml(yml.Value :?> ColorYaml)
-        return ColorSlice(index yml.Index, color)
+        return ColorSlice(1<index> * yml.Index, color)
       }
     | unknown ->
       sprintf "Could not de-serialize unknown type: %A" unknown
       |> Error.asParseError "SliceYaml.ToSlice"
-      |> Either.fail
+      |> Result.fail
 
 // * SlicesYaml
 
@@ -3843,7 +3842,7 @@ module SlicesYaml =
   let toSlices (yml: SlicesYaml) =
     match yml.SliceType with
     | "StringSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (String)") <| fun _ ->
+      Result.tryWith (Error.asParseError "SlicesYaml.ToSlice (String)") <| fun _ ->
         let parse (str: obj) =
           match str with
           | null -> null
@@ -3851,7 +3850,7 @@ module SlicesYaml =
         let client = if isNull yml.ClientId then None else Some (DiscoId.Parse yml.ClientId)
         StringSlices(DiscoId.Parse yml.PinId, client, Array.map parse yml.Values)
     | "NumberSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Number)") <| fun _ ->
+      Result.tryWith (Error.asParseError "SlicesYaml.ToSlice (Number)") <| fun _ ->
         let parse (value: obj) =
           try
             match value with
@@ -3869,11 +3868,11 @@ module SlicesYaml =
         let client = if isNull yml.ClientId then None else Some (DiscoId.Parse yml.ClientId)
         NumberSlices(DiscoId.Parse yml.PinId, client, Array.map parse yml.Values)
     | "BoolSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Bool)") <| fun _ ->
+      Result.tryWith (Error.asParseError "SlicesYaml.ToSlice (Bool)") <| fun _ ->
         let client = if isNull yml.ClientId then None else Some (DiscoId.Parse yml.ClientId)
         BoolSlices(DiscoId.Parse yml.PinId, client, yml.Trigger, Array.map unbox<bool> yml.Values)
     | "ByteSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Byte)") <| fun _ ->
+      Result.tryWith (Error.asParseError "SlicesYaml.ToSlice (Byte)") <| fun _ ->
         let parse (value: obj) =
           match value with
           | :? String -> (value :?> String) |> Convert.FromBase64String
@@ -3886,33 +3885,33 @@ module SlicesYaml =
         let client = if isNull yml.ClientId then None else Some (DiscoId.Parse yml.ClientId)
         ByteSlices(DiscoId.Parse yml.PinId, client, Array.map parse yml.Values)
     | "EnumSlices" ->
-      Either.tryWith (Error.asParseError "SlicesYaml.ToSlice (Enum)") <| fun _ ->
+      Result.tryWith (Error.asParseError "SlicesYaml.ToSlice (Enum)") <| fun _ ->
         let ofPyml (o: obj) =
           let pyml: PropertyYaml = unbox o
           { Key = pyml.Key; Value = pyml.Value }
         let client = if isNull yml.ClientId then None else Some (DiscoId.Parse yml.ClientId)
         EnumSlices(DiscoId.Parse yml.PinId, client, Array.map ofPyml yml.Values)
     | "ColorSlices" ->
-      either {
+      result {
         let! colors =
           Array.fold
-            (fun (m: Either<DiscoError,int * ColorSpace array>) value -> either {
+            (fun (m: DiscoResult<int * ColorSpace array>) value -> result {
               let! (idx, colors) = m
               let unboxed: ColorYaml = unbox value
               let! color = Yaml.fromYaml unboxed
               colors.[idx] <- color
               return (idx + 1, colors)
               })
-            (Right(0, Array.zeroCreate yml.Values.Length))
+            (Ok(0, Array.zeroCreate yml.Values.Length))
             yml.Values
-          |> Either.map snd
+          |> Result.map snd
         let client = if isNull yml.ClientId then None else Some (DiscoId.Parse yml.ClientId)
         return ColorSlices(DiscoId.Parse yml.PinId, client, colors)
       }
     | unknown ->
       sprintf "Could not de-serialize unknown type: %A" unknown
       |> Error.asParseError "SlicesYaml.ToSlice"
-      |> Either.fail
+      |> Result.fail
 
 
 // * PinYaml
@@ -4056,21 +4055,21 @@ module PinYaml =
   let toPin (yml: PinYaml) =
     let parseTags (yaml: PinYaml) =
       Array.fold
-        (fun (m: Either<DiscoError, int * Property array>) yml ->
-          either {
+        (fun (m: DiscoResult< int * Property array>) yml ->
+          result {
             let! state = m
             let! parsed = Yaml.fromYaml yml
             (snd state).[fst state] <- parsed
             return (fst state + 1, snd state)
           })
-        (Right (0, Array.zeroCreate yaml.Tags.Length))
+        (Ok (0, Array.zeroCreate yaml.Tags.Length))
         yaml.Tags
-      |> Either.map snd
+      |> Result.map snd
 
     try
       match yml.PinType with
       | "StringPin" ->
-        either {
+        result {
           let! id = DiscoId.TryParse yml.Id
           let! group = DiscoId.TryParse yml.PinGroupId
           let! client = DiscoId.TryParse yml.ClientId
@@ -4081,14 +4080,14 @@ module PinYaml =
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
             Array.fold
-              (fun (m: Either<DiscoError,int * string array>) (yml: SliceYaml) ->
-                either {
+              (fun (m: DiscoResult<int * string array>) (yml: SliceYaml) ->
+                result {
                   let! (i, arr) = m
                   let! value = SliceYaml.toSlice yml
                   arr.[i] <- (value.Value :?> String)
                   return (i + 1, arr)
                 })
-              (Right(0, arr))
+              (Ok(0, arr))
               yml.Values
 
           return StringPin {
@@ -4109,7 +4108,7 @@ module PinYaml =
           }
         }
 
-      | "NumberPin" -> either {
+      | "NumberPin" -> result {
           let! id = DiscoId.TryParse yml.Id
           let! group = DiscoId.TryParse yml.PinGroupId
           let! client = DiscoId.TryParse yml.ClientId
@@ -4119,20 +4118,20 @@ module PinYaml =
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
             Array.fold
-              (fun (m: Either<DiscoError,int * double array>) (yml: SliceYaml) ->
-                either {
+              (fun (m: DiscoResult<int * double array>) (yml: SliceYaml) ->
+                result {
                   let! (i, arr) = m
                   let! value = SliceYaml.toSlice yml
                   let! value =
-                    try value.Value :?> double |> Either.succeed
+                    try value.Value :?> double |> Result.succeed
                     with | x ->
                       sprintf "Could not parse double: %s" x.Message
                       |> Error.asParseError "FromYaml NumberPin"
-                      |> Either.fail
+                      |> Result.fail
                   arr.[i] <- value
                   return (i + 1, arr)
                 })
-              (Right(0, arr))
+              (Ok(0, arr))
               yml.Values
 
           return NumberPin {
@@ -4155,7 +4154,7 @@ module PinYaml =
           }
         }
 
-      | "BoolPin" -> either {
+      | "BoolPin" -> result {
           let! id = DiscoId.TryParse yml.Id
           let! group = DiscoId.TryParse yml.PinGroupId
           let! client = DiscoId.TryParse yml.ClientId
@@ -4165,24 +4164,24 @@ module PinYaml =
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
             Array.fold
-              (fun (m: Either<DiscoError,int * bool array>) (yml: SliceYaml) ->
-                either {
+              (fun (m: DiscoResult<int * bool array>) (yml: SliceYaml) ->
+                result {
                   let! (i, arr) = m
                   let! value = SliceYaml.toSlice yml
                   let! value =
                     try
                       value.Value
                       :?> bool
-                      |> Either.succeed
+                      |> Result.succeed
                     with
                       | x ->
                         sprintf "Could not parse double: %s" x.Message
                         |> Error.asParseError "FromYaml NumberPin"
-                        |> Either.fail
+                        |> Result.fail
                   arr.[i] <- value
                   return (i + 1, arr)
                 })
-              (Right(0, arr))
+              (Ok(0, arr))
               yml.Values
 
           return BoolPin {
@@ -4202,7 +4201,7 @@ module PinYaml =
           }
         }
 
-      | "BytePin" -> either {
+      | "BytePin" -> result {
           let! id = DiscoId.TryParse yml.Id
           let! group = DiscoId.TryParse yml.PinGroupId
           let! client = DiscoId.TryParse yml.ClientId
@@ -4212,24 +4211,24 @@ module PinYaml =
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
             Array.fold
-              (fun (m: Either<DiscoError,int * byte[] array>) (yml: SliceYaml) ->
-                either {
+              (fun (m: DiscoResult<int * byte[] array>) (yml: SliceYaml) ->
+                result {
                   let! (i, arr) = m
                   let! value = SliceYaml.toSlice yml
                   let! value =
                     try
                       value.Value
                       :?> byte array
-                      |> Either.succeed
+                      |> Result.succeed
                     with
                       | x ->
                         sprintf "Could not parse double: %s" x.Message
                         |> Error.asParseError "FromYaml NumberPin"
-                        |> Either.fail
+                        |> Result.fail
                   arr.[i] <- value
                   return (i + 1, arr)
                 })
-              (Right(0, arr))
+              (Ok(0, arr))
               yml.Values
 
           return BytePin {
@@ -4248,41 +4247,41 @@ module PinYaml =
           }
         }
 
-      | "EnumPin" -> either {
+      | "EnumPin" -> result {
           let! properties =
             Array.fold
-              (fun (m: Either<DiscoError, int * Property array>) yml ->
-                either {
+              (fun (m: DiscoResult< int * Property array>) yml ->
+                result {
                   let! state = m
                   let! parsed = Yaml.fromYaml yml
                   (snd state).[fst state] <- parsed
                   return (fst state + 1, snd state)
                 })
-              (Right (0, Array.zeroCreate yml.Properties.Length))
+              (Ok (0, Array.zeroCreate yml.Properties.Length))
               yml.Properties
-            |> Either.map snd
+            |> Result.map snd
 
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
             Array.fold
-              (fun (m: Either<DiscoError,int * Property array>) (yml: SliceYaml) ->
-                either {
+              (fun (m: DiscoResult<int * Property array>) (yml: SliceYaml) ->
+                result {
                   let! (i, arr) = m
                   let! value = SliceYaml.toSlice yml
                   let! value =
                     try
                       value.Value
                       :?> Property
-                      |> Either.succeed
+                      |> Result.succeed
                     with
                       | x ->
                         sprintf "Could not parse Property: %s" x.Message
                         |> Error.asParseError "FromYaml NumberPin"
-                        |> Either.fail
+                        |> Result.fail
                   arr.[i] <- value
                   return (i + 1, arr)
                 })
-              (Right(0, arr))
+              (Ok(0, arr))
               yml.Values
 
           let! id = DiscoId.TryParse yml.Id
@@ -4309,7 +4308,7 @@ module PinYaml =
           }
         }
 
-      | "ColorPin" -> either {
+      | "ColorPin" -> result {
           let! id = DiscoId.TryParse yml.Id
           let! group = DiscoId.TryParse yml.PinGroupId
           let! client = DiscoId.TryParse yml.ClientId
@@ -4320,24 +4319,24 @@ module PinYaml =
           let! (_, slices) =
             let arr = Array.zeroCreate yml.Values.Length
             Array.fold
-              (fun (m: Either<DiscoError,int * ColorSpace array>) (yml: SliceYaml) ->
-                either {
+              (fun (m: DiscoResult<int * ColorSpace array>) (yml: SliceYaml) ->
+                result {
                   let! (i, arr) = m
                   let! value = SliceYaml.toSlice yml
                   let! value =
                     try
                       value.Value
                       :?> ColorSpace
-                      |> Either.succeed
+                      |> Result.succeed
                     with
                       | x ->
                         sprintf "Could not parse Property: %s" x.Message
                         |> Error.asParseError "FromYaml NumberPin"
-                        |> Either.fail
+                        |> Result.fail
                   arr.[i] <- value
                   return (i + 1, arr)
                 })
-              (Right(0, arr))
+              (Ok(0, arr))
               yml.Values
 
           return ColorPin {
@@ -4359,12 +4358,11 @@ module PinYaml =
       | x ->
         sprintf "Could not parse PinYml type: %s" x
         |> Error.asParseError "PynYml.FromYaml"
-        |> Either.fail
+        |> Result.fail
 
-    with
-      | exn ->
-        sprintf "Could not parse PinYml: %s" exn.Message
-        |> Error.asParseError "PynYml.FromYaml"
-        |> Either.fail
+    with exn ->
+      sprintf "Could not parse PinYml: %s" exn.Message
+      |> Error.asParseError "PynYml.FromYaml"
+      |> Result.fail
 
 #endif

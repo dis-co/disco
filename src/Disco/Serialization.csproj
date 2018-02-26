@@ -63,6 +63,7 @@
     <Compile Include="/home/k/src/projects/disco/src/Disco/Disco/Serialization/ClientExecutableFB.cs" />
     <Compile Include="/home/k/src/projects/disco/src/Disco/Disco/Serialization/ClockFB.cs" />
     <Compile Include="/home/k/src/projects/disco/src/Disco/Disco/Serialization/ClusterConfigFB.cs" />
+    <Compile Include="/home/k/src/projects/disco/src/Disco/Disco/Serialization/ClusterMemberFB.cs" />
     <Compile Include="/home/k/src/projects/disco/src/Disco/Disco/Serialization/ColorPinFB.cs" />
     <Compile Include="/home/k/src/projects/disco/src/Disco/Disco/Serialization/ColorSpaceFB.cs" />
     <Compile Include="/home/k/src/projects/disco/src/Disco/Disco/Serialization/ColorSpaceTypeFB.cs" />

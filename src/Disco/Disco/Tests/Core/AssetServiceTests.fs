@@ -43,12 +43,12 @@ module AssetServiceTests =
         do File.writeText contents None filePath
     let machine = { DiscoMachine.Default with AssetDirectory = basePath }
     let filters = FsTree.parseFilters machine.AssetFilter
-    let fsTree = FsTree.read machine.MachineId basePath filters |> Either.get
+    let fsTree = FsTree.read machine.MachineId basePath filters |> Result.get
     machine, fsTree
 
   let testInitialCrawl =
     testCase "should crawl asset directory correctly" <| fun _ ->
-      either {
+      result {
         let machine, tree = createAssetDirectory()
         use crawlDone = new WaitEvent()
         use! service = AssetService.create machine
@@ -68,7 +68,7 @@ module AssetServiceTests =
 
   let testAddEntry =
     testCase "add entry should work" <| fun _ ->
-      either {
+      result {
         let machine, tree = createAssetDirectory()
         use crawlDone = new WaitEvent()
         use addDone = new WaitEvent()
@@ -104,7 +104,7 @@ module AssetServiceTests =
 
   let testChangeEntry =
     testCase "change entry should work" <| fun _ ->
-      either {
+      result {
         let machine, tree = createAssetDirectory()
         use crawlDone = new WaitEvent()
         use changeDone = new WaitEvent()
@@ -147,7 +147,7 @@ module AssetServiceTests =
 
   let testRemoveEntres =
     testCase "remove entries should work" <| fun _ ->
-      either {
+      result {
         let machine, tree = createAssetDirectory()
         use crawlDone = new WaitEvent()
         use removeDone = new WaitEvent()

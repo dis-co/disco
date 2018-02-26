@@ -94,20 +94,20 @@ type FsPath =
   // ** FromFB
 
   static member FromFB(fb: FsPathFB) =
-    either {
+    result {
       let! platform = Platform.FromFB fb.Platform
       let drive = Convert.ToChar fb.Drive
       let! elements =
         if fb.ElementsLength > 0 then
           Array.fold
-            (fun (lst:Either<DiscoError,string list>) idx -> either {
+            (fun (lst:DiscoResult<string list>) idx -> result {
               let! elms = lst
               let elm = fb.Elements idx
               return elm :: elms
             })
-            (Right List.empty)
+            (Ok List.empty)
             [| 0 .. fb.ElementsLength - 1 |]
-        else Either.succeed List.empty
+        else Result.succeed List.empty
       return {
         Drive = drive
         Platform = platform
@@ -121,7 +121,7 @@ type FsPath =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte array) : Either<DiscoError,FsPath> =
+  static member FromBytes (bytes: byte array) : DiscoResult<FsPath> =
     bytes
     |> Binary.createBuffer
     |> FsPathFB.GetRootAsFsPathFB
@@ -240,7 +240,7 @@ type FsEntry =
   // ** FromEntryFB
 
   static member FromEntryFB(fb: FsInfoFB) =
-    either {
+    result {
       let! path =
         #if FABLE_COMPILER
         FsPath.FromFB fb.Path
@@ -252,7 +252,7 @@ type FsEntry =
         else
           "Cannot parse empty path value"
           |> Error.asParseError "FsTree.toEntry"
-          |> Either.fail
+          |> Result.fail
         #endif
       let info =
         { Path = path
@@ -278,7 +278,7 @@ type FsEntry =
           other
           |> sprintf "%A is not a known FsEntry type"
           |> Error.asParseError "FsTree.toEntry"
-          |> Either.fail
+          |> Result.fail
     }
 
   // ** ToOffset
@@ -307,7 +307,7 @@ type FsEntry =
   // ** FromFB
 
   static member FromFB(fb:FsEntryFB) =
-    either {
+    result {
       let! root =
         #if FABLE_COMPILER
         FsEntry.FromEntryFB fb.Root
@@ -319,7 +319,7 @@ type FsEntry =
         else
           "Could not parse empty FsEntry root value"
           |> Error.asParseError "FsEntry.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       match root with
@@ -328,7 +328,7 @@ type FsEntry =
       | FsEntry.Directory _ ->
         return!
           List.fold
-            (fun (m:Either<DiscoError,FsEntry list>) idx -> either {
+            (fun (m:DiscoResult<FsEntry list>) idx -> result {
                 let! lst = m
                 let! child =
                   #if FABLE_COMPILER
@@ -343,18 +343,18 @@ type FsEntry =
                   else
                     "Could not parse empty child value"
                     |> Error.asParseError "FsEntry.FromFB"
-                    |> Either.fail
+                    |> Result.fail
                   #endif
                 return child :: lst
               })
-            (Right List.empty)
+            (Ok List.empty)
             [ 0 .. fb.ChildrenLength - 1 ]
-          |> Either.map (List.rev >> FsEntry.inflate root)
+          |> Result.map (List.rev >> FsEntry.inflate root)
     }
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte array) : Either<DiscoError,FsEntry> =
+  static member FromBytes (bytes: byte array) : DiscoResult<FsEntry> =
     bytes
     |> Binary.createBuffer
     |> FsEntryFB.GetRootAsFsEntryFB
@@ -433,7 +433,7 @@ type FsTree =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte array) : Either<DiscoError,FsTree> =
+  static member FromBytes (bytes: byte array) : DiscoResult<FsTree> =
     bytes
     |> Binary.createBuffer
     |> FsTreeFB.GetRootAsFsTreeFB
@@ -446,7 +446,7 @@ type FsTree =
   // ** FromFB
 
   static member FromFB(fb:FsTreeFB) =
-    either {
+    result {
       let! hostId = Id.decodeHostId fb
       let filters =
         fb.Filters.Split(' ')
@@ -462,11 +462,11 @@ type FsTree =
         else
           "Could not parse empty root"
           |> Error.asParseError "FsTree.FromtFB"
-          |> Either.fail
+          |> Result.fail
         #endif
       let! children =
         Array.fold
-          (fun (m:Either<DiscoError,FsEntry list>) idx -> either {
+          (fun (m:DiscoResult<FsEntry list>) idx -> result {
               let! list = m
               let! child =
                 #if FABLE_COMPILER
@@ -481,11 +481,11 @@ type FsTree =
                 else
                   "Could not parse empty child"
                   |> Error.asParseError "FsTree.FromFB"
-                  |> Either.fail
+                  |> Result.fail
                 #endif
               return child :: list
             })
-          (Right List.empty)
+          (Ok List.empty)
           [| 0 .. fb.ChildrenLength - 1 |]
       return
         children
@@ -744,11 +744,11 @@ module File =
       path
       |> unwrap
       |> File.Delete
-      |> Either.succeed
+      |> Result.succeed
     with exn ->
       exn.Message
       |> Error.asIOError (tag "delete")
-      |> Either.fail
+      |> Result.fail
 
   // ** ensurePath
 
@@ -757,11 +757,11 @@ module File =
       path
       |> Path.getDirectoryName
       |> Directory.createDirectory
-      |> Either.ignore
+      |> Result.ignore
     with exn ->
       exn.Message
       |> Error.asIOError (tag "ensurePath")
-      |> Either.fail
+      |> Result.fail
 
 #endif
 
@@ -782,18 +782,18 @@ module Directory =
   ///   Create a new directory. Upon failure, return an DiscoError
   /// </summary>
   /// <param name="path">FilePath</param>
-  /// <returns>Either<DiscoError,DirectoryInfo></returns>
+  /// <returns>DiscoResult<DirectoryInfo></returns>
   let createDirectory (path: FilePath) =
     try
       path
       |> unwrap
       |> Directory.CreateDirectory
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         exn.Message
         |> Error.asIOError (tag "createDirectory")
-        |> Either.fail
+        |> Result.fail
 
   // ** removeDirectory
 
@@ -801,11 +801,11 @@ module Directory =
     try
       unwrap path
       |> Directory.Delete
-      |> Either.succeed
+      |> Result.succeed
     with | exn ->
       exn.Message
       |> Error.asIOError (tag "removeDirectory")
-      |> Either.fail
+      |> Result.fail
 
   // ** info
 
@@ -921,8 +921,8 @@ module FileSystem =
   /// ### Signature:
   /// - path: FilePath to delete
   ///
-  /// Returns: Either<DiscoError, unit>
-  let rec rmDir (path: FilePath) : Either<DiscoError,unit>  =
+  /// Returns: DiscoResult<unit>
+  let rec rmDir (path: FilePath) : DiscoResult<unit>  =
     try
       let info = new FileInfo(unwrap path)
       info.IsReadOnly <- false
@@ -930,28 +930,28 @@ module FileSystem =
       if (attrs &&& FileAttributes.Directory) = FileAttributes.Directory then
         let children = DirectoryInfo(unwrap path).EnumerateFileSystemInfos()
         if children.Count() > 0 then
-          either {
+          result {
             do! Seq.fold
-                  (fun (_: Either<DiscoError, unit>) (child: FileSystemInfo) -> either {
+                  (fun (_: DiscoResult<unit>) (child: FileSystemInfo) -> result {
                       return! child.FullName |> filepath |> rmDir
                     })
-                  (Right ())
+                  (Ok ())
                   children
             return Directory.Delete(unwrap path)
           }
         else
           Directory.Delete(unwrap path)
-          |> Either.succeed
+          |> Result.succeed
       else
         path
         |> unwrap
         |> File.Delete
-        |> Either.succeed
+        |> Result.succeed
     with
       | exn ->
         ("FileSystem.rmDir", exn.Message)
         |> IOError
-        |> Either.fail
+        |> Result.fail
 
   #endif
 
@@ -995,7 +995,7 @@ module FileSystem =
   /// ### Signature:
   /// - path: FilePath
   ///
-  /// Returns: Either<DiscoError, unit>
+  /// Returns: DiscoResult<unit>
   let mkDir (path: FilePath) =
     try
       if path |> unwrap |> Directory.Exists |> not then
@@ -1003,14 +1003,14 @@ module FileSystem =
         |> unwrap
         |> Directory.CreateDirectory
         |> ignore
-        |> Either.succeed
+        |> Result.succeed
       else
-        Either.succeed ()
+        Result.succeed ()
     with
       | exn ->
         ("FileSystem.mkDir", exn.Message)
         |> IOError
-        |> Either.fail
+        |> Result.fail
 
   #endif
 
@@ -1026,9 +1026,9 @@ module FileSystem =
   /// - source: FilePath
   /// - target: FilePath
   ///
-  /// Returns: Either<DiscoError,unit>
+  /// Returns: DiscoResult<unit>
 
-  let rec copyDir (source: FilePath) (target: FilePath) : Either<DiscoError,unit> =
+  let rec copyDir (source: FilePath) (target: FilePath) : DiscoResult<unit> =
     try
       let source = Directory.info source
 
@@ -1046,12 +1046,12 @@ module FileSystem =
         let destpath = filepath target.FullName </> filepath dir.Name
         copyDir (filepath dir.FullName) destpath |> ignore
 
-      Either.succeed ()
+      Result.succeed ()
     with
       | exn ->
         ("FileSystem.mkDir", exn.Message)
         |> IOError
-        |> Either.fail
+        |> Result.fail
 
   #endif
 
@@ -1509,13 +1509,13 @@ module FsTree =
       basePath
       |> sprintf "%A was not found or is not a directory"
       |> Error.asAssetError "FsTree"
-      |> Either.fail
-    either {
+      |> Result.fail
+    result {
       let! root =
         if Directory.exists basePath then
           let path = FsPath.parse basePath
           match FsEntry.create path with
-          | Some root -> Right root
+          | Some root -> Ok root
           | None -> notFound()
         else notFound()
       return {
@@ -1680,11 +1680,11 @@ module FsTree =
       |> List.choose id
       |> inflate host root
       |> setFilters filters
-      |> Either.succeed
+      |> Result.succeed
     | None ->
       "Could not parse root entry: does the directory exist?"
       |> Error.asIOError "FsTree.read"
-      |> Either.fail
+      |> Result.fail
 
   #endif
 
@@ -1739,7 +1739,7 @@ module FsTreeTesting =
     fp
     |> File.readBytes
     |> Binary.decode
-    |> Either.get
+    |> Result.get
 
   let roundTrip dirCount fileCount =
     let fp = Path.getTempFile()

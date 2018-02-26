@@ -25,7 +25,7 @@ module EnsureCueResolver =
 
   let test =
     testCase "ensure cue resolver works" <| fun _ ->
-      either {
+      result {
         use checkGitStarted = new WaitEvent()
         use electionDone = new WaitEvent()
         use appendDone = new WaitEvent()

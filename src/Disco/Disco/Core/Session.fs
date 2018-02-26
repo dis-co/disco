@@ -79,8 +79,8 @@ type Session =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  static member FromFB(fb: SessionFB) : Either<DiscoError, Session> =
-    either {
+  static member FromFB(fb: SessionFB) : DiscoResult<Session> =
+    result {
       let! ip = IpAddress.TryParse fb.IpAddress
       let! id = Id.decodeId fb
       return {
@@ -92,7 +92,7 @@ type Session =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: byte[]) : Either<DiscoError,Session> =
+  static member FromBytes(bytes: byte[]) : DiscoResult<Session> =
     Binary.createBuffer bytes
     |> SessionFB.GetRootAsSessionFB
     |> Session.FromFB
@@ -132,7 +132,7 @@ type Session =
   // ** FromYaml
 
   static member FromYaml (yml: SessionYaml) =
-    either {
+    result {
       let! ip = IpAddress.TryParse yml.IpAddress
       let! id = DiscoId.TryParse yml.Id
       return {

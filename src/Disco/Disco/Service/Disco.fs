@@ -54,13 +54,13 @@ module Disco =
       let ids = Array.map Member.id mems
       if not (Array.contains disco.Machine.MachineId ids) then
         match disco.UnloadProject() with
-        | Right ()   -> Logger.info "onShutdown" "Unloaded project"
-        | Left error -> Logger.err "onShutdown" error.Message
+        | Ok ()   -> Logger.info "onShutdown" "Unloaded project"
+        | Error error -> Logger.err "onShutdown" error.Message
     | _ -> ()
 
   // ** create
 
-  let create post (options: DiscoOptions) = either {
+  let create post (options: DiscoOptions) = result {
       let status = ref ServiceStatus.Stopped
       let disco = ref None
       let eventSubscription = ref None
@@ -71,9 +71,9 @@ module Disco =
       let! discovery =
         options.Machine
         |> DiscoveryService.create
-        |> fun service -> service.Start() |> Either.map (konst service)
-        |> Either.map Some
-        |> Either.orElse None
+        |> fun service -> service.Start() |> Result.map (konst service)
+        |> Result.map Some
+        |> Result.orElse None
 
       do! httpServer.Start()
       return {
@@ -90,7 +90,7 @@ module Disco =
           member self.DiscoService
             with get () = !disco
 
-          member self.LoadProject(name, username, password, site) = either {
+          member self.LoadProject(name, username, password, site) = result {
               status := ServiceStatus.Starting
               Option.iter dispose !disco              // in case there was already something loaded
               Option.iter dispose !eventSubscription // and its subscription as well
@@ -103,16 +103,16 @@ module Disco =
                 SiteId = site
               }
               match discoService.Start() with
-              | Right () ->
+              | Ok () ->
                 eventSubscription := subscribeDiscovery discoService discovery
                 shutdownSubscription := self |> onShutdown |> discoService.Subscribe |> Some
                 let mem = discoService.RaftServer.Raft.Member
                 disco := Some discoService
                 status := ServiceStatus.Running
                 return ()
-              | Left error ->
+              | Error error ->
                 status := ServiceStatus.Failed error
-                return! Either.fail error
+                return! Result.fail error
             }
 
           member self.SaveProject() =
@@ -121,13 +121,13 @@ module Disco =
               AppCommand.Save
               |> StateMachine.Command
               |> disco.Append
-              |> Either.succeed
+              |> Result.succeed
             | None ->
               "No project loaded"
               |> Error.asOther (tag "Save")
-              |> Either.fail
+              |> Result.fail
 
-          member self.UnloadProject() = either {
+          member self.UnloadProject() = result {
               match !disco, !eventSubscription with
               | Some discoService, subscription ->
                 Option.iter dispose !shutdownSubscription
@@ -140,7 +140,7 @@ module Disco =
                 return!
                   "No project was loaded"
                   |> Error.asOther (tag "UnloadProject")
-                  |> Either.fail
+                  |> Result.fail
             }
 
           member self.Dispose() =

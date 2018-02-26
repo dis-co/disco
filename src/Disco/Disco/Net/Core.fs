@@ -581,7 +581,7 @@ type TcpServerEvent =
 type ITcpServer =
   inherit IDisposable
   abstract Id: PeerId
-  abstract Start: unit -> Either<DiscoError,unit>
+  abstract Start: unit -> DiscoResult<unit>
   abstract Subscribe: (TcpServerEvent -> unit) -> IDisposable
   abstract Request: client:Guid -> Request -> unit
   abstract Respond: Response -> unit
@@ -593,7 +593,7 @@ type PubSubEvent =
 
 type IPubSub =
   inherit IDisposable
-  abstract Start: unit -> Either<DiscoError,unit>
+  abstract Start: unit -> DiscoResult<unit>
   abstract Send: byte array -> unit
   abstract Subscribe: (PubSubEvent -> unit) -> IDisposable
 

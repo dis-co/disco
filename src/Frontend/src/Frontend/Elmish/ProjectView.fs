@@ -47,7 +47,7 @@ let project2tree (p: DiscoProject) =
     ;  obj2tree "Raft" c.Raft
     ;  obj2tree "Timing" c.Timing
     ;  leaf ("ActiveSite" + string c.ActiveSite)
-    ;  arr2tree "Sites" (Array.map box c.Sites)
+    ;  arr2tree "Sites" (c.Sites |> Map.toArray |> Array.map (snd >> box))
     |] |> node "Config"
   [| leaf ("Id: " + string p.Id)
   ;  leaf ("Name: " + unwrap p.Name)

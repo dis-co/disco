@@ -110,19 +110,19 @@ module rec PubSub =
 
     let externalAddress =
       mem
-      |> Member.ipAddress
+      |> ClusterMember.ipAddress
       |> string
       |> IPAddress.Parse
 
     let remoteAddress =
       mem
-      |> Member.multicastAddress
+      |> ClusterMember.multicastAddress
       |> string
       |> IPAddress.Parse
 
     let remotePort =
       mem
-      |> Member.multicastPort
+      |> ClusterMember.multicastPort
       |> int
 
     let remoteEp = IPEndPoint(remoteAddress, remotePort)
@@ -131,8 +131,7 @@ module rec PubSub =
     let state =
       { new IState with
           member state.Id
-            with get () = Member.id mem
-
+            with get () = ClusterMember.id mem
           member state.LocalEndPoint
             with get () = localEp
 
@@ -153,12 +152,12 @@ module rec PubSub =
             do client.Client.Bind(localEp)
             do client.JoinMulticastGroup(remoteAddress, externalAddress)
             do beginReceive state
-            Either.nothing
+            Result.nothing
           with
             | exn ->
               exn.Message
               |> Error.asSocketError (tag "Start")
-              |> Either.fail
+              |> Result.fail
 
         member pubsub.Send(bytes: byte array) =
           try

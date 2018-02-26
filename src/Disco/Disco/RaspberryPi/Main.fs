@@ -147,7 +147,7 @@ module Main =
     let client = ApiClient.create server client
 
     match client.Start() with
-    | Right () ->
+    | Ok () ->
       let gpio = startUpdater()
       let obs = client.Subscribe (handleWith pinid gpio.Update)
 
@@ -194,7 +194,7 @@ module Main =
       dispose client
       exit 0
 
-    | Left error ->
+    | Error error ->
       Console.Error.WriteLine("Encountered error starting client: {0}", Error.toMessage error)
       Console.Error.WriteLine("Aborting.")
       error

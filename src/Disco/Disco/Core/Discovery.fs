@@ -61,12 +61,12 @@ type ServiceType =
     try
       str
       |> ServiceType.Parse
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         exn.Message
         |> Error.asParseError "ServiceType.TryParse"
-        |> Either.fail
+        |> Result.fail
 
   // ** ToOffset
 
@@ -83,26 +83,26 @@ type ServiceType =
   static member FromFB(fb: ExposedServiceTypeFB) =
     #if FABLE_COMPILER
     match fb with
-    | x when x = ExposedServiceTypeFB.GitFB        -> Right Git
-    | x when x = ExposedServiceTypeFB.RaftFB       -> Right Raft
-    | x when x = ExposedServiceTypeFB.HttpFB       -> Right Http
-    | x when x = ExposedServiceTypeFB.ApiFB        -> Right Api
-    | x when x = ExposedServiceTypeFB.WebSocketFB  -> Right WebSocket
+    | x when x = ExposedServiceTypeFB.GitFB        -> Ok Git
+    | x when x = ExposedServiceTypeFB.RaftFB       -> Ok Raft
+    | x when x = ExposedServiceTypeFB.HttpFB       -> Ok Http
+    | x when x = ExposedServiceTypeFB.ApiFB        -> Ok Api
+    | x when x = ExposedServiceTypeFB.WebSocketFB  -> Ok WebSocket
     | x ->
       sprintf "Unknown ExposedServiceTypeFB value: %d" x
       |> Error.asParseError "ServiceType.FromFB"
-      |> Either.fail
+      |> Result.fail
     #else
     match fb with
-    | ExposedServiceTypeFB.GitFB        -> Right Git
-    | ExposedServiceTypeFB.RaftFB       -> Right Raft
-    | ExposedServiceTypeFB.HttpFB       -> Right Http
-    | ExposedServiceTypeFB.ApiFB        -> Right Api
-    | ExposedServiceTypeFB.WebSocketFB  -> Right WebSocket
+    | ExposedServiceTypeFB.GitFB        -> Ok Git
+    | ExposedServiceTypeFB.RaftFB       -> Ok Raft
+    | ExposedServiceTypeFB.HttpFB       -> Ok Http
+    | ExposedServiceTypeFB.ApiFB        -> Ok Api
+    | ExposedServiceTypeFB.WebSocketFB  -> Ok WebSocket
     | x ->
       sprintf "Unknown ExposedServiceTypeFB value: %O" x
       |> Error.asParseError "ServiceType.FromFB"
-      |> Either.fail
+      |> Result.fail
     #endif
 
 
@@ -148,7 +148,7 @@ type ExposedService =
   // ** FromFB
 
   static member FromFB (fb: ExposedServiceFB) =
-    either {
+    result {
       let! tipe = ServiceType.FromFB fb.Type
       return { ServiceType = tipe; Port = port fb.Port }
     }
@@ -341,20 +341,20 @@ type DiscoveredService =
   // ** FromFB
 
   static member FromFB(fb: DiscoveredServiceFB) =
-    either {
+    result {
       let! protocol =
         match fb.Protocol with
-        | "IPv4" -> Right IPProtocol.IPv4
-        | "IPv6" -> Right IPProtocol.IPv6
+        | "IPv4" -> Ok IPProtocol.IPv4
+        | "IPv6" -> Ok IPProtocol.IPv6
         | other ->
           "Unknown protocol: " + other
           |> Error.asParseError "Discovery.FromFB"
-          |> Either.fail
+          |> Result.fail
 
       let! metadata =
         let arr = Array.zeroCreate fb.ExtraMetadataLength
         Array.fold
-          (fun (m: Either<DiscoError, int * Property array>) _ -> either {
+          (fun (m: DiscoResult<int * Property array>) _ -> result {
             let! (idx, props) = m
 
             #if FABLE_COMPILER
@@ -368,28 +368,28 @@ type DiscoveredService =
               else
                 "Unable to parse empty Property value"
                 |> Error.asParseError "DiscoveredService.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             props.[idx] <- prop
             return (idx + 1, props)
           })
-          (Right(0, arr))
+          (Ok(0, arr))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       let! addressList =
         let arr = Array.zeroCreate fb.AddressListLength
         Array.fold
-          (fun (m: Either<DiscoError, int * IpAddress[]>) _ -> either {
+          (fun (m: DiscoResult<int * IpAddress[]>) _ -> result {
             let! (idx, addresses) = m
             let! ip = fb.AddressList(idx) |> IpAddress.TryParse
             addresses.[idx] <- ip
             return (idx + 1, addresses)
           })
-          (Right(0, arr))
+          (Ok(0, arr))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       let aliases =
         [| for i = 0 to fb.AliasesLength - 1 do
@@ -407,13 +407,13 @@ type DiscoveredService =
         else
           "Unable to parse empty ServiceStatus"
           |> Error.asParseError "DiscoveredService.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! services =
         let arr = Array.zeroCreate fb.ServicesLength
         Array.fold
-          (fun (m: Either<DiscoError,int * ExposedService array>) _ -> either {
+          (fun (m: DiscoResult<int * ExposedService array>) _ -> result {
             let! (idx, services) = m
 
             #if FABLE_COMPILER
@@ -427,15 +427,15 @@ type DiscoveredService =
               else
                 "Unable to parse empty ExposedService key/value"
                 |> Error.asParseError "DiscoveryService.FromFB"
-                |> Either.fail
+                |> Result.fail
             #endif
 
             services.[idx] <- service
             return (idx + 1, services)
           })
-          (Right(0, arr))
+          (Ok(0, arr))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       let! id = Id.decodeId fb
 
@@ -580,11 +580,11 @@ module Discovery =
     #if FABLE_COMPILER
     let prt = try Some(uint16 item.ValueString) with | _ -> None
     match ServiceType.TryParse item.Key, prt with
-    | Right st, (true, prt) -> Some { ServiceType = st; Port = port prt }
+    | Ok st, (true, prt) -> Some { ServiceType = st; Port = port prt }
     | _ -> None
     #else
     match ServiceType.TryParse item.Key, UInt16.TryParse item.ValueString with
-    | Right st, (true, prt) -> Some { ServiceType = st; Port = port prt }
+    | Ok st, (true, prt) -> Some { ServiceType = st; Port = port prt }
     | _ -> None
     #endif
 
@@ -607,22 +607,22 @@ module Discovery =
 
   let private parseMachine (txt: ITxtRecord) =
     match parseFieldWith (|Machine|_|) txt with
-    | Some id -> id |> DiscoId.Parse |> Either.succeed
+    | Some id -> id |> DiscoId.Parse |> Result.succeed
     | _ ->
       "Could not find machine id in metatdata"
       |> Error.asParseError (tag "parseMachine")
-      |> Either.fail
+      |> Result.fail
 
   // ** parseProtocol
 
   let private parseProtocol (proto: AddressProtocol) =
     match proto with
-    | AddressProtocol.IPv4 -> Either.succeed IPv4
-    | AddressProtocol.IPv6 -> Either.succeed IPv6
+    | AddressProtocol.IPv4 -> Result.succeed IPv4
+    | AddressProtocol.IPv6 -> Result.succeed IPv6
     | x ->
       "AddressProtocol could not be parsed: " + string x
       |> Error.asParseError (tag "parseProtocol")
-      |> Either.fail
+      |> Result.fail
 
   // ** parseStatus
 
@@ -632,14 +632,14 @@ module Discovery =
     let rawstatus = parseFieldWith (|Status|_|) record
 
     match rawstatus, rawid, rawname with
-    | Some MachineStatus.IDLE, _, _ -> Right Idle
+    | Some MachineStatus.IDLE, _, _ -> Ok Idle
     | Some MachineStatus.BUSY, Some id, Some parsed
       when not (isNull id) && not (isNull parsed) ->
-      Busy (DiscoId.Parse id, name parsed) |> Either.succeed
+      Busy (DiscoId.Parse id, name parsed) |> Result.succeed
     | _, _, _ ->
       "Failed to parse Machine status: field(s) missing or null"
       |> Error.asParseError (tag "parseStatus")
-      |> Either.fail
+      |> Result.fail
 
   // ** reservedField
 
@@ -701,7 +701,7 @@ module Discovery =
   // ** toDiscoveredService
 
   let toDiscoveredService (service: IResolvableService) =
-    either {
+    result {
       let entry = service.HostEntry
 
       let! proto = parseProtocol service.AddressProtocol

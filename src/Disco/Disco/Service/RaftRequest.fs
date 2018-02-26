@@ -136,10 +136,10 @@ type RaftRequest =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte array) : Either<DiscoError, RaftRequest> =
+  static member FromBytes (bytes: byte array) : DiscoResult<RaftRequest> =
     let msg = RaftMsgFB.GetRootAsRaftMsgFB(new ByteBuffer(bytes))
     match msg.MsgType with
-    | RaftMsgTypeFB.RequestVoteFB -> either {
+    | RaftMsgTypeFB.RequestVoteFB -> result {
         let entry = msg.Msg<RequestVoteFB>()
         if entry.HasValue then
           let rv = entry.Value
@@ -152,15 +152,15 @@ type RaftRequest =
             return!
               "Could not parse empty VoteRequestFB body"
               |> Error.asParseError "RaftRequest.FromBytes"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty RequestVoteFB body"
             |> Error.asParseError "RaftRequest.FromBytes"
-            |> Either.fail
+            |> Result.fail
       }
 
-    | RaftMsgTypeFB.RequestAppendEntriesFB -> either {
+    | RaftMsgTypeFB.RequestAppendEntriesFB -> result {
         let entry = msg.Msg<RequestAppendEntriesFB>()
         if entry.HasValue then
           let ae = entry.Value
@@ -173,15 +173,15 @@ type RaftRequest =
             return!
               "Could not parse empty AppendEntriesFB body"
               |> Error.asParseError "RaftRequest.FromBytes"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty RequestAppendEntriesFB body"
             |> Error.asParseError "RaftRequest.FromBytes"
-            |> Either.fail
+            |> Result.fail
       }
 
-    | RaftMsgTypeFB.RequestInstallSnapshotFB -> either {
+    | RaftMsgTypeFB.RequestInstallSnapshotFB -> result {
         let entry = msg.Msg<RequestInstallSnapshotFB>()
         if entry.HasValue then
           let is = entry.Value
@@ -194,15 +194,15 @@ type RaftRequest =
             return!
               "Could not parse empty InstallSnapshotFB body"
               |> Error.asParseError "RaftRequest.FromBytes"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty RequestInstallSnapshotFB body"
             |> Error.asParseError "RaftRequest.FromBytes"
-            |> Either.fail
+            |> Result.fail
       }
 
-    | RaftMsgTypeFB.RequestAppendEntryFB -> either {
+    | RaftMsgTypeFB.RequestAppendEntryFB -> result {
         let entry = msg.Msg<RequestAppendEntryFB>()
         if entry.HasValue then
           let is = entry.Value
@@ -214,15 +214,15 @@ type RaftRequest =
             return!
               "Could not parse empty AppendEntryFB body"
               |> Error.asParseError "RaftRequest.FromBytes"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty RequestAppendEntryFB body"
             |> Error.asParseError "RaftRequest.FromBytes"
-            |> Either.fail
+            |> Result.fail
       }
 
-    // | RaftMsgTypeFB.HandShakeFB -> either {
+    // | RaftMsgTypeFB.HandShakeFB -> result {
     //     let entry = msg.Msg<HandShakeFB>()
     //     if entry.HasValue then
     //       let hs = entry.Value
@@ -234,15 +234,15 @@ type RaftRequest =
     //         return!
     //           "Could not parse empty RaftMemberFB body"
     //           |> Error.asParseError "RaftRequest.FromBytes"
-    //           |> Either.fail
+    //           |> Result.fail
     //     else
     //       return!
     //         "Could not parse empty HandShakeFB body"
     //         |> Error.asParseError "RaftRequest.FromBytes"
-    //         |> Either.fail
+    //         |> Result.fail
     //   }
 
-    // | RaftMsgTypeFB.HandWaiveFB -> either {
+    // | RaftMsgTypeFB.HandWaiveFB -> result {
     //     let entry = msg.Msg<HandWaiveFB>()
     //     if entry.HasValue then
     //       let hw = entry.Value
@@ -254,18 +254,18 @@ type RaftRequest =
     //         return!
     //           "Could not parse empty RaftMemberFB body"
     //           |> Error.asParseError "RaftRequest.FromBytes"
-    //           |> Either.fail
+    //           |> Result.fail
     //     else
     //       return!
     //         "Could not parse empty HandShakeFB body"
     //         |> Error.asParseError "RaftRequest.FromBytes"
-    //         |> Either.fail
+    //         |> Result.fail
     //   }
 
     | x ->
       sprintf "Could not parse unknown RaftMsgTypeFB: %A" x
       |> Error.asParseError "RaftRequest.FromBytes"
-      |> Either.fail
+      |> Result.fail
 
 // * RaftResponse
 
@@ -326,9 +326,9 @@ type RaftResponse =
 
   // ** FromFB
 
-  static member FromFB(msg: RaftMsgFB) : Either<DiscoError,RaftResponse> =
+  static member FromFB(msg: RaftMsgFB) : DiscoResult<RaftResponse> =
     match msg.MsgType with
-    | RaftMsgTypeFB.RespondVoteFB -> either {
+    | RaftMsgTypeFB.RespondVoteFB -> result {
         let entry = msg.Msg<RespondVoteFB>()
         if entry.HasValue then
           let fb = entry.Value
@@ -341,15 +341,15 @@ type RaftResponse =
             return!
               "Could not parse empty VoteResponseFB body"
               |> Error.asParseError "RaftResponse.FromFB"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty RespondVoteFB body"
             |> Error.asParseError "RaftResponse.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
-    | RaftMsgTypeFB.RespondAppendEntriesFB -> either {
+    | RaftMsgTypeFB.RespondAppendEntriesFB -> result {
         let entry = msg.Msg<RespondAppendEntriesFB>()
         if entry.HasValue then
           let fb = entry.Value
@@ -362,15 +362,15 @@ type RaftResponse =
             return!
               "Could not parse empty AppendResponseFB body"
               |> Error.asParseError "RaftResponse.FromFB"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty RespodnAppendEntriesFB body"
             |> Error.asParseError "RaftResponse.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
-    | RaftMsgTypeFB.RespondInstallSnapshotFB -> either {
+    | RaftMsgTypeFB.RespondInstallSnapshotFB -> result {
         let entry = msg.Msg<RespondInstallSnapshotFB>()
         if entry.HasValue then
           let fb = entry.Value
@@ -383,15 +383,15 @@ type RaftResponse =
             return!
               "Could not parse empty AppendResponseFB body"
               |> Error.asParseError "RaftResponse.FromFB"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty RespondInstallSnapshotFB body"
             |> Error.asParseError "RaftResponse.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
-    | RaftMsgTypeFB.RespondAppendEntryFB -> either {
+    | RaftMsgTypeFB.RespondAppendEntryFB -> result {
         let entry = msg.Msg<RespondAppendEntryFB>()
         if entry.HasValue then
           let fb = entry.Value
@@ -403,15 +403,15 @@ type RaftResponse =
             return!
               "Could not parse empty AppendResponseFB body"
               |> Error.asParseError "RaftResponse.FromFB"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty RespondInstallSnapshotFB body"
             |> Error.asParseError "RaftResponse.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
-    | RaftMsgTypeFB.ErrorResponseFB -> either {
+    | RaftMsgTypeFB.ErrorResponseFB -> result {
         let entry = msg.Msg<ErrorResponseFB>()
         if entry.HasValue then
           let rv = entry.Value
@@ -424,15 +424,15 @@ type RaftResponse =
             return!
               "Could not parse empty ErrorFB body"
               |> Error.asParseError "RaftResponse.FromFB"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty ErrorResponseFB body"
             |> Error.asParseError "RaftResponse.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
-    | RaftMsgTypeFB.RedirectFB -> either {
+    | RaftMsgTypeFB.RedirectFB -> result {
         let entry = msg.Msg<RedirectFB>()
         if entry.HasValue then
           let rd = entry.Value
@@ -444,15 +444,15 @@ type RaftResponse =
             return!
               "Could not parse empty RaftMemberFB body"
               |> Error.asParseError "RaftResponse.FromFB"
-              |> Either.fail
+              |> Result.fail
         else
           return!
             "Could not parse empty RedirectFB body"
             |> Error.asParseError "RaftResponse.FromFB"
-            |> Either.fail
+            |> Result.fail
       }
 
-    // | RaftMsgTypeFB.WelcomeFB -> either {
+    // | RaftMsgTypeFB.WelcomeFB -> result {
     //     let entry = msg.Msg<WelcomeFB>()
     //     if entry.HasValue then
     //       let wl = entry.Value
@@ -464,21 +464,21 @@ type RaftResponse =
     //         return!
     //           "Could not parse empty RaftMemberFB body"
     //           |> Error.asParseError "RaftResponse.FromFB"
-    //           |> Either.fail
+    //           |> Result.fail
     //     else
     //       return!
     //         "Could not parse empty WelcomeFB body"
     //         |> Error.asParseError "RaftResponse.FromFB"
-    //         |> Either.fail
+    //         |> Result.fail
     //   }
 
     // | RaftMsgTypeFB.ArrivederciFB ->
-    //   Right Arrivederci
+    //   Ok Arrivederci
 
     | x ->
       sprintf "Could not parse unknown RaftMsgTypeFB: %A" x
       |> Error.asParseError "RaftResponse.FromFB"
-      |> Either.fail
+      |> Result.fail
 
   // ** ToBytes
 
@@ -486,6 +486,6 @@ type RaftResponse =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte array) : Either<DiscoError,RaftResponse> =
+  static member FromBytes (bytes: byte array) : DiscoResult<RaftResponse> =
     let msg = RaftMsgFB.GetRootAsRaftMsgFB(ByteBuffer(bytes))
     RaftResponse.FromFB msg

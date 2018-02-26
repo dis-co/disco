@@ -21,12 +21,12 @@ open FlatBuffers
 
 #endif
 
-// * EitherExt module
+// * ResultExt module
 
 [<RequireQualifiedAccess>]
-module EitherExt =
+module ResultExt =
 
-  let bindGeneratorToArray loc length generator (f: 'a -> Either<DiscoError,'b>) =
+  let bindGeneratorToArray loc length generator (f: 'a -> DiscoResult<'b>) =
     let mutable i = 0
     let mutable error = None
     let arr = Array.zeroCreate length
@@ -41,11 +41,11 @@ module EitherExt =
         let item = generator i
       #endif
         match f item with
-        | Right value -> arr.[i] <- value; i <- i + 1
-        | Left err -> error <- Some err
+        | Ok value -> arr.[i] <- value; i <- i + 1
+        | Error err -> error <- Some err
     match error with
-    | Some err -> Left err
-    | None -> Right arr
+    | Some err -> Error err
+    | None -> Ok arr
 
 // * Binary module
 
@@ -75,16 +75,16 @@ module Binary =
 
   // ** decode
 
-  let inline decode< ^t when ^t : (static member FromBytes : byte[] -> Either<DiscoError, ^t>)>
+  let inline decode< ^t when ^t : (static member FromBytes : byte[] -> DiscoResult< ^t >)>
                                   (bytes: byte[]) :
-                                  Either<DiscoError, ^t > =
+                                  DiscoResult< ^t > =
     try
-      (^t : (static member FromBytes : byte[] -> Either<DiscoError, ^t>) bytes)
+      (^t : (static member FromBytes : byte[] -> DiscoResult< ^t >) bytes)
     with
       | exn ->
         ((typeof< ^t >).Name + ".FromBytes", exn.Message)
         |> ParseError
-        |> Either.fail
+        |> Result.fail
 
   // ** toOffset
 
@@ -145,9 +145,9 @@ module Yaml =
 
   // ** fromYaml
 
-  let inline fromYaml< ^err, ^a, ^t when ^t : (static member FromYaml : ^a -> Either< ^err, ^t >)>
+  let inline fromYaml< ^err, ^a, ^t when ^t : (static member FromYaml : ^a -> Result< ^t,^err  >)>
                      (thing: ^a) =
-    (^t : (static member FromYaml : ^a -> Either< ^err, ^t >) thing)
+    (^t : (static member FromYaml : ^a -> Result< ^t,^err >) thing)
 
   // ** encode
 
@@ -156,14 +156,14 @@ module Yaml =
 
   // ** decode
 
-  let inline decode< ^a, ^t when ^t : (static member FromYaml: ^a -> Either<DiscoError, ^t >)>
+  let inline decode< ^a, ^t when ^t : (static member FromYaml: ^a -> DiscoResult< ^t >)>
                    (str: string) =
     try
       let thing = str |> deserialize< ^a >
-      (^t : (static member FromYaml : ^a -> Either<DiscoError, ^t >) thing)
+      (^t : (static member FromYaml : ^a -> DiscoResult< ^t >) thing)
     with exn ->
       exn.Message
       |> Error.asParseError "Yaml.decode"
-      |> Either.fail
+      |> Result.fail
 
 #endif

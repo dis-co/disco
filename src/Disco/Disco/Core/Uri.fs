@@ -84,7 +84,7 @@ module Uri =
   ///
   /// Returns: string
 
-  let gitUri (name: Name) (mem: RaftMember) =
+  let gitUri (name: Name) ip port =
     let path =
       #if FABLE_COMPILER
       name
@@ -95,4 +95,4 @@ module Uri =
       |> unwrap
       |> System.Web.HttpUtility.UrlEncode
       #endif
-    toUri HTTP None (Some path) (string mem.IpAddress) (mem.GitPort |> Some)
+    toUri HTTP None (Some path) (string ip) (Some port)

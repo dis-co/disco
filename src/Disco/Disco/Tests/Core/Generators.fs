@@ -80,8 +80,8 @@ module Generators =
   let uint32Gen = Arb.generate<uint32>
   let uint64Gen = Arb.generate<uint64>
 
-  let indexGen = Gen.map index intGen
-  let termGen = Gen.map term intGen
+  let indexGen = Gen.map ((*) 1<index>) intGen
+  let termGen = Gen.map ((*) 1<term>) intGen
   let nameGen = Gen.map name stringGen
   let emailGen = Gen.map email stringGen
   let hashGen = Gen.map checksum stringGen
@@ -168,7 +168,7 @@ module Generators =
         LogDirectory = logpth
         CollectMetrics = cm
         MetricsHost = mh
-        MetricsPort = mhp 
+        MetricsPort = mhp
         MetricsDb = mdb
         AssetDirectory = assetpth
         AssetFilter = assetFilter
@@ -212,6 +212,35 @@ module Generators =
 
   let raftMemberGen = gen {
       let! id = idGen
+      let! ip = ipGen
+      let! p = portGen
+      let! voting = boolGen
+      let! vfm = boolGen
+      let! state = raftStateGen
+      let! status = memberStatusGen
+      let! nidx = indexGen
+      let! midx = indexGen
+      return {
+        Id               = id
+        IpAddress        = ip
+        RaftPort         = p
+        Voting           = voting
+        VotedForMe       = vfm
+        State            = state
+        Status           = status
+        NextIndex        = nidx
+        MatchIndex       = midx
+      }
+    }
+
+  ///   ____ _           _            __  __                _
+  ///  / ___| |_   _ ___| |_ ___ _ __|  \/  | ___ _ __ ___ | |__   ___ _ __
+  /// | |   | | | | / __| __/ _ \ '__| |\/| |/ _ \ '_ ` _ \| '_ \ / _ \ '__|
+  /// | |___| | |_| \__ \ ||  __/ |  | |  | |  __/ | | | | | |_) |  __/ |
+  ///  \____|_|\__,_|___/\__\___|_|  |_|  |_|\___|_| |_| |_|_.__/ \___|_|
+
+  let clusterMemberGen = gen {
+      let! id = idGen
       let! n = nameGen
       let! ip = ipGen
       let! p = portGen
@@ -221,12 +250,8 @@ module Generators =
       let! gp = portGen
       let! mcst = ipGen
       let! mp = portGen
-      let! voting = boolGen
-      let! vfm = boolGen
       let! state = raftStateGen
       let! status = memberStatusGen
-      let! nidx = indexGen
-      let! midx = indexGen
       return {
         Id               = id
         HostName         = n
@@ -238,12 +263,8 @@ module Generators =
         WsPort           = wp
         GitPort          = gp
         ApiPort          = ap
-        Voting           = voting
-        VotedForMe       = vfm
         State            = state
         Status           = status
-        NextIndex        = nidx
-        MatchIndex       = midx
       }
     }
 
@@ -338,7 +359,7 @@ module Generators =
   let clusterGen = gen {
       let! id = idGen
       let! nm = nameGen
-      let! mems = mapGen raftMemberGen
+      let! mems = mapGen clusterMemberGen
       let! groups = Gen.arrayOf hostgroupGen
       return
         { Id = id
@@ -364,7 +385,7 @@ module Generators =
           Clients = clients
           Raft = raft
           Timing = timing
-          Sites = sites }
+          Sites = Array.fold (fun m (site:ClusterConfig) -> Map.add site.Id site m) Map.empty sites }
     }
 
   //  ____            _           _
@@ -1142,9 +1163,12 @@ module Generators =
   let simpleStateMachineGen =
     [ Gen.map UpdateProject           projectGen
       Gen.constant UnloadProject
-      Gen.map AddMember               raftMemberGen
-      Gen.map UpdateMember            raftMemberGen
-      Gen.map RemoveMember            raftMemberGen
+      Gen.map AddMember               clusterMemberGen
+      Gen.map UpdateMember            clusterMemberGen
+      Gen.map RemoveMember            clusterMemberGen
+      Gen.map AddMachine              raftMemberGen
+      Gen.map UpdateMachine           raftMemberGen
+      Gen.map RemoveMachine           raftMemberGen
       Gen.map AddClient               clientGen
       Gen.map UpdateClient            clientGen
       Gen.map RemoveClient            clientGen
@@ -1228,17 +1252,15 @@ module Generators =
       let! lidx = indexGen
       let! ltrm = termGen
       let! entry =
-        Gen.oneof [ Gen.map (fun (mems, prev) -> RaftLogEntry.Configuration(id, idx, trm, mems, prev))
-                            (Gen.zip raftMemArr prev)
-
-                    Gen.map (fun (chs, prev) -> RaftLogEntry.JointConsensus(id, idx, trm, chs, prev))
-                            (Gen.zip changeArr prev)
-
-                    Gen.map (fun (data, prev) -> RaftLogEntry.LogEntry(id, idx, trm, data, prev))
-                            (Gen.zip stateMachineGen prev)
-
-                    Gen.map (fun (mems, data) -> RaftLogEntry.Snapshot(id, idx, trm, lidx, ltrm, mems, data))
-                            (Gen.zip raftMemArr stateMachineGen) ]
+        Gen.oneof [
+          Gen.map (fun (mems, prev) -> LogEntry.Configuration(id, idx, trm, mems, prev))
+                  (Gen.zip raftMemArr prev)
+          Gen.map (fun (chs, prev) -> LogEntry.JointConsensus(id, idx, trm, chs, prev))
+                  (Gen.zip changeArr prev)
+          Gen.map (fun (data, prev) -> LogEntry.LogEntry(id, idx, trm, data, prev))
+                  (Gen.zip stateMachineGen prev)
+          Gen.map (fun (mems, data) -> LogEntry.Snapshot(id, idx, trm, lidx, ltrm, mems, data))
+                  (Gen.zip raftMemArr stateMachineGen) ]
       return entry
     }
 
@@ -1406,7 +1428,7 @@ module Generators =
   //                                          |___/
 
   let machineArb = Arb.fromGen machineGen
-  
+
   let changeArb = Arb.fromGen changesGen
   let raftRequestArb = Arb.fromGen raftRequestGen
   let raftResponseArb = Arb.fromGen raftResponseGen

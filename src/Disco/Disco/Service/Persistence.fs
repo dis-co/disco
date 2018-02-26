@@ -35,18 +35,19 @@ module Persistence =
   /// ### Signature:
   /// - options: RaftOptions
   ///
-  /// Returns: Either<DiscoError,Raft>
+  /// Returns: DiscoResult<Raft>
   let createRaft (options: DiscoConfig) =
-    either {
+    result {
       let! mem = Config.selfMember options
       let! mems = Config.getMembers options
       let state =
         mem
-        |> Raft.create
-        |> Raft.addMembers mems
-        |> Raft.setMaxLogDepth options.Raft.MaxLogDepth
-        |> Raft.setRequestTimeout options.Raft.RequestTimeout
-        |> Raft.setElectionTimeout options.Raft.ElectionTimeout
+        |> ClusterMember.toRaftMember
+        |> RaftState.create
+        |> RaftState.addMembers (Map.map (fun _ -> ClusterMember.toRaftMember) mems)
+        |> RaftState.setMaxLogDepth options.Raft.MaxLogDepth
+        |> RaftState.setRequestTimeout options.Raft.RequestTimeout
+        |> RaftState.setElectionTimeout options.Raft.ElectionTimeout
       return state
     }
 
@@ -62,9 +63,9 @@ module Persistence =
   /// ### Signature:
   /// - options: Project Config
   ///
-  /// Returns: Either<DiscoError,Raft>
-  let loadRaft (options: DiscoConfig) : Either<DiscoError,RaftState> =
-    either {
+  /// Returns: DiscoResult<Raft>
+  let loadRaft (options: DiscoConfig): DiscoResult<RaftState> =
+    result {
       let! mem  = Config.selfMember options
       let! mems = Config.getMembers options
       let count = Map.fold (fun m _ _ -> m + 1) 0 mems
@@ -75,9 +76,8 @@ module Persistence =
       let! state = Yaml.decode data
       return
         { state with
-            Member          = mem
-            NumMembers      = count
-            Peers           = mems
+            MemberId        = mem.Id
+            Peers           = Map.map (fun _ -> ClusterMember.toRaftMember) mems
             MaxLogDepth     = options.Raft.MaxLogDepth
             RequestTimeout  = options.Raft.RequestTimeout
             ElectionTimeout = options.Raft.ElectionTimeout }
@@ -93,10 +93,10 @@ module Persistence =
   /// ### Signature:
   /// - options: Project Config
   ///
-  /// Returns: Either<DiscoError,Raft>
+  /// Returns: DiscoResult<Raft>
   let getRaft (options: DiscoConfig) =
     match loadRaft options with
-      | Right raft -> Either.succeed raft
+      | Ok raft -> Result.succeed raft
       | _          -> createRaft options
 
   // ** saveRaft
@@ -110,19 +110,19 @@ module Persistence =
   /// - config: DiscoConfig
   /// - raft: Raft state value
   ///
-  /// Returns: Either<DiscoError,FileInfo>
+  /// Returns: DiscoResult<FileInfo>
   let saveRaft (config: DiscoConfig) (raft: RaftState) =
     try
       raft
       |> Yaml.encode
       |> Payload
       |> DiscoData.write (Config.metadataPath config)
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         sprintf "Project Save Error: %s" exn.Message
         |> Error.asProjectError "Persistence.saveRaft"
-        |> Either.fail
+        |> Result.fail
 
   // ** persistEntry
 
@@ -134,7 +134,7 @@ module Persistence =
   /// - project: DiscoProject to work on
   /// - sm: StateMachine command
   ///
-  /// Returns: Either<DiscoError, FileInfo * DiscoProject>
+  /// Returns: DiscoResult<FileInfo * DiscoProject>
   let persistEntry (state: State) (sm: StateMachine) =
     let basePath = state.Project.Path
     let inline save t = Asset.save basePath t
@@ -241,7 +241,7 @@ module Persistence =
         let path = PinGroup.absolutePath basePath pin.ClientId pin.PinGroupId
         if File.exists path
         then File.delete path
-        else Either.nothing
+        else Result.nothing
 
 
     | RemovePin pin ->
@@ -254,7 +254,7 @@ module Persistence =
         let path = PinGroup.absolutePath basePath pin.ClientId pin.PinGroupId
         if File.exists path
         then File.delete path
-        else Either.nothing
+        else Result.nothing
 
     | Command AppCommand.Save -> save state
 
@@ -264,7 +264,7 @@ module Persistence =
     // | |_| | |_| | | |  __/ |
     //  \___/ \__|_| |_|\___|_|
 
-    | _ -> Either.nothing
+    | _ -> Result.nothing
 
   // ** commitChanges
 
@@ -276,9 +276,9 @@ module Persistence =
   /// - project: DiscoProject to work on
   /// - sm: StateMachine command
   ///
-  /// Returns: Either<DiscoError, Commit>
+  /// Returns: DiscoResult<Commit>
   let commitChanges (state: State) =
-    either {
+    result {
       let signature = User.Admin.Signature
       let! repo = state.Project |> Project.repository
       do! Git.Repo.stageAll repo
@@ -292,14 +292,14 @@ module Persistence =
     repo
     |> Git.Config.remotes
     |> Map.map    (konst (Git.Repo.push repo))
-    |> Map.filter (konst (Either.isFail))
-    |> Map.map    (konst (Either.error))
+    |> Map.filter (konst (Result.isFail))
+    |> Map.map    (konst (Result.error))
 
   // ** persistSnapshot
 
-  let persistSnapshot (state: State) (log: RaftLogEntry) =
-    either {
-      let path = Project.toFilePath state.Project.Path
+  let persistSnapshot (state: State) (log: Disco.Raft.LogEntry) =
+    result {
+      let path = state.Project.Path
       do! state.Save(path)
       use! repo = Project.repository state.Project
       do! Git.Repo.stageAll repo
@@ -312,8 +312,8 @@ module Persistence =
 
   // ** getRemote
 
-  let getRemote (project: DiscoProject) (repo: Repository) (leader: RaftMember) =
-    let uri = Uri.gitUri project.Name leader
+  let getRemote (project: DiscoProject) (repo: Repository) (leader: ClusterMember) =
+    let uri = Uri.gitUri project.Name leader.IpAddress leader.GitPort
     match Git.Config.tryFindRemote repo (string leader.Id) with
     | None ->
       leader.Id
@@ -330,12 +330,12 @@ module Persistence =
       Git.Config.updateRemote repo remote uri
 
     | Some remote ->
-      Either.succeed remote
+      Result.succeed remote
 
   // ** ensureRemote
 
-  let ensureRemote (project: DiscoProject) (repo: Repository) (peer: RaftMember) =
-    let uri = Uri.gitUri project.Name peer
+  let ensureRemote (project: DiscoProject) (repo: Repository) (peer: ClusterMember) =
+    let uri = Uri.gitUri project.Name peer.IpAddress peer.GitPort
     match Git.Config.tryFindRemote repo (string peer.Id) with
     | None ->
       peer.Id
@@ -352,13 +352,13 @@ module Persistence =
       Git.Config.updateRemote repo remote uri
 
     | Some remote ->
-      Either.succeed remote
+      Result.succeed remote
 
   // ** ensureRemotes
 
   let ensureRemotes (leader: MemberId)
                     (project: DiscoProject)
-                    (peers: Map<MemberId,RaftMember>)
+                    (peers: Map<MemberId,ClusterMember>)
                     (repo: Repository) =
     peers
     |> Map.toArray
@@ -372,6 +372,6 @@ module Persistence =
     if not (Git.Branch.isTracking branch) then
       Git.Branch.setTracked repo branch remote
     else
-      Either.nothing
+      Result.nothing
 
 #endif

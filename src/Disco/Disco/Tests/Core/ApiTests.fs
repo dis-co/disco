@@ -26,7 +26,7 @@ module ApiTests =
     let project =
       { Id        = DiscoId.Create()
         Name      = name "Hello"
-        Path      = Path.getTempPath() |> Project.ofFilePath
+        Path      = Path.getTempPath()
         CreatedOn = Time.createTimestamp()
         LastSaved = Some (Time.createTimestamp ())
         Copyright = None
@@ -54,10 +54,10 @@ module ApiTests =
 
   let test_server_should_not_start_when_bind_fails =
     testCase "server should not start when bind fails" <| fun _ ->
-      either {
+      result {
         let mutable store = Store(mkState ())
 
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         use! server1 = ApiServer.create mem {
           new IApiServerCallbacks with
@@ -72,17 +72,17 @@ module ApiTests =
         }
 
         do! match server2.Start() with
-            | Right () -> Left (Other("test","should have failed"))
-            | Left _ -> Right()
+            | Ok () -> Error (Other("test","should have failed"))
+            | Error _ -> Ok()
       }
       |> noError
 
   let test_server_should_replicate_state_snapshot_to_client =
     testCase "server should replicate state snapshot to client" <| fun _ ->
-      either {
+      result {
         let mutable store = Store(mkState ())
 
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         use! server = ApiServer.create mem {
           new IApiServerCallbacks with
@@ -147,10 +147,10 @@ module ApiTests =
 
   let test_server_should_replicate_state_machine_commands_to_client =
     testCase "should replicate state machine commands to client" <| fun _ ->
-      either {
+      result {
         let store = Store(mkState ())
 
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         use! server = ApiServer.create mem {
           new IApiServerCallbacks with
@@ -190,7 +190,6 @@ module ApiTests =
           AddCue     (mkCue ())
           AddPin     (mkPin ())
           AddCueList (mkCueList ())
-          AddMember  (mkMember ())
           AddUser    (mkUser ())
         ]
 
@@ -231,14 +230,14 @@ module ApiTests =
 
   let test_client_should_replicate_state_machine_commands_to_server =
     testCase "client should replicate state machine commands to server" <| fun _ ->
-      either {
+      result {
         use clientRegistered = new WaitEvent()
         use clientSnapshot = new WaitEvent()
         use clientUpdate = new WaitEvent()
 
         let store = Store(mkState ())
 
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         let srvr : DiscoServer =
           { Port = mem.ApiPort
@@ -317,7 +316,7 @@ module ApiTests =
         expect "Server should have one cuelist" 1 len store.State.CueLists
         expect "Client should have one cuelist" 1 len client.State.CueLists
 
-        client.UpdatePin (Pin.setSlice (BoolSlice(index 0, false, false)) pin)
+        client.UpdatePin (Pin.setSlice (BoolSlice(0<index>, false, false)) pin)
 
         do! waitFor "clientUpdate" clientUpdate
 
@@ -354,9 +353,9 @@ module ApiTests =
 
   let test_server_should_dispose_properly =
     testCase "server should dispose properly" <| fun _ ->
-      either {
+      result {
         let store = Store(mkState ())
-        let mem = Member.create (DiscoId.Create())
+        let mem = ClusterMember.create (DiscoId.Create())
 
         use! server = ApiServer.create mem {
           new IApiServerCallbacks with
@@ -368,8 +367,9 @@ module ApiTests =
 
   let test_client_should_dispose_properly =
     testCase "client should dispose properly" <| fun _ ->
-      either {
-        let mem = Member.create (DiscoId.Create())
+      result {
+        let machine = MachineConfig.create "127.0.0.1" None
+        let mem = Machine.toClusterMember machine
 
         let srvr : DiscoServer =
           { Port = mem.ApiPort

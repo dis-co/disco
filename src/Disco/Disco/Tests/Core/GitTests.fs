@@ -23,20 +23,20 @@ module GitTests =
     let tmpdir = mkTmpDir ()
 
     let mem =
-      machine.MachineId
-      |> Member.create
-      |> Member.setGitPort (port p)
+      machine
+      |> Machine.toClusterMember
+      |> ClusterMember.setGitPort (port p)
 
     let config =
       machine
       |> Config.create
-      |> Config.setMembers (Map.ofArray [| (mem.Id,mem) |])
+      |> Config.setMembers (Map.ofArray [| (mem.Id, mem) |])
       |> Config.setLogLevel Debug
 
     let project =
       let p =
-        Project.create (Project.ofFilePath tmpdir) "Test Project" machine
-        |> Either.get
+        Project.create tmpdir "Test Project" machine
+        |> Result.get
       in { p with Config = config }
 
     machine, tmpdir, project, mem, project
@@ -88,7 +88,7 @@ module GitTests =
 
   let test_server_startup =
     testCase "Server startup" <| fun _ ->
-      either {
+      result {
         let uuid, tmpdir, project, mem, path =
           mkEnvironment 10000us
 
@@ -101,7 +101,7 @@ module GitTests =
 
   let test_server_startup_should_error_on_eaddrinuse =
     testCase "Server should fail on EADDRINUSE" <| fun _ ->
-      either {
+      result {
         let uuid, tmpdir, project, mem, path =
           mkEnvironment 10001us
 
@@ -121,8 +121,8 @@ module GitTests =
 
         use gitserver2 = GitServer.create mem path
         do! match gitserver2.Start() with
-            | Right ()   -> Left (Other("test","Should have failed to start"))
-            | Left error -> Right ()
+            | Ok ()   -> Error (Other("test","Should have failed to start"))
+            | Error error -> Ok ()
 
         expect "Should not be runnning" true Service.isStopped gitserver2.Status
       }
@@ -130,7 +130,7 @@ module GitTests =
 
   let test_server_availability =
     testCase "Server availability" <| fun _ ->
-      either {
+      result {
         let port = 10002us
         let started = new WaitEvent()
 
@@ -153,12 +153,11 @@ module GitTests =
         let target = mkTmpDir ()
 
         let repo =
-          mem
-          |> Uri.gitUri path.Name
+          Uri.gitUri path.Name mem.IpAddress mem.GitPort
           |> unwrap
           |> Git.Repo.clone target
 
-        expect "Should have successfully clone project" true Either.isSuccess repo
+        expect "Should have successfully clone project" true Result.isSuccess repo
       }
       |> noError
 

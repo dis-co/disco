@@ -41,4 +41,5 @@ module DiscoServiceTests =
       PinBecomesDirty.test
       StateShouldBeCleanedOnClientRemove.test
       RemoveMemberShouldSplitCluster.test
+      AddedMemberShouldHaveCorrectState.test
     ] |> testSequenced

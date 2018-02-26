@@ -70,7 +70,7 @@ module AsyncActor =
 
   // ** loop
 
-  let private loop<'a> tag actor (f: AsyncActorTask<'a>) (inbox: MailboxProcessor<'a>) =
+  let private loop<'a> _ actor (f: AsyncActorTask<'a>) (inbox: MailboxProcessor<'a>) =
     let rec _loop () =
       async {
         let! msg = inbox.Receive()
@@ -112,7 +112,7 @@ module ThreadActor =
 
   // ** loop
 
-  let private loop<'a> tag (queue: Queue<'a>) (actor: IActor<'a>) (f: ActorTask<'a>) () =
+  let private loop<'a> _ (queue: Queue<'a>) (actor: IActor<'a>) (f: ActorTask<'a>) () =
     let mutable run = true
     try
       while run do

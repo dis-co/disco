@@ -87,35 +87,35 @@ type DiscoError =
   static member FromFB (fb: ErrorFB) =
     match fb.Type with
     #if FABLE_COMPILER
-    | x when x = ErrorTypeFB.OKFB           -> Right OK
-    | x when x = ErrorTypeFB.OtherFB        -> Right (Other        (fb.Location,fb.Message))
-    | x when x = ErrorTypeFB.GitErrorFB     -> Right (GitError     (fb.Location,fb.Message))
-    | x when x = ErrorTypeFB.ProjectErrorFB -> Right (ProjectError (fb.Location,fb.Message))
-    | x when x = ErrorTypeFB.AssetErrorFB   -> Right (AssetError   (fb.Location,fb.Message))
-    | x when x = ErrorTypeFB.RaftErrorFB    -> Right (RaftError    (fb.Location,fb.Message))
-    | x when x = ErrorTypeFB.ParseErrorFB   -> Right (ParseError   (fb.Location,fb.Message))
-    | x when x = ErrorTypeFB.SocketErrorFB  -> Right (SocketError  (fb.Location,fb.Message))
-    | x when x = ErrorTypeFB.ClientErrorFB  -> Right (ClientError  (fb.Location,fb.Message))
-    | x when x = ErrorTypeFB.IOErrorFB      -> Right (IOError      (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.OKFB           -> Ok OK
+    | x when x = ErrorTypeFB.OtherFB        -> Ok (Other        (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.GitErrorFB     -> Ok (GitError     (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.ProjectErrorFB -> Ok (ProjectError (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.AssetErrorFB   -> Ok (AssetError   (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.RaftErrorFB    -> Ok (RaftError    (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.ParseErrorFB   -> Ok (ParseError   (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.SocketErrorFB  -> Ok (SocketError  (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.ClientErrorFB  -> Ok (ClientError  (fb.Location,fb.Message))
+    | x when x = ErrorTypeFB.IOErrorFB      -> Ok (IOError      (fb.Location,fb.Message))
     | x ->
       ("DiscoError.FromFB", sprintf "Could not parse unknown ErrorTypeFB: %A" x)
       |> ParseError
-      |> Either.fail
+      |> Result.fail
     #else
-    | ErrorTypeFB.OKFB           -> Right OK
-    | ErrorTypeFB.OtherFB        -> Right (Other        (fb.Location,fb.Message))
-    | ErrorTypeFB.GitErrorFB     -> Right (GitError     (fb.Location,fb.Message))
-    | ErrorTypeFB.ProjectErrorFB -> Right (ProjectError (fb.Location,fb.Message))
-    | ErrorTypeFB.AssetErrorFB   -> Right (AssetError   (fb.Location,fb.Message))
-    | ErrorTypeFB.RaftErrorFB    -> Right (RaftError    (fb.Location,fb.Message))
-    | ErrorTypeFB.ParseErrorFB   -> Right (ParseError   (fb.Location,fb.Message))
-    | ErrorTypeFB.SocketErrorFB  -> Right (SocketError  (fb.Location,fb.Message))
-    | ErrorTypeFB.ClientErrorFB  -> Right (ClientError  (fb.Location,fb.Message))
-    | ErrorTypeFB.IOErrorFB      -> Right (IOError      (fb.Location,fb.Message))
+    | ErrorTypeFB.OKFB           -> Ok OK
+    | ErrorTypeFB.OtherFB        -> Ok (Other        (fb.Location,fb.Message))
+    | ErrorTypeFB.GitErrorFB     -> Ok (GitError     (fb.Location,fb.Message))
+    | ErrorTypeFB.ProjectErrorFB -> Ok (ProjectError (fb.Location,fb.Message))
+    | ErrorTypeFB.AssetErrorFB   -> Ok (AssetError   (fb.Location,fb.Message))
+    | ErrorTypeFB.RaftErrorFB    -> Ok (RaftError    (fb.Location,fb.Message))
+    | ErrorTypeFB.ParseErrorFB   -> Ok (ParseError   (fb.Location,fb.Message))
+    | ErrorTypeFB.SocketErrorFB  -> Ok (SocketError  (fb.Location,fb.Message))
+    | ErrorTypeFB.ClientErrorFB  -> Ok (ClientError  (fb.Location,fb.Message))
+    | ErrorTypeFB.IOErrorFB      -> Ok (IOError      (fb.Location,fb.Message))
     | x ->
       ("DiscoError.FromFB", sprintf "Could not parse unknown ErrotTypeFB: %A" x)
       |> ParseError
-      |> Either.fail
+      |> Result.fail
     #endif
 
   // ** ToOffset
@@ -166,6 +166,10 @@ type DiscoError =
     ErrorFB.EndErrorFB(builder)
 
 
+
+// * DiscoResult
+
+type DiscoResult<'t> = Result<'t,DiscoError>
 
 // * Error Module
 [<RequireQualifiedAccess>]
@@ -267,10 +271,10 @@ module Error =
   /// - `a`: value to apply function
   ///
   /// Returns: ^b
-  let inline orExit (f: ^a -> ^b) (a: Either< DiscoError, ^a>) : ^b =
+  let inline orExit (f: ^a -> ^b) (a: DiscoResult< ^a >) : ^b =
     match a with
-    | Right value -> f value
-    | Left  error -> exitWith error
+    | Ok value -> f value
+    | Error  error -> exitWith error
 
   let asGitError     loc err = GitError(loc,err)
   let asProjectError loc err = ProjectError(loc,err)

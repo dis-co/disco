@@ -25,7 +25,7 @@ module EnsureClientUpdateNoLoop =
 
   let test =
     testCase "ensure client slice update does not loop" <| fun _ ->
-      either {
+      result {
         use electionDone = new WaitEvent()
         use appendDone = new WaitEvent()
         use clientRegistered = new WaitEvent()

@@ -171,12 +171,24 @@ module SerializationTests =
     [| for n in 0 .. rand.Next(1,20) do
         yield mkClient() |]
 
-  let mkMember _ = DiscoId.Create() |> Member.create
+  let mkMember _ : ClusterMember =
+    { Id               = DiscoId.Create()
+      HostName         = rndname ()
+      IpAddress        = IPv4Address "127.0.0.1"
+      MulticastAddress = IPv4Address "224.0.0.1"
+      MulticastPort    = rndport()
+      HttpPort         = rndport()
+      RaftPort         = rndport()
+      WsPort           = rndport()
+      GitPort          = rndport()
+      ApiPort          = rndport()
+      State            = Follower
+      Status           = Running }
 
   let mkSession _ =
     { Id = DiscoId.Create()
-    ; IpAddress = IPv4Address "127.0.0.1"
-    ; UserAgent = "Oh my goodness" }
+      IpAddress = IPv4Address "127.0.0.1"
+      UserAgent = "Oh my goodness" }
 
   let mkPinMapping _ =
     { Id = DiscoId.Create()
@@ -199,7 +211,7 @@ module SerializationTests =
       Name = rndname ()
       Locked = false
       Active = false
-      Selected = index (rand.Next(0,1000))
+      Selected = 1<index> * (rand.Next(0,1000))
       RemainingWait = rand.Next(0,1000)
       CueListId = rndopt ()
       CallId = DiscoId.Create()
@@ -267,7 +279,7 @@ module SerializationTests =
       DiscoveredServices = let ser = mkDiscoveredService() in Map.ofArray [| (ser.Id, ser) |] }
 
   let inline check thing =
-    let thong = thing |> Binary.encode |> Binary.decode |> Either.get
+    let thong = thing |> Binary.encode |> Binary.decode |> Result.get
     equals thing thong
 
   let main () =
@@ -314,9 +326,12 @@ module SerializationTests =
             RemoveFsEntry           (DiscoId.Create(), mkFsPath ())
             AddFsTree               <| mkFsTree()
             RemoveFsTree            <| DiscoId.Create()
-            AddMember               <| Member.create (DiscoId.Create())
-            UpdateMember            <| Member.create (DiscoId.Create())
-            RemoveMember            <| Member.create (DiscoId.Create())
+            AddMachine              <| Member.create (DiscoId.Create())
+            UpdateMachine           <| Member.create (DiscoId.Create())
+            RemoveMachine           <| Member.create (DiscoId.Create())
+            AddMember               <| mkMember()
+            UpdateMember            <| mkMember()
+            RemoveMember            <| mkMember()
             AddDiscoveredService    <| mkDiscoveredService ()
             UpdateDiscoveredService <| mkDiscoveredService ()
             RemoveDiscoveredService <| mkDiscoveredService ()
@@ -328,57 +343,56 @@ module SerializationTests =
       finish()
 
     test "should serialize/deserialize cue correctly" <| fun finish ->
-      [| for i in 0 .. 20 do
-          yield  mkCue () |]
+      [| for _ in 0 .. 20 ->  mkCue () |]
       |> Array.iter check
       finish()
 
     testSync "Validate PinWidget Serialization" <| fun () ->
       let widget : PinWidget = mkPinWidget ()
-      let rewidget = widget |> Binary.encode |> Binary.decode |> Either.get
+      let rewidget = widget |> Binary.encode |> Binary.decode |> Result.get
       equals widget rewidget
 
     testSync "Validate PinMapping Serialization" <| fun () ->
       let mapping : PinMapping = mkPinMapping ()
-      let remapping = mapping |> Binary.encode |> Binary.decode |> Either.get
+      let remapping = mapping |> Binary.encode |> Binary.decode |> Result.get
       equals mapping remapping
 
     testSync "Validate Cue Serialization" <| fun () ->
       let cue : Cue = mkCue ()
-      let recue = cue |> Binary.encode |> Binary.decode |> Either.get
+      let recue = cue |> Binary.encode |> Binary.decode |> Result.get
       equals cue recue
 
     testSync "Validate CueReference Serialization" <| fun () ->
       let cueReference : CueReference = mkCueRef ()
-      let recueReference = cueReference |> Binary.encode |> Binary.decode |> Either.get
+      let recueReference = cueReference |> Binary.encode |> Binary.decode |> Result.get
       equals cueReference recueReference
 
     testSync "Validate CueGroup Serialization" <| fun () ->
       let cueGroup : CueGroup = mkCueGroup ()
-      let recueGroup = cueGroup |> Binary.encode |> Binary.decode |> Either.get
+      let recueGroup = cueGroup |> Binary.encode |> Binary.decode |> Result.get
       equals cueGroup recueGroup
 
     test "Validate CueList Serialization" <| fun finish ->
       let cuelist : CueList = mkCueList ()
-      let recuelist = cuelist |> Binary.encode |> Binary.decode |> Either.get
+      let recuelist = cuelist |> Binary.encode |> Binary.decode |> Result.get
       equals cuelist recuelist
       finish()
 
     test "Validate PinGroup Serialization" <| fun finish ->
       let group : PinGroup = mkPinGroup ()
-      let regroup = group |> Binary.encode |> Binary.decode |> Either.get
+      let regroup = group |> Binary.encode |> Binary.decode |> Result.get
       equals group regroup
       finish()
 
     test "Validate Session Serialization" <| fun finish ->
       let session : Session = mkSession ()
-      let resession = session |> Binary.encode |> Binary.decode |> Either.get
+      let resession = session |> Binary.encode |> Binary.decode |> Result.get
       equals session resession
       finish()
 
     test "Validate User Serialization" <| fun finish ->
       let user : User = mkUser ()
-      let reuser = user |> Binary.encode |> Binary.decode |> Either.get
+      let reuser = user |> Binary.encode |> Binary.decode |> Result.get
       equals user reuser
       finish()
 
@@ -422,7 +436,7 @@ module SerializationTests =
     test "Validate DiscoProject Binary Serializaton" <| fun finish ->
       mkProject()
       |> (fun project ->
-          let reproject = project |> Binary.encode |> Binary.decode |> Either.get
+          let reproject = project |> Binary.encode |> Binary.decode |> Result.get
           if project <> reproject then
             printfn "project: %O" project
             printfn "reproject: %O" reproject
@@ -431,50 +445,53 @@ module SerializationTests =
 
     test "Validate StateMachine Serialization" <| fun finish ->
       [ AddCue                  <| mkCue ()
-      ; UpdateCue               <| mkCue ()
-      ; RemoveCue               <| mkCue ()
-      ; AddCueList              <| mkCueList ()
-      ; UpdateCueList           <| mkCueList ()
-      ; RemoveCueList           <| mkCueList ()
-      ; AddCuePlayer            <| mkCuePlayer ()
-      ; UpdateCuePlayer         <| mkCuePlayer ()
-      ; RemoveCuePlayer         <| mkCuePlayer ()
-      ; AddSession              <| mkSession ()
-      ; UpdateSession           <| mkSession ()
-      ; RemoveSession           <| mkSession ()
-      ; AddUser                 <| mkUser ()
-      ; UpdateUser              <| mkUser ()
-      ; RemoveUser              <| mkUser ()
-      ; AddPinGroup             <| mkPinGroup ()
-      ; UpdatePinGroup          <| mkPinGroup ()
-      ; RemovePinGroup          <| mkPinGroup ()
-      ; AddPinMapping           <| mkPinMapping ()
-      ; UpdatePinMapping        <| mkPinMapping ()
-      ; RemovePinMapping        <| mkPinMapping ()
-      ; AddPinWidget            <| mkPinWidget ()
-      ; UpdatePinWidget         <| mkPinWidget ()
-      ; RemovePinWidget         <| mkPinWidget ()
-      ; AddClient               <| mkClient ()
-      ; UpdateSlices            <| mkSlicesMap ()
-      ; UpdateClient            <| mkClient ()
-      ; RemoveClient            <| mkClient ()
-      ; AddPin                  <| mkPin ()
-      ; UpdatePin               <| mkPin ()
-      ; RemovePin               <| mkPin ()
-      ; AddMember               <| Member.create (DiscoId.Create())
-      ; UpdateMember            <| Member.create (DiscoId.Create())
-      ; RemoveMember            <| Member.create (DiscoId.Create())
-      ; AddDiscoveredService    <| mkDiscoveredService ()
-      ; UpdateDiscoveredService <| mkDiscoveredService ()
-      ; RemoveDiscoveredService <| mkDiscoveredService ()
-      ; DataSnapshot            <| mkState ()
-      ; Command AppCommand.Undo
-      ; LogMsg(Logger.create Debug "bla" "ohai")
-      ; SetLogLevel Warn
+        UpdateCue               <| mkCue ()
+        RemoveCue               <| mkCue ()
+        AddCueList              <| mkCueList ()
+        UpdateCueList           <| mkCueList ()
+        RemoveCueList           <| mkCueList ()
+        AddCuePlayer            <| mkCuePlayer ()
+        UpdateCuePlayer         <| mkCuePlayer ()
+        RemoveCuePlayer         <| mkCuePlayer ()
+        AddSession              <| mkSession ()
+        UpdateSession           <| mkSession ()
+        RemoveSession           <| mkSession ()
+        AddUser                 <| mkUser ()
+        UpdateUser              <| mkUser ()
+        RemoveUser              <| mkUser ()
+        AddPinGroup             <| mkPinGroup ()
+        UpdatePinGroup          <| mkPinGroup ()
+        RemovePinGroup          <| mkPinGroup ()
+        AddPinMapping           <| mkPinMapping ()
+        UpdatePinMapping        <| mkPinMapping ()
+        RemovePinMapping        <| mkPinMapping ()
+        AddPinWidget            <| mkPinWidget ()
+        UpdatePinWidget         <| mkPinWidget ()
+        RemovePinWidget         <| mkPinWidget ()
+        AddClient               <| mkClient ()
+        UpdateSlices            <| mkSlicesMap ()
+        UpdateClient            <| mkClient ()
+        RemoveClient            <| mkClient ()
+        AddPin                  <| mkPin ()
+        UpdatePin               <| mkPin ()
+        RemovePin               <| mkPin ()
+        AddMachine              <| Member.create (DiscoId.Create())
+        UpdateMachine           <| Member.create (DiscoId.Create())
+        RemoveMachine           <| Member.create (DiscoId.Create())
+        AddMember               <| mkMember()
+        UpdateMember            <| mkMember()
+        RemoveMember            <| mkMember()
+        AddDiscoveredService    <| mkDiscoveredService ()
+        UpdateDiscoveredService <| mkDiscoveredService ()
+        RemoveDiscoveredService <| mkDiscoveredService ()
+        DataSnapshot            <| mkState ()
+        Command AppCommand.Undo
+        LogMsg(Logger.create Debug "bla" "ohai")
+        SetLogLevel Warn
       ]
       |> List.iter
         (fun ting ->
-          let reting = ting |> Binary.encode |> Binary.decode |> Either.get
+          let reting = ting |> Binary.encode |> Binary.decode |> Result.get
           if ting <> reting then
             printfn "ting: %O" ting
             printfn "reting: %O" reting
@@ -501,7 +518,7 @@ module SerializationTests =
             |> Binary.createBuffer
             |> ErrorFB.GetRootAsErrorFB
             |> DiscoError.FromFB
-            |> Either.get
+            |> Result.get
           equals error reerror)
 
       finish()

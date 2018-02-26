@@ -149,16 +149,10 @@ module rec TcpClient =
 
       member state.Request (request: Request) =
         // this socket is asking something, so we need to track this in pending requests
-        do request.RequestId
-            |> sprintf "sending to %A (id: %A)" request.PeerId
-            |> Logger.debug (tag "Request")
         do pending.TryAdd(request.RequestId, request) |> ignore
         do request |> RequestBuilder.serialize |> sender.Post
 
       member state.Respond (response: Response) =
-        do response.RequestId
-            |> sprintf "sending to %A (id: %A)" response.PeerId
-            |> Logger.debug (tag "Respond")
         do response |> RequestBuilder.serialize |> sender.Post
 
       member state.StartReceiving() =
@@ -200,10 +194,6 @@ module rec TcpClient =
       |> String.format "{0} in socket operation"
       |> Error.asSocketError (tag "onSend")
       |> handleError state
-    else
-      args.BytesTransferred
-      |> String.format "sent {0} bytes"
-      |> Logger.debug (tag "onSend")
 
   // ** sendAsync
 

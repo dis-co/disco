@@ -148,7 +148,7 @@ module CommandLine =
     (machine: DiscoMachine)
     (projectDir: FilePath option)
     (frontend: FilePath option) =
-    either {
+    result {
       let agentRef = ref None
       let post = CommandActions.postCommand agentRef
       let termSupportsColors = Console.isColorTerm()
@@ -158,10 +158,11 @@ module CommandLine =
         Tier = Tier.Service
         UseColors = termSupportsColors
         Level = LogLevel.Debug
+        Fields = LogEventFields.Default
       }
-   
+
       do! Metrics.init machine
-    
+
       use _ = Logger.subscribe Logger.stdout
 
       let! discoService = Disco.create post {
@@ -183,9 +184,9 @@ module CommandLine =
           Commands.Command.LoadProject(name, site)
           |> CommandActions.postCommand agentRef
           |> Async.RunSynchronously
-          |> Either.map ignore
+          |> Result.map ignore
         | None ->
-          Either.succeed ()
+          Result.succeed ()
 
       do vmSetup ()
 
@@ -218,6 +219,6 @@ module CommandLine =
   let help () =
     parser.PrintUsage(header, "disco.exe", true)
     |> flip (printfn "%s\n%s") SubCommand.Doc
-    |> Either.succeed
+    |> Result.succeed
 
 #endif

@@ -118,7 +118,7 @@ module GitServer =
 
   // ** create
 
-  let create (mem: RaftMember) (project: DiscoProject) =
+  let create (mem: ClusterMember) (project: DiscoProject) =
     let mutable status = ServiceStatus.Stopped
     let cts = new CancellationTokenSource()
     let subscriptions = Subscriptions()
@@ -130,7 +130,7 @@ module GitServer =
         member self.Subscribe(callback: DiscoEvent -> unit) =
           Observable.subscribe<DiscoEvent> callback subscriptions
 
-        member self.Start () = either {
+        member self.Start () = result {
             do! Network.ensureIpAddress mem.IpAddress
             do! Network.ensureAvailability mem.IpAddress mem.GitPort
 

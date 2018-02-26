@@ -21,7 +21,7 @@ open System.Collections.Concurrent
 
 // * Channel
 
-type private Channel = AsyncReplyChannel<Either<DiscoError,string>>
+type private Channel = AsyncReplyChannel<DiscoResult<string>>
 
 // * tag
 
@@ -44,18 +44,18 @@ let private serializeJson =
 ///      -XPOST \
 ///      -d '"GetServiceInfo"' \
 ///      http://localhost:7000/api/command
-let getServiceInfo (disco: IDisco): Either<DiscoError,string> =
-  let notLoaded () = null |> serializeJson |> Either.succeed
+let getServiceInfo (disco: IDisco): DiscoResult<string> =
+  let notLoaded () = null |> serializeJson |> Result.succeed
   match disco.DiscoService with
   | Some service ->
     match Config.findMember service.Config disco.Machine.MachineId with
-    | Right mem ->
+    | Ok mem ->
       { webSocket = sprintf "ws://%O:%i" mem.IpAddress mem.WsPort
         version = Build.VERSION
         buildNumber = Build.BUILD_NUMBER }
       |> serializeJson
-      |> Either.succeed
-    | Left _ -> notLoaded()
+      |> Result.succeed
+    | Error _ -> notLoaded()
   | None -> notLoaded()
 
 // * listProjects
@@ -68,34 +68,34 @@ let getServiceInfo (disco: IDisco): Either<DiscoError,string> =
 ///      -d '"ListProjects"' \
 ///      http://localhost:7000/api/command
 ///
-let listProjects (cfg: DiscoMachine): Either<DiscoError,string> =
+let listProjects (cfg: DiscoMachine): DiscoResult<string> =
   cfg.WorkSpace
   |> Directory.getDirectories
   |> Array.choose (fun dir ->
     match DiscoProject.Load(dir, cfg) with
-    | Right project ->
+    | Ok project ->
       project.Name
       |> String.format "Found valid project \"{0}\" in current WorkSpace."
       |> Logger.info (tag "listProjects")
       Some { Name = project.Name; Id = project.Id }
-    | Left _ ->
+    | Error _ ->
       dir
       |> String.format "\"{0}\" does not contain a valid project.yaml"
       |> Logger.info (tag "listProjects")
       None)
   |> serializeJson
-  |> Either.succeed
+  |> Result.succeed
 
 // * buildProject
 
 /// Create a new DiscoProject data structure with given parameters.
 let buildProject (machine: DiscoMachine)
-                  (name: string)
-                  (path: FilePath)
-                  (raftDir: FilePath)
-                  (mem: RaftMember) =
-  either {
-    let! project = Project.create (Project.ofFilePath path) name machine
+                 (name: string)
+                 (path: FilePath)
+                 (raftDir: FilePath)
+                 (mem: ClusterMember) =
+  result {
+    let! project = Project.create path name machine
 
     let site =
         let def = ClusterConfig.Default
@@ -104,7 +104,7 @@ let buildProject (machine: DiscoMachine)
     let updated =
       project
       |> Project.updateDataDir raftDir
-      |> fun p -> Project.updateConfig (Config.addSiteAndSetActive site p.Config) p
+      |> fun p -> Project.setConfig (Config.addSiteAndSetActive site p.Config) p
 
     let! _ = DiscoData.saveWithCommit path User.Admin.Signature updated
 
@@ -119,7 +119,7 @@ let buildProject (machine: DiscoMachine)
 
 /// Given the user (usually the admin user) and Project value, initialize the Raft intermediate
 /// state in the data directory and commit the result to git.
-let initializeRaft (project: DiscoProject) = either {
+let initializeRaft (project: DiscoProject) = result {
     let! raft = createRaft project.Config
     let! _ = saveRaft project.Config raft
     return ()
@@ -127,7 +127,7 @@ let initializeRaft (project: DiscoProject) = either {
 
 // * createProject
 
-let createProject (machine: DiscoMachine) (opts: CreateProjectOptions) = either {
+let createProject (machine: DiscoMachine) (opts: CreateProjectOptions) = result {
     let dir = machine.WorkSpace </> filepath opts.name
     let raftDir = dir </> filepath RAFT_DIRECTORY
 
@@ -135,13 +135,13 @@ let createProject (machine: DiscoMachine) (opts: CreateProjectOptions) = either 
     do!
       if Directory.exists dir
       then rmDir dir
-      else Either.nothing
+      else Result.nothing
 
     do! mkDir dir
     do! mkDir raftDir
 
     let mem =
-      { Member.create(machine.MachineId) with
+      { ClusterMember.create(machine.MachineId) with
           IpAddress = IpAddress.Parse opts.ipAddr
           GitPort   = port opts.gitPort
           WsPort    = port opts.wsPort
@@ -157,13 +157,13 @@ let createProject (machine: DiscoMachine) (opts: CreateProjectOptions) = either 
 // * getProjectSites
 
 let getProjectSites machine projectName =
-  either {
+  result {
     let! path = Project.checkPath machine projectName
     let! (state: State) = Asset.loadWithMachine path machine
     // TODO: Check username and password?
     return
       state.Project.Config.Sites
-      |> Array.map (fun x -> { Name = x.Name; Id = x.Id })
+      |> Map.map (fun id x -> { Name = x.Name; Id = id })
       |> serializeJson
   }
 
@@ -182,7 +182,7 @@ let machineStatus (disco: IDisco) =
   | Some service -> Busy(service.Project.Id, service.Project.Name)
   | None -> MachineStatus.Idle
   |> serializeJson
-  |> Either.succeed
+  |> Result.succeed
 
 // * machineConfig
 
@@ -196,7 +196,7 @@ let machineStatus (disco: IDisco) =
 let machineConfig () =
   MachineConfig.get()
   |> serializeJson
-  |> Either.succeed
+  |> Result.succeed
 
 // * cloneProject
 
@@ -213,7 +213,7 @@ let cloneProject (name: Name) (uri: Url) =
   let target = machine.WorkSpace </> filepath (unwrap name)
   let success = sprintf "Successfully cloned project from: %A" uri
   Git.Repo.clone target (unwrap uri)
-  |> Either.map (konst (serializeJson success))
+  |> Result.map (konst (serializeJson success))
 
 // * pullProject
 
@@ -225,7 +225,7 @@ let cloneProject (name: Name) (uri: Url) =
 ///      -XPOST \
 ///      -d '{"PullProject":["dfb6eff5-e4b8-465d-9ad0-ee58bd508cad","meh","git://192.168.2.106:6000/meh/.git"]}' \
 ///      http://localhost:7000/api/command
-let pullProject (id: string) (name: Name) (uri: Url) = either {
+let pullProject (id: string) (name: Name) (uri: Url) = result {
     let machine = MachineConfig.get()
     let target = machine.WorkSpace </> filepath (unwrap name)
     use! repo = Git.Repo.repository target
@@ -246,7 +246,7 @@ let pullProject (id: string) (name: Name) (uri: Url) = either {
       return!
         "Clonflict while pulling from " + unwrap uri
         |> Error.asGitError "pullProject"
-        |> Either.fail
+        |> Result.fail
     | _ ->
       return
         sprintf "Successfully pulled changes from: %A" url
@@ -272,8 +272,8 @@ let startAgent (cfg: DiscoMachine) (disco: IDisco) =
             dispose disco
             exit 0
           }
-          Right "Disposing service..."
-        | Command.UnloadProject -> disco.UnloadProject() |> Either.map (konst "Project unloaded")
+          Ok "Disposing service..."
+        | Command.UnloadProject -> disco.UnloadProject() |> Result.map (konst "Project unloaded")
         | ListProjects -> listProjects cfg
         | GetServiceInfo -> getServiceInfo disco
         | MachineStatus -> machineStatus disco
@@ -281,7 +281,7 @@ let startAgent (cfg: DiscoMachine) (disco: IDisco) =
         | CreateProject opts -> createProject cfg opts
         | SaveProject ->
           disco.SaveProject()
-          |> Either.map (fun _ -> "Successfully saved project")
+          |> Result.map (fun _ -> "Successfully saved project")
         | CloneProject (name, gitUri) -> cloneProject name gitUri
         | PullProject (id, name, gitUri) -> pullProject id name gitUri
         | LoadProject(projectName, Some { Id = siteId; Name = name }) ->
@@ -290,14 +290,14 @@ let startAgent (cfg: DiscoMachine) (disco: IDisco) =
             Measure.name Constants.ADMIN_USER_NAME,
             Measure.password Constants.ADMIN_DEFAULT_PASSWORD,
             Some (name, siteId))
-          |> Either.map (fun _ -> "Loaded project " + unwrap projectName)
+          |> Result.map (fun _ -> "Loaded project " + unwrap projectName)
         | LoadProject(projectName, _) ->
           disco.LoadProject(
             projectName,
             Measure.name Constants.ADMIN_USER_NAME,
             Measure.password Constants.ADMIN_DEFAULT_PASSWORD,
             None)
-          |> Either.map (fun _ -> "Loaded project " + unwrap projectName)
+          |> Result.map (fun _ -> "Loaded project " + unwrap projectName)
         | GetProjectSites projectName -> getProjectSites cfg projectName
 
       replyChannel.Reply res
@@ -310,7 +310,7 @@ let startAgent (cfg: DiscoMachine) (disco: IDisco) =
 
 let postCommand (agent: (MailboxProcessor<Command*Channel> option) ref) (cmd: Command) =
   let err msg =
-    Error.asOther (tag "postCommand") msg |> Either.fail
+    Error.asOther (tag "postCommand") msg |> Result.fail
   match !agent with
   | Some agent ->
     async {

@@ -39,16 +39,16 @@ type Platform =
   static member FromFB(fb: PlatformFB) =
     match fb with
     #if FABLE_COMPILER
-    | x when x = PlatformFB.WindowsFB -> Right Windows
-    | x when x = PlatformFB.UnixFB -> Right Unix
+    | x when x = PlatformFB.WindowsFB -> Ok Windows
+    | x when x = PlatformFB.UnixFB -> Ok Unix
     #else
-    | PlatformFB.WindowsFB -> Right Windows
-    | PlatformFB.UnixFB -> Right Unix
+    | PlatformFB.WindowsFB -> Ok Windows
+    | PlatformFB.UnixFB -> Ok Unix
     #endif
     | other ->
       string other + " is not a recognized platform identifier"
       |> Error.asParseError "Platform.FromFB"
-      |> Either.fail
+      |> Result.fail
 
 // * Platform module
 

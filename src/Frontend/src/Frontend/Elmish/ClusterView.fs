@@ -27,8 +27,8 @@ let activeConfig dispatch state =
   let config = state.Project.Config
   let current = state.Project.Config.Machine
   let members =
-    config.ActiveSite |> Option.bind (fun activeSite ->
-      config.Sites |> Seq.tryFind (fun site -> site.Id = activeSite))
+    config.ActiveSite
+    |> Option.bind (flip Map.tryFind config.Sites)
     |> Option.map (fun site -> site.Members)
     |> Option.defaultValue Map.empty
   table [Class "disco-table"] [
@@ -91,8 +91,12 @@ let activeConfig dispatch state =
               OnClick (fun ev ->
                 ev.stopPropagation()
                 match Config.findMember config kv.Key with
-                | Right mem -> RemoveMember mem |> ClientContext.Singleton.Post
-                | Left error -> printfn "Cannot find member in config: %O" error)
+                | Ok mem ->
+                  mem
+                  |> ClusterMember.toRaftMember
+                  |> RemoveMachine
+                  |> ClientContext.Singleton.Post
+                | Error error -> printfn "Cannot find member in config: %O" error)
             ] []
           ]
         ]

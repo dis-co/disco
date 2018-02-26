@@ -46,7 +46,7 @@ type PinMappingYaml() =
     yml
 
   member yml.ToPinMapping() =
-    either {
+    result {
       let! id = DiscoId.TryParse yml.Id
       let! source = DiscoId.TryParse yml.Source
       return {
@@ -86,7 +86,7 @@ type PinMapping =
   // ** FromFB
 
   static member FromFB (fb: PinMappingFB) =
-    either {
+    result {
       try
         let! id = Id.decodeId fb
         let! source = Id.decodeSource fb
@@ -103,7 +103,7 @@ type PinMapping =
         return!
           exn.Message
           |> Error.asParseError "PinMapping.FromFB"
-          |> Either.fail
+          |> Result.fail
     }
 
   // ** ToOffset
@@ -128,7 +128,7 @@ type PinMapping =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte[]) : Either<DiscoError,PinMapping> =
+  static member FromBytes (bytes: byte[]) : DiscoResult<PinMapping> =
     Binary.createBuffer bytes
     |> PinMappingFB.GetRootAsPinMappingFB
     |> PinMapping.FromFB
@@ -143,12 +143,12 @@ type PinMapping =
 
   #if !FABLE_COMPILER && !DISCO_NODES
 
-  static member Load(path: FilePath) : Either<DiscoError, PinMapping> =
+  static member Load(path: FilePath) : DiscoResult<PinMapping> =
     DiscoData.load path
 
   // ** LoadAll
 
-  static member LoadAll(basePath: FilePath) : Either<DiscoError, PinMapping array> =
+  static member LoadAll(basePath: FilePath) : DiscoResult<PinMapping array> =
     basePath </> filepath Constants.PINMAPPING_DIR
     |> DiscoData.loadAll
 

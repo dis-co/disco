@@ -118,11 +118,11 @@ let startActor(state, client: IApiClient, clientId, print: string->unit) =
   // Subscribe to API client events
   apiobs <- client.Subscribe(DiscoEvent >> actor.Post) |> Some
   match client.Start() with
-  | Right () ->
+  | Ok () ->
     Logger.info "startClient" "Successfully started Unity ApiClient"
     print(sprintf "Successfully started Disco Client (status %A)" client.Status)
     actor
-  | Left error ->
+  | Error error ->
     let msg = string error
     Logger.err "startClient" msg
     print ("Couldn't start Disco Client: " + msg)

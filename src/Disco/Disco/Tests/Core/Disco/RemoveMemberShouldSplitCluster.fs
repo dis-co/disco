@@ -25,12 +25,11 @@ module RemoveMemberShouldSplitCluster =
 
   let test =
     testCase "ensure follower forwards fstree to leader" <| fun _ ->
-      either {
+      result {
         use electionDone = new WaitEvent()
         use appendDone = new WaitEvent()
         use pushDone = new WaitEvent()
         use removeDone = new WaitEvent()
-        use updateDone = new WaitEvent()
 
         let! (project, zipped) = mkCluster 2
 
@@ -38,7 +37,6 @@ module RemoveMemberShouldSplitCluster =
           | DiscoEvent.GitPush _                           -> pushDone.Set()
           | DiscoEvent.StateChanged(oldst, Leader)         -> electionDone.Set()
           | DiscoEvent.Append(Origin.Service, AddFsTree _) -> appendDone.Set()
-          | DiscoEvent.Append(_, UpdateProject p)          -> updateDone.Set()
           | DiscoEvent.ConfigurationDone _                 -> removeDone.Set()
           | ev -> () // printfn "ev: %A" ev
 
@@ -101,16 +99,13 @@ module RemoveMemberShouldSplitCluster =
           | false, false -> failwith "no leader"
           | true, true -> failwith "two leaders!!"
 
-        do leader.RemoveMember otherId
+        do leader.RemoveMachine otherId
 
         do! waitFor "removeDone" removeDone /// remove done on first service
         do! waitFor "removeDone" removeDone /// remove done on other service
 
         Expect.equal (Map.count service1.RaftServer.Raft.Peers) 1 "Should only have one peer"
         Expect.equal (Map.count service2.RaftServer.Raft.Peers) 1 "Should only have one peer"
-
-        do! waitFor "update project" updateDone
-        do! waitFor "update project" updateDone
 
         let activeSite =
           leader.State

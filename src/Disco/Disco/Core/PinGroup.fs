@@ -54,18 +54,18 @@ type PinGroupYaml() =
     yml
 
   member yml.ToPinGroup() =
-    either {
+    result {
       let! id = DiscoId.TryParse yml.Id
       let! client = DiscoId.TryParse yml.ClientId
 
       let! pins =
         Array.fold
-          (fun (m: Either<DiscoError,Map<PinId,Pin>>) pinyml -> either {
+          (fun (m: DiscoResult<Map<PinId,Pin>>) pinyml -> result {
             let! pins = m
             let! (pin : Pin) = Yaml.fromYaml pinyml
             return Map.add pin.Id pin pins
           })
-          (Right Map.empty)
+          (Ok Map.empty)
           yml.Pins
 
       let path =
@@ -75,11 +75,11 @@ type PinGroupYaml() =
 
       let! refersTo =
         if isNull yml.RefersTo then
-          Either.succeed None
+          Result.succeed None
         else
           yml.RefersTo
           |> Yaml.fromYaml
-          |> Either.map Some
+          |> Result.map Some
 
       return {
         Id = id
@@ -111,11 +111,11 @@ type ReferencedValueYaml() =
 
   member yml.ToReferencedValue() =
     match yml.Type.ToLowerInvariant() with
-    | "player" -> either {
+    | "player" -> result {
         let! id = DiscoId.TryParse yml.Id
         return ReferencedValue.Player id
       }
-    | "widget" -> either {
+    | "widget" -> result {
         let! id = DiscoId.TryParse yml.Id
         return ReferencedValue.Widget id
       }
@@ -123,7 +123,7 @@ type ReferencedValueYaml() =
       other
       |> String.format "Could not parse ReferencedValue type: {0}"
       |> Error.asParseError "ReferencedValueYaml.ToReferencedValue"
-      |> Either.fail
+      |> Result.fail
 
 #endif
 
@@ -192,22 +192,22 @@ type ReferencedValue =
   static member FromFB (fb: ReferencedValueFB) =
     #if FABLE_COMPILER
     match fb.Type with
-    | x when x = ReferencedValueTypeFB.PlayerFB -> Id.decodeId fb |> Either.map Player
-    | x when x = ReferencedValueTypeFB.WidgetFB -> Id.decodeId fb |> Either.map Widget
+    | x when x = ReferencedValueTypeFB.PlayerFB -> Id.decodeId fb |> Result.map Player
+    | x when x = ReferencedValueTypeFB.WidgetFB -> Id.decodeId fb |> Result.map Widget
     | x ->
       x
       |> String.format "Could not parse unknown ReferencedValueTypeFB {0}"
       |> Error.asParseError "ReferencedValue.FromFB"
-      |> Either.fail
+      |> Result.fail
     #else
     match fb.Type with
-    | ReferencedValueTypeFB.PlayerFB -> Id.decodeId fb |> Either.map Player
-    | ReferencedValueTypeFB.WidgetFB -> Id.decodeId fb |> Either.map Widget
+    | ReferencedValueTypeFB.PlayerFB -> Id.decodeId fb |> Result.map Player
+    | ReferencedValueTypeFB.WidgetFB -> Id.decodeId fb |> Result.map Widget
     | other ->
       other
       |> String.format "Could not parse unknown ReferencedValueTypeFB {0}"
       |> Error.asParseError "ReferencedValue.FromFB"
-      |> Either.fail
+      |> Result.fail
     #endif
 
   // ** ToOffset
@@ -228,7 +228,7 @@ type ReferencedValue =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte[]) : Either<DiscoError,ReferencedValue> =
+  static member FromBytes (bytes: byte[]) : DiscoResult<ReferencedValue> =
     Binary.createBuffer bytes
     |> ReferencedValueFB.GetRootAsReferencedValueFB
     |> ReferencedValue.FromFB
@@ -319,11 +319,11 @@ type PinGroup =
   //                           |___/
 
   static member FromFB (fb: PinGroupFB) =
-    either {
+    result {
       let! pins =
         let arr = Array.zeroCreate fb.PinsLength
         Array.fold
-          (fun (m: Either<DiscoError,int * Map<PinId,Pin>>) _ -> either {
+          (fun (m: DiscoResult<int * Map<PinId,Pin>>) _ -> result {
               let! (i, pins) = m
 
               #if FABLE_COMPILER
@@ -337,31 +337,31 @@ type PinGroup =
                 else
                   "Could not parse empty PinFB"
                   |> Error.asParseError "PinGroup.FromFB"
-                  |> Either.fail
+                  |> Result.fail
               #endif
 
               return (i + 1, Map.add pin.Id pin pins)
             })
-          (Right (0, Map.empty))
+          (Ok (0, Map.empty))
           arr
-        |> Either.map snd
+        |> Result.map snd
 
       let! refersTo =
         #if FABLE_COMPILER
         if isNull fb.RefersTo then
-          Either.succeed None
+          Result.succeed None
         else
           fb.RefersTo
           |> ReferencedValue.FromFB
-          |> Either.map Some
+          |> Result.map Some
         #else
         let refish = fb.RefersTo
         if refish.HasValue then
           let value = refish.Value
           ReferencedValue.FromFB value
-          |> Either.map Some
+          |> Result.map Some
         else
-          Either.succeed None
+          Result.succeed None
         #endif
 
       let path =
@@ -410,7 +410,7 @@ type PinGroup =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte[]) : Either<DiscoError,PinGroup> =
+  static member FromBytes (bytes: byte[]) : DiscoResult<PinGroup> =
     Binary.createBuffer bytes
     |> PinGroupFB.GetRootAsPinGroupFB
     |> PinGroup.FromFB
@@ -430,12 +430,12 @@ type PinGroup =
 
   #if !FABLE_COMPILER && !DISCO_NODES
 
-  static member Load(path: FilePath) : Either<DiscoError, PinGroup> =
+  static member Load(path: FilePath) : DiscoResult<PinGroup> =
     DiscoData.load path
 
   // ** LoadAll
 
-  static member LoadAll(basePath: FilePath) : Either<DiscoError, PinGroup array> =
+  static member LoadAll(basePath: FilePath) : DiscoResult<PinGroup array> =
     basePath </> filepath Constants.PINGROUP_DIR
     |> DiscoData.loadAll
 
@@ -527,7 +527,7 @@ module PinGroup =
       group
       |> persistedPins
       |> DiscoData.save basePath
-    else Either.succeed ()
+    else Result.succeed ()
 
   #endif
 
@@ -801,7 +801,7 @@ type PinGroupMap =
   static member FromFB(fb: PinGroupMapFB) =
     [ 0 .. fb.GroupsLength - 1 ]
     |> List.fold
-      (fun (m: Either<DiscoError,PinGroupMap>) idx -> either {
+      (fun (m: DiscoResult<PinGroupMap>) idx -> result {
           let! current = m
           let! parsed =
             #if FABLE_COMPILER
@@ -815,12 +815,12 @@ type PinGroupMap =
             else
               "Could not parse empty PinGroup value"
               |> Error.asParseError "PinGroupMap.FromFB"
-              |> Either.fail
+              |> Result.fail
             #endif
           return PinGroupMap.add parsed current
 
         })
-      (Right PinGroupMap.empty)
+      (Ok PinGroupMap.empty)
 
   // ** ToBytes
 
@@ -828,7 +828,7 @@ type PinGroupMap =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte[]) : Either<DiscoError,PinGroupMap> =
+  static member FromBytes (bytes: byte[]) : DiscoResult<PinGroupMap> =
     Binary.createBuffer bytes
     |> PinGroupMapFB.GetRootAsPinGroupMapFB
     |> PinGroupMap.FromFB
@@ -837,8 +837,8 @@ type PinGroupMap =
 
   #if !FABLE_COMPILER && !DISCO_NODES
 
-  static member Load(path: FilePath) : Either<DiscoError, PinGroupMap> =
-    either {
+  static member Load(path: FilePath) : DiscoResult<PinGroupMap> =
+    result {
       let! groups = Asset.loadAll path
       return PinGroupMap.ofArray groups
     }
@@ -847,12 +847,12 @@ type PinGroupMap =
 
   member map.Save (basePath: FilePath) =
     Map.fold
-      (fun (m: Either<DiscoError,unit>) _ groups ->
-        either {
+      (fun (m: DiscoResult<unit>) _ groups ->
+        result {
           let! _ = m
-          return! Map.fold (Asset.saveMap basePath) Either.nothing groups
+          return! Map.fold (Asset.saveMap basePath) Result.nothing groups
         })
-      Either.nothing
+      Result.nothing
       map.Groups
 
   #endif

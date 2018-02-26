@@ -26,15 +26,15 @@ module ProjectTests =
   //
   let loadSaveTest =
     testCase "Save/Load Project should render equal project values" <| fun _ ->
-      either {
+      result {
         let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
 
-        let result = Asset.loadWithMachine (Project.toFilePath project.Path) machine
+        let result = Asset.loadWithMachine project.Path machine
 
         do! expectE "Projects should be equal" true ((=) project) result
       }
@@ -49,13 +49,13 @@ module ProjectTests =
 
   let dirtyTest =
     testCase "Project create should render clean repo" <| fun _ ->
-      either {
+      result {
         let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
         let! repo = Project.repository project
         let! status = Git.Repo.status repo
         let untracked = status.Untracked.Count()
@@ -73,20 +73,20 @@ module ProjectTests =
 
   let relpathTest =
     testCase "Project create should only work on absolute paths" <| fun _ ->
-      either {
+      result {
         let machine = MachineConfig.create "127.0.0.1" None
 
         let path = Path.getRandomFileName()
 
-        let result = Project.create (Project.ofFilePath path) (unwrap path) machine
+        let result = Project.create path (unwrap path) machine
 
-        expect "Create should have failed" false Either.isSuccess result
+        expect "Create should have failed" false Result.isSuccess result
 
         return!
           match result with
-          | Left (GitError("Git.Repo.stage",_)) -> Right ()
-          | Left other  -> Left other
-          | Right other -> Left (Other("relpathTest", sprintf "Should have failed: %A" other))
+          | Error (GitError("Git.Repo.stage",_)) -> Ok ()
+          | Error other  -> Error other
+          | Ok other -> Error (Other("relpathTest", sprintf "Should have failed: %A" other))
       }
       |> noError
 
@@ -98,7 +98,7 @@ module ProjectTests =
   //
   let testCustomizedCfg =
     testCase "Save/Load of Project with customized configs" <| fun _ ->
-      either {
+      result {
         let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
@@ -117,45 +117,53 @@ module ProjectTests =
                Version    = version "1.2.34.4"
                Required   = false }]
 
-        let memA =
+        let raftMemA =
           { Member.create (DiscoId.Create()) with
-              HostName  = name "moomoo"
               IpAddress = IpAddress.Parse "182.123.18.2"
               Status    = Running
               RaftPort  = port 1234us }
 
-        let memB =
+        let raftMemB =
           { Member.create (DiscoId.Create()) with
-              HostName  = name "taataaa"
               IpAddress = IpAddress.Parse "118.223.8.12"
               Status    = Joining
               RaftPort  = port 1234us }
 
+        let clusterMemA =
+          { Machine.toClusterMember machine with
+              Id = raftMemA.Id }
+
+        let clusterMemB =
+          { Machine.toClusterMember machine with
+              Id = raftMemB.Id }
+
         let groupA: HostGroup =
           { Name    = name "Group A"
-          ; Members = [| DiscoId.Create() |]
-          }
+            Members = [| DiscoId.Create() |] }
 
         let groupB: HostGroup =
           { Name    = name "Group B"
-          ; Members = [| DiscoId.Create() |]
-          }
+            Members = [| DiscoId.Create() |] }
 
         let cluster =
           { Id = DiscoId.Create()
             Name   = name "A mighty cool cluster"
-            Members = Map.ofArray [| (memA.Id,memA); (memB.Id,memB) |]
+            Members =
+              Map.ofArray [|
+                (raftMemA.Id, clusterMemA)
+                (raftMemB.Id, clusterMemB)
+              |]
             Groups = [| groupA; groupB |] }
 
-        let! project = Project.create (Project.ofFilePath path) (unwrap fn) machine
+        let! project = Project.create path (unwrap fn) machine
 
         let updated =
-          Project.updateConfig
+          Project.setConfig
             { project.Config with
                 Raft       = engineCfg
                 Clients    = clientCfg
                 ActiveSite = Some cluster.Id
-                Sites      = [| cluster |] }
+                Sites      = Map [ cluster.Id,cluster ] }
             project
 
         let! commit = DiscoData.saveWithCommit path User.Admin.Signature updated
@@ -205,12 +213,12 @@ module ProjectTests =
   //
   let saveInitsGit =
     testCase "Saved Project should be a git repository with yaml file." <| fun _ ->
-      either {
+      result {
         let machine = MachineConfig.create "127.0.0.1" None
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! _ = Project.create (Project.ofFilePath path) name machine
+        let! _ = Project.create path name machine
 
         let loaded = Asset.loadWithMachine path machine
 
@@ -223,23 +231,23 @@ module ProjectTests =
 
         let getRepo =
           Project.repository
-          >> Either.isSuccess
+          >> Result.isSuccess
 
         do! expectE "Projects should have repo" true getRepo loaded
 
         let checkDirty (project: DiscoProject) =
           project
           |> Project.repository
-          |> Either.bind Git.Repo.isDirty
-          |> Either.get
+          |> Result.bind Git.Repo.isDirty
+          |> Result.get
 
         do! expectE "Projects should not be dirty" false checkDirty loaded
 
         let commitCount (project: DiscoProject) =
           project
           |> Project.repository
-          |> Either.map Git.Repo.commitCount
-          |> Either.get
+          |> Result.map Git.Repo.commitCount
+          |> Result.get
 
         do! expectE "Projects should have initial commit" 1  commitCount loaded
       }
@@ -253,7 +261,7 @@ module ProjectTests =
   //
   let savesMultipleCommits =
     testCase "Saving project should contain multiple commits" <| fun _ ->
-      either {
+      result {
         let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
@@ -261,7 +269,7 @@ module ProjectTests =
 
         let author1 = "karsten"
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
 
         let updated = { project with Author = Some author1 }
         let! commit = DiscoData.saveWithCommit path User.Admin.Signature updated
@@ -299,15 +307,15 @@ module ProjectTests =
 
   let upToDatePath =
     testCase "Saving project should always contain an up-to-date path" <| fun _ ->
-      either {
+      result {
         let machine = MachineConfig.create "127.0.0.1" None
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
         let! (loaded: DiscoProject) = Asset.loadWithMachine path machine
 
-        expect "Project should have correct path" path Project.toFilePath loaded.Path
+        expect "Project should have correct path" path id loaded.Path
 
         let newpath = tmpPath()
 
@@ -315,19 +323,19 @@ module ProjectTests =
 
         let! (loaded: DiscoProject) = Asset.loadWithMachine newpath machine
 
-        expect "Project should have correct path" newpath Project.toFilePath loaded.Path
+        expect "Project should have correct path" newpath id loaded.Path
       }
       |> noError
 
   let saveAsset =
     testCase "Should save an asset in new commit" <| fun _ ->
-      either {
+      result {
         let machine = MachineConfig.create "127.0.0.1" None
 
         let path = tmpPath()
         let fn = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) fn machine
+        let! project = Project.create path fn machine
 
         let user =
           { Id = DiscoId.Create()
@@ -343,7 +351,7 @@ module ProjectTests =
         let! (commit, project) = Project.saveAsset user User.Admin project
 
         let! (loaded: User) =
-          let userpath = Project.toFilePath project.Path </> Asset.path user
+          let userpath = project.Path </> Asset.path user
           File.readText(userpath)
           |> Yaml.decode
 
@@ -353,15 +361,15 @@ module ProjectTests =
 
   let createDefaultUser =
     testCase "Should create a default admin user" <| fun _ ->
-      either {
+      result {
         let machine = MachineConfig.create "127.0.0.1" None
         let path = tmpPath()
         let name = Path.getFileName path |> unwrap
 
-        let! project = Project.create (Project.ofFilePath path) name machine
+        let! project = Project.create path name machine
 
         let! (admin: User) =
-          Project.toFilePath project.Path </> Asset.path User.Admin
+          project.Path </> Asset.path User.Admin
           |> File.readText
           |> Yaml.decode
 

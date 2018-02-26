@@ -70,11 +70,11 @@ let private updateCueList (player: CuePlayer option) (str:string) =
   | None -> ()
   | Some player ->
     str |> DiscoId.TryParse |> function
-      | Either.Left _ ->
+      | Error _ ->
         CuePlayer.unsetCueList player
         |> UpdateCuePlayer
         |> ClientContext.Singleton.Post
-      | Either.Right id ->
+      | Ok id ->
         CuePlayer.setCueList id player
         |> UpdateCuePlayer
         |> ClientContext.Singleton.Post

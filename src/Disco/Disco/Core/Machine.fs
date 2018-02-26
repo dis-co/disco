@@ -165,7 +165,7 @@ type DiscoMachine =
   // ** FromFB
 
   static member FromFB (fb: DiscoMachineFB) =
-    either {
+    result {
       let! machineId = Id.decodeMachineId fb
       let! ip = IpAddress.TryParse fb.BindAddress
       let! metricsHost = IpAddress.TryParse fb.MetricsHost
@@ -246,7 +246,7 @@ type DiscoMachineYaml () =
   [<DefaultValue>] val mutable AssetFilter:      string
   [<DefaultValue>] val mutable LogDirectory:     string
   [<DefaultValue>] val mutable CollectMetrics:   bool
-  
+
   [<DefaultValue>] val mutable MetricsHost:      string
 
   [<DefaultValue>] val mutable MetricsPort:      uint16
@@ -272,8 +272,8 @@ type DiscoMachineYaml () =
     yml.LogDirectory     <- unwrap cfg.LogDirectory
     yml.CollectMetrics   <- cfg.CollectMetrics
     yml.MetricsHost      <- string cfg.MetricsHost
-    yml.MetricsPort      <- unwrap cfg.MetricsPort  
-    yml.MetricsDb        <- cfg.MetricsDb 
+    yml.MetricsPort      <- unwrap cfg.MetricsPort
+    yml.MetricsDb        <- cfg.MetricsDb
     yml.BindAddress      <- string cfg.BindAddress
     yml.MulticastAddress <- string cfg.MulticastAddress
     yml.MulticastPort    <- unwrap cfg.MulticastPort
@@ -334,28 +334,28 @@ module MachineStatus =
     static member FromFB(fb: MachineStatusFB) =
       #if FABLE_COMPILER
       match fb.Status with
-      | x when x = MachineStatusEnumFB.IdleFB -> Either.succeed Idle
+      | x when x = MachineStatusEnumFB.IdleFB -> Result.succeed Idle
       | x when x = MachineStatusEnumFB.BusyFB ->
-        either {
+        result {
           let! id = Id.decodeProjectId fb
           return Busy (id, name fb.ProjectName)
         }
       | other ->
         sprintf "Unknown Machine Status: %d" other
         |> Error.asParseError "MachineStatus.FromOffset"
-        |> Either.fail
+        |> Result.fail
       #else
       match fb.Status with
-      | MachineStatusEnumFB.IdleFB -> Either.succeed Idle
+      | MachineStatusEnumFB.IdleFB -> Result.succeed Idle
       | MachineStatusEnumFB.BusyFB ->
-        either {
+        result {
           let! id = Id.decodeProjectId fb
           return Busy (id, name fb.ProjectName)
         }
       | other ->
         sprintf "Unknown Machine Status: %O" other
         |> Error.asParseError "MachineStatus.FromOffset"
-        |> Either.fail
+        |> Result.fail
       #endif
 
     // *** ToBytes
@@ -452,8 +452,8 @@ module MachineConfig =
 
   // ** parse
 
-  let private parse (yml: DiscoMachineYaml) : Either<DiscoError,DiscoMachine> =
-    either {
+  let private parse (yml: DiscoMachineYaml) : DiscoResult<DiscoMachine> =
+    result {
       let! ip = IpAddress.TryParse yml.BindAddress
       let! metricsHost = IpAddress.TryParse yml.MetricsHost
       let! id = DiscoId.TryParse yml.MachineId
@@ -556,7 +556,7 @@ module MachineConfig =
 
   // ** save
 
-  let save (path: FilePath option) (cfg: DiscoMachine) : Either<DiscoError,unit> =
+  let save (path: FilePath option) (cfg: DiscoMachine) : DiscoResult<unit> =
     let serializer = Serializer()
 
     try
@@ -573,12 +573,12 @@ module MachineConfig =
       |> ensureExists
 
       File.WriteAllText(unwrap location, payload)
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         exn.Message
         |> Error.asIOError (tag "save")
-        |> Either.fail
+        |> Result.fail
 
   // ** load
 
@@ -594,16 +594,16 @@ module MachineConfig =
       else
         "could not find machine configuration"
         |> Error.asIOError (tag "load")
-        |> Either.fail
+        |> Result.fail
     with exn ->
       exn.Message
       |> Error.asIOError (tag "load")
-      |> Either.fail
+      |> Result.fail
 
   // ** init
 
   /// Attention: this method must be called only when starting the main process
-  let init getBindIp shiftDefaults (path: FilePath option) : Either<DiscoError,unit> =
+  let init getBindIp shiftDefaults (path: FilePath option) : DiscoResult<unit> =
     let serializer = Serializer()
     try
       let location = getLocation path
@@ -617,11 +617,11 @@ module MachineConfig =
           let bindIp = getBindIp()
           let cfg = create bindIp shiftDefaults
           save path cfg
-          |> Either.map (fun _ -> cfg)
+          |> Result.map (fun _ -> cfg)
 
       match cfg with
-      | Left err -> Either.fail err
-      | Right cfg ->
+      | Error err -> Result.fail err
+      | Ok cfg ->
         if Path.IsPathRooted (unwrap cfg.WorkSpace)
         then singleton <- cfg
         else
@@ -631,12 +631,12 @@ module MachineConfig =
             |> filepath
             </> cfg.WorkSpace
           singleton <- { cfg with WorkSpace = wp }
-        Either.succeed()
+        Result.succeed()
     with
       | exn ->
         exn.Message
         |> Error.asIOError (tag "load")
-        |> Either.fail
+        |> Result.fail
 
   #endif
 

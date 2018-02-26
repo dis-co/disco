@@ -224,7 +224,7 @@ let project =
       List.map
         (fun (machine: DiscoMachine) ->
           let mem =
-            { Disco.Raft.Member.create machine.MachineId with
+            { ClusterMember.create machine.MachineId with
                 HostName = machine.HostName
                 Status = rndState() }
           (mem.Id, mem))
@@ -244,7 +244,7 @@ let project =
           Clients   = ClientConfig.Default
           Raft      = RaftConfig.Default
           Timing    = TimingConfig.Default
-          Sites     = [| clusterConfig |] }
+          Sites     = Map [ clusterConfig.Id, clusterConfig ] }
     { Id        = DiscoId.Create()
       Name      = name "mockproject"
       Path      = filepath "/Disco/mockproject"

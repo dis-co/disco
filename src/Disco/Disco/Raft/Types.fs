@@ -12,33 +12,28 @@ open System
 open System.Net
 open Disco.Core
 open Disco.Serialization
+open Aether
+open Aether.Operators
 open FlatBuffers
-
-#if !FABLE_COMPILER && !DISCO_NODES
-
-open SharpYaml.Serialization
-
-#endif
 
 // * EntryResponse
 
 /// Response to an AppendEntry request
-///
-/// ## Constructor:
-///  - `Id`    - the generated unique identified for the entry
-///  - `Term`  - the entry's term
-///  - `Index` - the entry's index in the log
+
 type EntryResponse =
-  {  Id    : LogId
-     Term  : Term
-     Index : Index }
+  { Id:    LogId
+    Term:  Term
+    Index: Index }
 
   // ** ToString
+
   override self.ToString() =
     sprintf "Entry added with Id: %A in term: %d at log index: %d"
       (string self.Id)
       self.Term
       self.Index
+
+  // ** ToOffset
 
   member self.ToOffset(builder: FlatBufferBuilder) =
     let id = EntryResponseFB.CreateIdVector(builder,self.Id.ToByteArray())
@@ -48,37 +43,57 @@ type EntryResponse =
     EntryResponseFB.AddIndex(builder, int self.Index)
     EntryResponseFB.EndEntryResponseFB(builder)
 
+  // ** FromFB
+
   static member FromFB(fb: EntryResponseFB) =
-    either {
+    result {
       let! id = Id.decodeId fb
       return {
         Id = id
-        Term = term fb.Term
-        Index = index fb.Index
+        Term = 1<term> * fb.Term
+        Index = 1<index> * fb.Index
       }
     }
 
-// * Entry
+  // ** optics
+
+  static member Id_ =
+    (fun (er: EntryResponse) -> er.Id),
+    (fun id (er: EntryResponse) -> { er with Id = id })
+
+  static member Term_ =
+    (fun (er: EntryResponse) -> er.Term),
+    (fun term (er: EntryResponse) -> { er with Term = term })
+
+  static member Index_ =
+    (fun (er: EntryResponse) -> er.Index),
+    (fun index (er: EntryResponse) -> { er with Index = index })
+
+// * EntryResponse module
 
 [<RequireQualifiedAccess>]
-module Entry =
-  // ** id
-  let inline id    (er : EntryResponse) = er.Id
+module EntryResponse =
 
-  // ** term
-  let inline term  (er : EntryResponse) = er.Term
+  // ** getting
 
-  // ** index
-  let inline index (er : EntryResponse) = er.Index
+  let id = Optic.get EntryResponse.Id_
+  let term = Optic.get EntryResponse.Term_
+  let index = Optic.get EntryResponse.Index_
+
+  // ** setting
+
+  let setId = Optic.set EntryResponse.Id_
+  let setTerm = Optic.set EntryResponse.Term_
+  let setIndex = Optic.set EntryResponse.Index_
+
+  // ** create
+
+  let create term index : EntryResponse =
+    { Id = DiscoId.Create()
+      Term = term
+      Index = index }
 
 // * VoteRequest
-
-// __     __    _       ____                            _
-// \ \   / /__ | |_ ___|  _ \ ___  __ _ _   _  ___  ___| |_
-//  \ \ / / _ \| __/ _ \ |_) / _ \/ _` | | | |/ _ \/ __| __|
-//   \ V / (_) | ||  __/  _ <  __/ (_| | |_| |  __/\__ \ |_
-//    \_/ \___/ \__\___|_| \_\___|\__, |\__,_|\___||___/\__|
-//                                   |_|
 
 /// Request to Vote for a new Leader
 ///
@@ -87,6 +102,7 @@ module Entry =
 ///  - `Candidate`    -  the unique mem id of candidate for leadership
 ///  - `LastLogIndex` -  the index of the candidates last log entry
 ///  - `LastLogTerm`  -  the index of the candidates last log entry
+
 type VoteRequest =
   { Term         : Term
     Candidate    : RaftMember
@@ -94,6 +110,7 @@ type VoteRequest =
     LastLogTerm  : Term }
 
   // ** ToOffset
+
   member self.ToOffset(builder: FlatBufferBuilder) =
     let mem = self.Candidate.ToOffset(builder)
     VoteRequestFB.StartVoteRequestFB(builder)
@@ -104,58 +121,92 @@ type VoteRequest =
     VoteRequestFB.EndVoteRequestFB(builder)
 
   // ** FromFB
-  static member FromFB (fb: VoteRequestFB) : Either<DiscoError, VoteRequest> =
-    either {
+
+  static member FromFB (fb: VoteRequestFB): DiscoResult<VoteRequest> =
+    result {
       let candidate = fb.Candidate
       if candidate.HasValue then
         let! mem = RaftMember.FromFB candidate.Value
-        return { Term         = term fb.Term
+        return { Term         = 1<term> * fb.Term
                  Candidate    = mem
-                 LastLogIndex = index fb.LastLogIndex
-                 LastLogTerm  = term fb.LastLogTerm }
+                 LastLogIndex = 1<index> * fb.LastLogIndex
+                 LastLogTerm  = 1<term> * fb.LastLogTerm }
       else
         return!
           "Could not parse empty MemberFB"
           |> Error.asParseError "VoteRequest.FromFB"
-          |> Either.fail
+          |> Result.fail
     }
 
-// * VoteResponse
+  // ** optics
 
-// __     __    _       ____
-// \ \   / /__ | |_ ___|  _ \ ___  ___ _ __   ___  _ __  ___  ___
-//  \ \ / / _ \| __/ _ \ |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
-//   \ V / (_) | ||  __/  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
-//    \_/ \___/ \__\___|_| \_\___||___/ .__/ \___/|_| |_|___/\___|
-//                                    |_|
+  static member Term_ =
+    (fun (vr:VoteRequest) -> vr.Term),
+    (fun term (vr:VoteRequest) -> { vr with Term = term })
+
+  static member Candidate_ =
+    (fun (vr:VoteRequest) -> vr.Candidate),
+    (fun candidate (vr:VoteRequest) -> { vr with Candidate = candidate })
+
+  static member LastLogIndex_ =
+    (fun (vr:VoteRequest) -> vr.LastLogIndex),
+    (fun lastLogIndex (vr:VoteRequest) -> { vr with LastLogIndex = lastLogIndex })
+
+  static member LastLogTerm_ =
+    (fun (vr:VoteRequest) -> vr.LastLogTerm),
+    (fun lastLogTerm (vr:VoteRequest) -> { vr with LastLogTerm = lastLogTerm })
+
+// * VoteRequest module
+
+module VoteRequest =
+
+  // ** getters
+
+  let term = Optic.get VoteRequest.Term_
+  let candidate = Optic.get VoteRequest.Candidate_
+  let lastLogIndex = Optic.get VoteRequest.LastLogIndex_
+  let lastLogTerm = Optic.get VoteRequest.LastLogTerm_
+
+  // ** setters
+
+  let setTerm = Optic.set VoteRequest.Term_
+  let setCandidate = Optic.set VoteRequest.Candidate_
+  let setLastLogIndex = Optic.set VoteRequest.LastLogIndex_
+  let setLastLogTerm = Optic.set VoteRequest.LastLogIndex_
+
+// * VoteResponse
 
 /// Result of a vote
 ///
 /// ## Result:
 ///  - `Term`    - current term for candidate to apply
 ///  - `Granted` - result of vote
+
 type VoteResponse =
   { Term    : Term
     Granted : bool
     Reason  : DiscoError option }
 
   // ** FromFB
-  static member FromFB (fb: VoteResponseFB) : Either<DiscoError, VoteResponse> =
-    either {
+
+  static member FromFB (fb: VoteResponseFB): DiscoResult<VoteResponse> =
+    result {
       let! reason =
         let reason = fb.Reason
         if reason.HasValue then
           DiscoError.FromFB reason.Value
-          |> Either.map Some
+          |> Result.map Some
         else
-          Right None
-
-      return { Term    = term fb.Term
-               Granted = fb.Granted
-               Reason  = reason }
+          Ok None
+      return {
+        Term    = 1<term> * fb.Term
+        Granted = fb.Granted
+        Reason  = reason
+      }
     }
 
   // ** ToOffset
+
   member self.ToOffset(builder: FlatBufferBuilder) =
     let err = Option.map (fun (r: DiscoError) -> r.ToOffset(builder)) self.Reason
     VoteResponseFB.StartVoteResponseFB(builder)
@@ -166,38 +217,42 @@ type VoteResponse =
     VoteResponseFB.AddGranted(builder, self.Granted)
     VoteResponseFB.EndVoteResponseFB(builder)
 
+  // ** optics
 
-// * module Vote
+  static member Term_ =
+    (fun (vr:VoteResponse) -> vr.Term),
+    (fun term (vr:VoteResponse) -> { vr with Term = term })
+
+  static member Granted_ =
+    (fun (vr:VoteResponse) -> vr.Granted),
+    (fun granted (vr:VoteResponse) -> { vr with Granted = granted })
+
+  static member Reason_ =
+    (fun (vr:VoteResponse) -> vr.Reason),
+    (fun reason (vr:VoteResponse) -> { vr with Reason = reason })
+
+// * VoteResponse module
+
 [<RequireQualifiedAccess>]
-module Vote =
+module VoteResponse =
 
-  // ** term
-  let inline term         (vote : VoteRequest) = vote.Term
+  // ** getters
 
-  // ** candiate
-  let inline candidate    (vote : VoteRequest) = vote.Candidate
+  let term = Optic.get VoteResponse.Term_
+  let granted = Optic.get VoteResponse.Granted_
+  let reason = Optic.get VoteResponse.Reason_
 
-  // ** lastLogIndex
-  let inline lastLogIndex (vote : VoteRequest) = vote.LastLogIndex
+  // ** setters
 
-  // ** lastLogTerm
-  let inline lastLogTerm  (vote : VoteRequest) = vote.LastLogTerm
-
-  // ** granted
-  let inline granted  (vote : VoteResponse) = vote.Granted
+  let setTerm = Optic.set VoteResponse.Term_
+  let setGranted = Optic.set VoteResponse.Granted_
+  let setReason = Optic.set VoteResponse.Reason_
 
   // ** declined
-  let inline declined (vote : VoteResponse) = not vote.Granted
 
+  let declined = granted >> not
 
 // * AppendEntries
-
-//     _                               _ _____       _        _
-//    / \   _ __  _ __   ___ _ __   __| | ____|_ __ | |_ _ __(_) ___  ___
-//   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` |  _| | '_ \| __| '__| |/ _ \/ __|
-//  / ___ \| |_) | |_) |  __/ | | | (_| | |___| | | | |_| |  | |  __/\__ \
-// /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_____|_| |_|\__|_|  |_|\___||___/
-//         |_|   |_|
 
 /// AppendEntries message.
 ///
@@ -210,12 +265,13 @@ module Vote =
 ///  - `PrevLogIdx`  - the index of the log just before the newest entry for the mem who receive this message
 ///  - `PrevLogTerm` - the term of the log just before the newest entry for the mem who receives this message
 ///  - `LeaderCommit`- the index of the entry that has been appended to the majority of the cluster. Entries up to this index will be applied to the FSM
+
 type AppendEntries =
   { Term         : Term
     PrevLogIdx   : Index
     PrevLogTerm  : Term
     LeaderCommit : Index
-    Entries      : RaftLogEntry option }
+    Entries      : LogEntry option }
 
   // ** optics
 
@@ -240,31 +296,33 @@ type AppendEntries =
     (fun entries (ae:AppendEntries) -> { ae with Entries = entries })
 
   // ** FromFB
-  static member FromFB (fb: AppendEntriesFB) : Either<DiscoError,AppendEntries> =
-    either {
+
+  static member FromFB (fb: AppendEntriesFB): DiscoResult<AppendEntries> =
+    result {
       let! entries =
         if fb.EntriesLength = 0 then
-          Either.succeed None
+          Result.succeed None
         else
           let raw = Array.zeroCreate fb.EntriesLength
           for i in 0 .. (fb.EntriesLength - 1) do
             let entry = fb.Entries(i)
             if entry.HasValue then
               raw.[i] <- entry.Value
-          RaftLogEntry.FromFB raw
+          LogEntry.FromFB raw
 
-      return { Term         = term  fb.Term
-               PrevLogIdx   = index fb.PrevLogIdx
-               PrevLogTerm  = term  fb.PrevLogTerm
-               LeaderCommit = index fb.LeaderCommit
+      return { Term         = 1<term> * fb.Term
+               PrevLogIdx   = 1<index> * fb.PrevLogIdx
+               PrevLogTerm  = 1<term> * fb.PrevLogTerm
+               LeaderCommit = 1<index> * fb.LeaderCommit
                Entries      = entries }
     }
 
   // ** ToOffset
+
   member self.ToOffset(builder: FlatBufferBuilder) =
     let entries =
       Option.map
-        (fun (entries: RaftLogEntry) ->
+        (fun (entries: LogEntry) ->
           let offsets = entries.ToOffset(builder)
           AppendEntriesFB.CreateEntriesVector(builder, offsets))
         self.Entries
@@ -280,14 +338,33 @@ type AppendEntries =
 
     AppendEntriesFB.EndAppendEntriesFB(builder)
 
-// * AppendResponse
+// * AppendRequest module
 
-//     _                               _ ____
-//    / \   _ __  _ __   ___ _ __   __| |  _ \ ___  ___ _ __   ___  _ __  ___  ___
-//   / _ \ | '_ \| '_ \ / _ \ '_ \ / _` | |_) / _ \/ __| '_ \ / _ \| '_ \/ __|/ _ \
-//  / ___ \| |_) | |_) |  __/ | | | (_| |  _ <  __/\__ \ |_) | (_) | | | \__ \  __/
-// /_/   \_\ .__/| .__/ \___|_| |_|\__,_|_| \_\___||___/ .__/ \___/|_| |_|___/\___|
-//         |_|   |_|                                   |_|
+module AppendEntries =
+
+  // ** getters
+
+  let term = Optic.get AppendEntries.Term_
+  let prevLogIdx = Optic.get AppendEntries.PrevLogIdx_
+  let prevLogTerm = Optic.get AppendEntries.PrevLogTerm_
+  let leaderCommit = Optic.get AppendEntries.LeaderCommit_
+  let entries = Optic.get AppendEntries.Entries_
+
+  // ** setters
+
+  let setTerm = Optic.set AppendEntries.Term_
+  let setPrevLogIdx = Optic.set AppendEntries.PrevLogIdx_
+  let setPrevLogTerm = Optic.set AppendEntries.PrevLogTerm_
+  let setLeaderCommit = Optic.set AppendEntries.LeaderCommit_
+  let setEntries = Optic.set AppendEntries.Entries_
+
+  // ** numEntries
+
+  let numEntries = entries >> function
+    | Some entries -> LogEntry.depth entries
+    | _            -> 0
+
+// * AppendResponse
 
 /// Appendentries response message.
 ///
@@ -299,6 +376,7 @@ type AppendEntries =
 ///  - `Success`    - true if follower contained entry matching prevLogidx and prevLogTerm
 ///  - `CurrentIdx` - This is the highest log IDX we've received and appended to our log
 ///  - `FirstIdx`   - The first idx that we received within the appendentries message
+
 type AppendResponse =
   { Term         : Term
     Success      : bool
@@ -324,13 +402,17 @@ type AppendResponse =
     (fun firstIndex (ar:AppendResponse) -> { ar with FirstIndex = firstIndex })
 
   // ** FromFB
-  static member FromFB (fb: AppendResponseFB) : Either<DiscoError,AppendResponse> =
-    Right { Term         = term fb.Term
-            Success      = fb.Success
-            CurrentIndex = index fb.CurrentIndex
-            FirstIndex   = index fb.FirstIndex }
+
+  static member FromFB (fb: AppendResponseFB) =
+    Result.succeed {
+      Term         = 1<term> * fb.Term
+      Success      = fb.Success
+      CurrentIndex = 1<index> * fb.CurrentIndex
+      FirstIndex   = 1<index> * fb.FirstIndex
+    }
 
   // ** ToOffset
+
   member self.ToOffset(builder: FlatBufferBuilder) =
     AppendResponseFB.StartAppendResponseFB(builder)
     AppendResponseFB.AddTerm(builder, int self.Term)
@@ -339,41 +421,9 @@ type AppendResponse =
     AppendResponseFB.AddCurrentIndex(builder, int self.CurrentIndex)
     AppendResponseFB.EndAppendResponseFB(builder)
 
-// * module AppendRequest
-
-[<RequireQualifiedAccess>]
-module AppendRequest =
-
-  open Aether
-
-  // ** getters
-
-  let term         = Optic.get AppendEntries.Term_
-  let prevLogIdx   = Optic.get AppendEntries.PrevLogIdx_
-  let prevLogTerm  = Optic.get AppendEntries.PrevLogTerm_
-  let leaderCommit = Optic.get AppendEntries.LeaderCommit_
-  let entries      = Optic.get AppendEntries.Entries_
-
-  // ** setters
-
-  let setTerm         = Optic.set AppendEntries.Term_
-  let setPrevLogIdx   = Optic.set AppendEntries.PrevLogIdx_
-  let setPrevLogTerm  = Optic.set AppendEntries.PrevLogTerm_
-  let setLeaderCommit = Optic.set AppendEntries.LeaderCommit_
-  let setEntries      = Optic.set AppendEntries.Entries_
-
-  // ** numEntries
-
-  let inline numEntries ar =
-    match ar.Entries with
-      | Some entries -> LogEntry.depth entries
-      | _            -> 0
-
-// * AppendResponse
+// * AppendResponse module
 
 module AppendResponse =
-
-  open Aether
 
   // ** getters
 
@@ -411,7 +461,29 @@ type InstallSnapshot =
     LeaderId:  MemberId
     LastIndex: Index
     LastTerm:  Term
-    Data:      RaftLogEntry }
+    Data:      LogEntry }
+
+  // ** optics
+
+  static member Term_ =
+    (fun (is:InstallSnapshot) -> is.Term),
+    (fun term (is:InstallSnapshot) -> { is with Term = term })
+
+  static member LeaderId_ =
+    (fun (is:InstallSnapshot) -> is.LeaderId),
+    (fun leaderId (is:InstallSnapshot) -> { is with LeaderId = leaderId })
+
+  static member LastIndex_ =
+    (fun (is:InstallSnapshot) -> is.LastIndex),
+    (fun lastIndex (is:InstallSnapshot) -> { is with LastIndex = lastIndex })
+
+  static member LastTerm_ =
+    (fun (is:InstallSnapshot) -> is.LastTerm),
+    (fun lastTerm (is:InstallSnapshot) -> { is with LastTerm = lastTerm })
+
+  static member Data_ =
+    (fun (is:InstallSnapshot) -> is.Data),
+    (fun data (is:InstallSnapshot) -> { is with Data = data })
 
   // ** ToOffset
 
@@ -429,7 +501,7 @@ type InstallSnapshot =
   // ** FromFB
 
   static member FromFB (fb: InstallSnapshotFB) =
-    either  {
+    result {
       let! decoded =
         if fb.DataLength > 0 then
           let raw = Array.zeroCreate fb.DataLength
@@ -437,265 +509,45 @@ type InstallSnapshot =
             let data = fb.Data(i)
             if data.HasValue then
               raw.[i] <- data.Value
-          RaftLogEntry.FromFB raw
+          LogEntry.FromFB raw
         else
           "Invalid InstallSnapshot (no log data)"
           |> Error.asParseError "InstallSnapshot.FromFB"
-          |> Either.fail
+          |> Result.fail
 
       match decoded with
       | Some entries ->
         let! leaderId = Id.decodeLeaderId fb
         return {
-          Term      = term fb.Term
+          Term      = 1<term> * fb.Term
           LeaderId  = leaderId
-          LastIndex = index fb.LastIndex
-          LastTerm  = term fb.LastTerm
+          LastIndex = 1<index> * fb.LastIndex
+          LastTerm  = 1<term> * fb.LastTerm
           Data      = entries
         }
       | _ ->
         return!
           "Invalid InstallSnapshot (no log data)"
           |> Error.asParseError "InstallSnapshot.FromFB"
-          |> Either.fail
+          |> Result.fail
     }
 
-// * Callback Interface
+// * InstallSnapshot module
 
-/////////////////////////////////////////////////
-//   ____      _ _ _                _          //
-//  / ___|__ _| | | |__   __ _  ___| | __      //
-// | |   / _` | | | '_ \ / _` |/ __| |/ /      //
-// | |__| (_| | | | |_) | (_| | (__|   <       //
-//  \____\__,_|_|_|_.__/ \__,_|\___|_|\_\      //
-//                                             //
-//  ___       _             __                 //
-// |_ _|_ __ | |_ ___ _ __ / _| __ _  ___ ___  //
-//  | || '_ \| __/ _ \ '__| |_ / _` |/ __/ _ \ //
-//  | || | | | ||  __/ |  |  _| (_| | (_|  __/ //
-// |___|_| |_|\__\___|_|  |_|  \__,_|\___\___| //
-/////////////////////////////////////////////////
+module InstallSnapshot =
 
-type IRaftCallbacks =
+  // ** getters
 
-  /// Request a vote from given Raft server
-  abstract member SendRequestVote: peer:RaftMember -> request:VoteRequest -> unit
+  let term = Optic.get InstallSnapshot.Term_
+  let leaderId = Optic.get InstallSnapshot.LeaderId_
+  let lastIndex = Optic.get InstallSnapshot.LastIndex_
+  let lastTerm = Optic.get InstallSnapshot.LastTerm_
+  let data = Optic.get InstallSnapshot.Data_
 
-  /// Send AppendEntries message to given server
-  abstract member SendAppendEntries: peer:RaftMember -> request:AppendEntries -> unit
+  // ** setters
 
-  /// Send InstallSnapshot command to given serve
-  abstract member SendInstallSnapshot: peer:RaftMember -> request:InstallSnapshot -> unit
-
-  /// given the current state of Raft, prepare and return a snapshot value of
-  /// current application state
-  abstract member PrepareSnapshot: current:RaftState -> RaftLog option
-
-  /// perist the given Snapshot value to disk. For safety reasons this MUST
-  /// flush all changes to disk.
-  abstract member PersistSnapshot: snapshot:RaftLogEntry -> unit
-
-  /// attempt to load a snapshot from disk. return None if no snapshot was found
-  abstract member RetrieveSnapshot: unit  -> RaftLogEntry option
-
-  /// apply the given command to state machine
-  abstract member ApplyLog: command:StateMachine -> unit
-
-  /// a new server was added to the configuration
-  abstract member MemberAdded: peer:RaftMember -> unit
-
-  /// a new server was added to the configuration
-  abstract member MemberUpdated: peer:RaftMember -> unit
-
-  /// a server was removed from the configuration
-  abstract member MemberRemoved: peer:RaftMember -> unit
-
-  /// a cluster configuration transition was successfully applied
-  abstract member Configured: members:RaftMember array  -> unit
-
-  /// a cluster configuration transition was successfully applied
-  abstract member JointConsensus: changes:ConfigChange array  -> unit
-
-  /// the state of Raft itself has changed from old state to new given state
-  abstract member StateChanged: oldstate:MemberState -> newstate:MemberState -> unit
-
-  /// the leader node changed
-  abstract member LeaderChanged: leader:MemberId option -> unit
-
-  /// persist vote data to disk. For safety reasons this callback MUST flush
-  /// the change to disk.
-  abstract member PersistVote: peer:RaftMember option -> unit
-
-  /// persist term data to disk. For safety reasons this callback MUST flush
-  /// the change to disk>
-  abstract member PersistTerm: term:Term -> unit
-
-  /// persist an entry added to the log to disk. For safety reasons this
-  /// callback MUST flush the change to disk.
-  abstract member PersistLog: log:RaftLogEntry -> unit
-
-  /// persist the removal of the passed entry from the log to disk. For safety
-  /// reasons this callback MUST flush the change to disk.
-  abstract member DeleteLog: log:RaftLogEntry -> unit
-
-// * RaftStateYaml
-
-type RaftStateYaml() =
-  [<DefaultValue>] val mutable Member          : string
-  [<DefaultValue>] val mutable Term            : Term
-  [<DefaultValue>] val mutable Leader          : string
-  [<DefaultValue>] val mutable VotedFor        : string
-  [<DefaultValue>] val mutable ElectionTimeout : int
-  [<DefaultValue>] val mutable RequestTimeout  : int
-  [<DefaultValue>] val mutable MaxLogDepth     : int
-
-// * RaftState
-
-type RaftState =
-  { /// this server's own RaftMember information
-    Member            : RaftMember
-    /// this server's current Raft state, i.e. follower, leader or candidate
-    State             : MemberState
-    /// the server's current term, a monotonic counter for election cycles
-    CurrentTerm       : Term
-    /// tracks the current Leader Id, or None if there isn't currently a leader
-    CurrentLeader     : MemberId option
-    /// map of all known members in the cluster
-    Peers             : Map<MemberId,RaftMember>
-    /// map of the previous cluster configuration. set if currently in a configuration change
-    OldPeers          : Map<MemberId,RaftMember> option
-    /// count of all members in the cluster
-    NumMembers        : int
-    /// the candidate this server voted for in its current term or None if it hasn't voted for any
-    /// other member yet
-    VotedFor          : MemberId option
-    /// the replicated state machine command log
-    Log               : RaftLog
-    /// index of latest log entry known to be committed
-    CommitIndex       : Index
-    /// index of latest log entry applied to state machine
-    LastAppliedIdx    : Index
-    /// amount of time left until a new election will be called
-    TimeoutElapsed    : Timeout
-    /// amount of time that needs to pass before a new election is called
-    ElectionTimeout   : Timeout
-    /// amount of time to pass until we consider requests to be failed
-    RequestTimeout    : Timeout
-    /// maximum log depth to reach before automatic snapshotting triggers
-    MaxLogDepth       : int
-    /// the log entry which has a voting configuration change, otherwise None
-    ConfigChangeEntry : RaftLogEntry option }
-
-  // ** ToString
-
-  override self.ToString() =
-    sprintf "Member              = %s
-State             = %A
-CurrentTerm       = %A
-CurrentLeader     = %A
-NumMembers          = %A
-VotedFor          = %A
-MaxLogDepth       = %A
-CommitIndex       = %A
-LastAppliedIdx    = %A
-TimeoutElapsed    = %A
-ElectionTimeout   = %A
-RequestTimeout    = %A
-ConfigChangeEntry = %s
-"
-      (self.Member.ToString())
-      self.State
-      self.CurrentTerm
-      self.CurrentLeader
-      self.NumMembers
-      self.VotedFor
-      self.MaxLogDepth
-      self.CommitIndex
-      self.LastAppliedIdx
-      self.TimeoutElapsed
-      self.ElectionTimeout
-      self.RequestTimeout
-      (if Option.isSome self.ConfigChangeEntry then
-        Option.get self.ConfigChangeEntry |> string
-       else Constants.EMPTY)
-
-  // ** IsLeader
-
-  member self.IsLeader
-    with get () =
-      match self.CurrentLeader with
-      | Some lid -> self.Member.Id = lid
-      | _ -> false
-
-  // ** ToYaml
-
-  #if !FABLE_COMPILER && !DISCO_NODES
-
-  member self.ToYaml() =
-    let yaml = RaftStateYaml()
-    yaml.Member <- string self.Member.Id
-    yaml.Term <- self.CurrentTerm
-
-    Option.map
-      (fun leader -> yaml.Leader <- string leader)
-      self.CurrentLeader
-    |> ignore
-
-    Option.map
-      (fun voted -> yaml.VotedFor <- string voted)
-      self.VotedFor
-    |> ignore
-
-    yaml.ElectionTimeout <- int self.ElectionTimeout
-    yaml.RequestTimeout <- int self.RequestTimeout
-    yaml.MaxLogDepth <- self.MaxLogDepth
-    yaml
-
-  // ** FromYaml
-
-  static member FromYaml (yaml: RaftStateYaml) : Either<DiscoError, RaftState> =
-    either {
-      let! id = DiscoId.TryParse yaml.Member
-
-      let! leader =
-        if isNull yaml.Leader
-        then Right None
-        else DiscoId.TryParse yaml.Leader |> Either.map Some
-
-      let! votedfor =
-        if isNull yaml.VotedFor
-        then Right None
-        else DiscoId.TryParse yaml.VotedFor |> Either.map Some
-
-      return {
-        Member            = Member.create id
-        State             = Follower
-        CurrentTerm       = yaml.Term
-        CurrentLeader     = leader
-        Peers             = Map.empty
-        OldPeers          = None
-        NumMembers        = 0
-        VotedFor          = votedfor
-        Log               = Log.empty
-        CommitIndex       = index 0
-        LastAppliedIdx    = index 0
-        TimeoutElapsed    = 0<ms>
-        ElectionTimeout   = yaml.ElectionTimeout * 1<ms>
-        RequestTimeout    = yaml.RequestTimeout * 1<ms>
-        MaxLogDepth       = yaml.MaxLogDepth
-        ConfigChangeEntry = None
-      }
-    }
-
-  #endif
-
-// * RaftMonad
-
-[<NoComparison;NoEquality>]
-type RaftMonad<'Env,'State,'T,'Error> =
-  MkRM of ('Env -> 'State -> Either<'Error * 'State,'T * 'State>)
-
-// * RaftM
-
-type RaftM<'t,'err> =
-  RaftMonad<IRaftCallbacks, RaftState, 't, 'err>
+  let setTerm = Optic.set InstallSnapshot.Term_
+  let setLeaderId = Optic.set InstallSnapshot.LeaderId_
+  let setLastIndex = Optic.set InstallSnapshot.LastIndex_
+  let setLastTerm = Optic.set InstallSnapshot.LastTerm_
+  let setData = Optic.set InstallSnapshot.Data_

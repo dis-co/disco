@@ -23,11 +23,11 @@ module Metrics =
       .WriteTo.InfluxDB(url, config.MetricsDb)
       .CreateCollector()
 
-  let init (config: DiscoMachine): Either<DiscoError,unit> =
+  let init (config: DiscoMachine): DiscoResult<unit> =
     try
       if config.CollectMetrics then
         match agent with
-        | Some _ -> Either.nothing
+        | Some _ -> Result.nothing
         | None ->
           let collector = createCollector config
           let actor = ThreadActor.create "Metrics" (fun _ (name,value) ->
@@ -36,12 +36,12 @@ module Metrics =
               do collector.Write(name, values))
           actor.Start()
           agent <- Some actor
-          Either.nothing
-      else Either.nothing
+          Result.nothing
+      else Result.nothing
     with exn ->
       exn.Message
       |> Error.asIOError "Metrics.init"
-      |> Either.fail
+      |> Result.fail
 
   let collect (name: string) (value: obj) : unit =
     match agent with

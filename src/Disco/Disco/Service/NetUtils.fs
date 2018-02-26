@@ -100,7 +100,7 @@ module NetUtils =
   /// - request:    RaftRequest to send
   /// - client:     client socket to use
   ///
-  /// Returns: Either<DiscoError,RaftResponse>
+  /// Returns: DiscoResult<RaftResponse>
   let performRequest (request: RaftRequest) (client: ITcpClient) =
     try
       rawRequest request client

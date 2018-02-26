@@ -23,7 +23,7 @@ module MemberInspector =
       (string client.Name)
       (fun _ -> Select.client dispatch client)
 
-  let private renderClients tag dispatch (model: Model) (mem: RaftMember) =
+  let private renderClients tag dispatch (model: Model) (mem: ClusterMember) =
     match model.state with
     | None -> Common.row tag []
     | Some state ->

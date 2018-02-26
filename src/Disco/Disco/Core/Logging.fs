@@ -58,7 +58,7 @@ type LogLevel =
   // ** TryParse
 
   static member TryParse (str: string) =
-    Either.tryWith (Error.asParseError "LogLevel.TryParse") <| fun _ ->
+    Result.tryWith (Error.asParseError "LogLevel.TryParse") <| fun _ ->
       str |> LogLevel.Parse
 
   // ** ToString
@@ -108,7 +108,7 @@ type Tier =
   // ** TryParse
 
   static member TryParse (str: string) =
-    Either.tryWith (Error.asParseError "Tier.TryParse") <| fun _ ->
+    Result.tryWith (Error.asParseError "Tier.TryParse") <| fun _ ->
       str |> Tier.Parse
 
 // * LogEventYaml
@@ -126,13 +126,31 @@ type LogEventYaml() =
 
 #endif
 
+// * LogEventFields
+
+type LogEventFields =
+  { Time:     bool
+    Thread:   bool
+    Tier:     bool
+    Id:       bool
+    Tag:      bool
+    LogLevel: bool
+    Message:  bool }
+
+  // ** Default
+
+  static member Default =
+    { Time     = true
+      Thread   = true
+      Tier     = true
+      Id       = true
+      Tag      = true
+      LogLevel = true
+      Message  = true }
+
 // * LogEvent
 
-/// ## LogEvent
-///
 /// Structured log format record.
-///
-/// ## Fields:
 ///
 /// - Time:     int64 unixtime in milliseconds
 /// - Thread:   int ID of Thread the log event was collected
@@ -141,8 +159,7 @@ type LogEventYaml() =
 /// - Tag:      call site tag describing source code location where log was collected
 /// - LogLevel: LogLevel of collected log message
 /// - Message:  log message
-///
-/// Returns: LogEvent
+
 type LogEvent =
   { Time      : uint32
     Thread    : int
@@ -192,7 +209,7 @@ type LogEvent =
 
   // ** FromFB
 
-  static member FromFB(fb: LogEventFB) = either {
+  static member FromFB(fb: LogEventFB) = result {
       let! id = Id.decodeMachineId fb
       let! tier = Tier.TryParse fb.Tier
       let! level = LogLevel.TryParse fb.LogLevel
@@ -230,8 +247,8 @@ type LogEvent =
 
   // ** FromYaml
 
-  static member FromYaml(yaml: LogEventYaml) : Either<DiscoError,LogEvent> =
-    either {
+  static member FromYaml(yaml: LogEventYaml) : DiscoResult<LogEvent> =
+    result {
       let! id = DiscoId.TryParse yaml.MachineId
       let! level = LogLevel.TryParse yaml.LogLevel
       let! tier = Tier.TryParse yaml.Tier
@@ -254,6 +271,7 @@ type LoggingSettings =
   { MachineId: DiscoId
     Level: LogLevel
     UseColors: bool
+    Fields: LogEventFields
     Tier: Tier }
 
 // * LoggingSettings module
@@ -264,9 +282,10 @@ module LoggingSettings =
     { MachineId = DiscoId.Empty
       Level = LogLevel.Debug
       UseColors = true
+      Fields = LogEventFields.Default
       Tier = Tier.Service }
 
-// * Logger
+// * Logger module
 
 [<RequireQualifiedAccess>]
 module Logger =
@@ -283,7 +302,12 @@ module Logger =
     { MachineId = DiscoId.Empty
       Level = LogLevel.Debug
       UseColors = true
+      Fields = LogEventFields.Default
+      #if DISCO_NODES
+      Tier = Tier.Client }
+      #else
       Tier = Tier.Service }
+      #endif
 
   // ** currentSettings
 
@@ -292,6 +316,10 @@ module Logger =
   // ** set
 
   let set config = _settings <- config
+
+  // ** setFields
+
+  let setFields fields = _settings <- { _settings with Fields = fields }
 
   // ** setLevel
 
@@ -304,40 +332,41 @@ module Logger =
 
   // ** stdout
 
-  /// ## stdout
-  ///
   /// Simple logging to stdout
-  ///
-  /// ### Signature:
-  /// - log: LogEvent
-  ///
-  /// Returns: unit
+
   let stdout (log: LogEvent) =
     #if !FABLE_COMPILER && !DISCO_NODES
     if _settings.UseColors then
-      Console.darkGreen "{0}" "["
-      match log.LogLevel with
-      | LogLevel.Trace -> Console.gray   "{0,-5}" log.LogLevel
-      | LogLevel.Debug -> Console.white  "{0,-5}" log.LogLevel
-      | LogLevel.Info  -> Console.green  "{0,-5}" log.LogLevel
-      | LogLevel.Warn  -> Console.yellow "{0,-5}" log.LogLevel
-      | LogLevel.Err   -> Console.red    "{0,-5}" log.LogLevel
-      Console.darkGreen "{0}" "] "
 
-      Console.darkGreen "{0}:" "ts"
-      Console.white     "{0} " log.Time
+      if _settings.Fields.LogLevel then
+        Console.darkGreen "{0}" "["
+        match log.LogLevel with
+        | LogLevel.Trace -> Console.gray   "{0,-5}" log.LogLevel
+        | LogLevel.Debug -> Console.white  "{0,-5}" log.LogLevel
+        | LogLevel.Info  -> Console.green  "{0,-5}" log.LogLevel
+        | LogLevel.Warn  -> Console.yellow "{0,-5}" log.LogLevel
+        | LogLevel.Err   -> Console.red    "{0,-5}" log.LogLevel
+        Console.darkGreen "{0}" "] "
 
-      Console.darkGreen "{0}:" "id"
-      Console.white     "{0} " (log.MachineId.Prefix())
+      if _settings.Fields.Time then
+        Console.darkGreen "{0}:" "ts"
+        Console.white     "{0} " log.Time
 
-      Console.darkGreen "{0}:"    "type"
-      Console.white     "{0,-7} " log.Tier
+      if _settings.Fields.Id then
+        Console.darkGreen "{0}:" "id"
+        Console.white     "{0} " (log.MachineId.Prefix())
 
-      Console.darkGreen "{0}:"     "in"
-      Console.yellow    "{0,-30} " log.Tag
+      if _settings.Fields.Tier then
+        Console.darkGreen "{0}:"    "type"
+        Console.white     "{0,-7} " log.Tier
 
-      Console.white  "{0}"  log.Message
-      Console.Write(System.Environment.NewLine)
+      if _settings.Fields.Tag then
+        Console.darkGreen "{0}:"     "in"
+        Console.yellow    "{0,-30} " log.Tag
+
+      if _settings.Fields.Message then
+        Console.white  "{0}"  log.Message
+        Console.Write(System.Environment.NewLine)
     else
     #endif
       Console.WriteLine("{0}", log)
@@ -577,24 +606,24 @@ module LogFile =
       log
       |> string
       |> file.Stream.WriteLine
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         exn.Message
         |> Error.asIOError (tag "write")
-        |> Either.fail
+        |> Result.fail
 
   // ** create
 
   let create (machine: MachineId) (path: FilePath) =
-    either {
+    result {
       try
         let ts = DateTime.Now
         let fn = String.Format("disco-{0}-{1:yyyy-MM-dd_hh-mm-ss-tt}.log", machine.Prefix(), ts)
         do! if Directory.exists path |> not then
               Directory.createDirectory path
-              |> Either.ignore
-            else Either.succeed ()
+              |> Result.ignore
+            else Result.succeed ()
         let fp = Path.Combine(unwrap path, fn)
         let writer = File.AppendText fp
         writer.AutoFlush <- true
@@ -607,7 +636,7 @@ module LogFile =
           return!
             exn.Message
             |> Error.asIOError (tag "create")
-            |> Either.fail
+            |> Result.fail
     }
 
 #endif

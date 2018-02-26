@@ -130,13 +130,13 @@ module Network =
     List.fold
       (fun result (iface: NetworkInterface) ->
         match result with
-        | Right () -> result
-        | Left _ ->
+        | Ok () -> result
+        | Error _ ->
           if List.contains ip iface.IpAddresses then
-            Either.succeed ()
+            Result.succeed ()
           else
             result)
-      (Left (Error.asSocketError (tag "checkIpAddress") msg))
+      (Error (Error.asSocketError (tag "checkIpAddress") msg))
       ifaces
 
   // ** ensureIpAddress
@@ -160,7 +160,7 @@ module Network =
   // ** ensureAvailability
 
   let ensureAvailability (ip: IpAddress) (port: Port) =
-    either {
+    result {
       try
         use socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp)
         let endpoint = IPEndPoint(ip.toIPAddress(), int port)
@@ -174,7 +174,7 @@ module Network =
           port
           |> sprintf "Address %O:%O already in use" ip
           |> Error.asSocketError (tag "ensureAvailability")
-          |> Either.fail
+          |> Result.fail
     }
 
   #endif

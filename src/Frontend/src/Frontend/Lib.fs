@@ -166,16 +166,9 @@ let addMember(memberIpAddr: string, memberHttpPort: uint16) =
 
     // Add member B to the leader (A) cluster
     { Member.create machine.MachineId with
-        HostName         = machine.HostName
-        MulticastAddress = machine.MulticastAddress
-        MulticastPort    = machine.MulticastPort
-        IpAddress        = machine.BindAddress
-        HttpPort         = machine.WebPort
-        RaftPort         = machine.RaftPort
-        WsPort           = machine.WsPort
-        GitPort          = machine.GitPort
-        ApiPort          = machine.ApiPort }
-    |> AddMember
+        IpAddress = machine.BindAddress
+        RaftPort  = machine.RaftPort }
+    |> AddMachine
     |> ClientContext.Singleton.Post
   with
   | exn ->
@@ -333,7 +326,7 @@ let updatePinValue(pin: Pin, index: int, value: obj) =
     | _ -> None
   | ColorPin pin ->
     match ColorSpace.TryParse(unbox value) with
-    | Right color ->
+    | Ok color ->
       tryUpdateArray index color pin.Values
       |> Option.map (fun values -> ColorSlices(pin.Id, client, values))
     | _ -> None

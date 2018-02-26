@@ -53,9 +53,9 @@ type CueGroupYaml() =
   // ** ToCueGroup
 
   member yaml.ToCueGroup() =
-    either {
+    result {
       let! id = DiscoId.TryParse yaml.Id
-      let! cues = Either.bindArray Yaml.fromYaml yaml.CueRefs
+      let! cues = Result.bindArray Yaml.fromYaml yaml.CueRefs
       let name =
         if System.String.IsNullOrWhiteSpace yaml.Name
         then None
@@ -106,10 +106,10 @@ type CueGroup =
   // |____/|_|_| |_|\__,_|_|   \__, |
   //                           |___/
 
-  static member FromFB(fb: CueGroupFB) : Either<DiscoError,CueGroup> =
-    either {
+  static member FromFB(fb: CueGroupFB) : DiscoResult<CueGroup> =
+    result {
       let! cues =
-        EitherExt.bindGeneratorToArray
+        ResultExt.bindGeneratorToArray
           "CueGroup.FromFB"
           fb.CueRefsLength
           fb.CueRefs
@@ -143,7 +143,7 @@ type CueGroup =
 
   // ** FromBytes
 
-  static member FromBytes(bytes: byte[]) : Either<DiscoError,CueGroup> =
+  static member FromBytes(bytes: byte[]) : DiscoResult<CueGroup> =
     bytes
     |> Binary.createBuffer
     |> CueGroupFB.GetRootAsCueGroupFB
@@ -167,7 +167,7 @@ type CueGroup =
 
   // ** FromYaml
 
-  static member FromYaml(yaml: CueGroupYaml) : Either<DiscoError,CueGroup> =
+  static member FromYaml(yaml: CueGroupYaml) : DiscoResult<CueGroup> =
     yaml.ToCueGroup()
 
   #endif

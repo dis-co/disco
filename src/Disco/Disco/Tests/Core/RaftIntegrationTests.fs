@@ -27,25 +27,28 @@ module RaftIntegrationTests =
 
   let test_validate_correct_req_socket_tracking =
     testCase "validate correct req socket tracking" <| fun _ ->
-      either {
+      result {
         let machine1 = MachineConfig.create "127.0.0.1" None
         let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
-          machine1.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8000us)
+          machine1
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8000us)
 
         let mem2 =
-          machine2.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8001us)
+          machine2
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8001us)
 
         let site =
           { ClusterConfig.Default with
               Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (mem1.Id, mem1)
-                                       (mem2.Id, mem2) |] }
+              Members =
+                Map.ofArray [|
+                  (mem1.Id, mem1)
+                  (mem2.Id, mem2)
+                |] }
         let leadercfg =
           machine1
           |> Config.create
@@ -61,6 +64,7 @@ module RaftIntegrationTests =
         let! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
         do! leader.Start()
@@ -69,6 +73,7 @@ module RaftIntegrationTests =
         let! follower = RaftServer.create followercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
         do! follower.Start()
@@ -84,15 +89,15 @@ module RaftIntegrationTests =
 
   let test_validate_raft_service_bind_correct_port =
     testCase "validate raft service bind correct port" <| fun _ ->
-      either {
+      result {
         use started = new WaitEvent()
         let port = port 12000us
         let machine = MachineConfig.create "127.0.0.1" None
 
         let mem =
-          machine.MachineId
-          |> Member.create
-          |> Member.setRaftPort port
+          machine
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort port
 
         let site =
           { ClusterConfig.Default with
@@ -107,6 +112,7 @@ module RaftIntegrationTests =
         use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
 
@@ -125,12 +131,13 @@ module RaftIntegrationTests =
         use! follower = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
 
         do! match follower.Start() with
-            | Right _ -> Left (Other("test","follower should have failed"))
-            | Left _ -> Right ()
+            | Ok _ -> Error (Other("test","follower should have failed"))
+            | Error _ -> Ok ()
 
         expect "Should be failed" true Service.hasFailed follower.Status
       }
@@ -138,7 +145,7 @@ module RaftIntegrationTests =
 
   let test_validate_follower_joins_leader_after_startup =
     testCase "validate follower joins leader after startup" <| fun _ ->
-      either {
+      result {
         use check1 = new WaitEvent()
 
         let setState (id: DiscoId) (are: WaitEvent) = function
@@ -153,14 +160,14 @@ module RaftIntegrationTests =
         let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
-          machine1.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8000us)
+          machine1
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8000us)
 
         let mem2 =
-          machine2.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8001us)
+          machine2
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8001us)
 
         let site =
           { ClusterConfig.Default with
@@ -183,6 +190,7 @@ module RaftIntegrationTests =
         use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
 
@@ -193,6 +201,7 @@ module RaftIntegrationTests =
         use! follower = RaftServer.create followercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() = None
           }
 
@@ -206,7 +215,7 @@ module RaftIntegrationTests =
 
   let test_log_snapshotting_should_clean_all_logs =
     testCase "log snapshotting should clean all logs" <| fun _ ->
-      either {
+      result {
         use snapshotCheck = new WaitEvent()
         use expectedCheck = new WaitEvent()
 
@@ -217,9 +226,9 @@ module RaftIntegrationTests =
         let store = Store(State.Empty)
 
         let mem1 =
-          machine1.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8000us)
+          machine1
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8000us)
 
         let site =
           { ClusterConfig.Default with
@@ -235,6 +244,7 @@ module RaftIntegrationTests =
         use! leader = RaftServer.create leadercfg {
             new IRaftSnapshotCallbacks with
               member self.RetrieveSnapshot() = None
+              member self.PersistSnapshot _ = ()
               member self.PrepareSnapshot() =
                 snapshotCheck.Set() |> ignore
                 Some store.State
@@ -266,7 +276,7 @@ module RaftIntegrationTests =
 
   let test_validate_add_member_works =
     testCase "validate add member works" <| fun _ ->
-      either {
+      result {
         use added = new WaitEvent()
         use configured = new WaitEvent()
         use check1 = new WaitEvent()
@@ -283,7 +293,7 @@ module RaftIntegrationTests =
             |> sprintf "%O became follower"
             |> Logger.debug "test"
             are.Set() |> ignore
-          | DiscoEvent.Append(Origin.Raft, AddMember mem) ->
+          | DiscoEvent.Append(Origin.Raft, AddMachine mem) ->
             mem.Id
             |> sprintf "%O was added"
             |> Logger.debug "test"
@@ -299,13 +309,18 @@ module RaftIntegrationTests =
         let machine2 = MachineConfig.create "127.0.0.1" None
 
         let mem1 =
-          machine1.MachineId
-          |> Member.create
-          |> Member.setRaftPort (port 8000us)
+          machine1
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8000us)
 
         let mem2 =
-          machine2.MachineId
-          |> Member.create
+          machine2
+          |> Machine.toClusterMember
+          |> ClusterMember.setRaftPort (port 8001us)
+
+        let raftMem2 =
+          machine2
+          |> Machine.toRaftMember
           |> Member.setRaftPort (port 8001us)
 
         let site1 =
@@ -329,20 +344,22 @@ module RaftIntegrationTests =
           |> Config.setLogLevel (LogLevel.Debug)
 
         use! leader = RaftServer.create leadercfg {
-            new IRaftSnapshotCallbacks with
-              member self.RetrieveSnapshot() = None
-              member self.PrepareSnapshot() = None
-          }
+          new IRaftSnapshotCallbacks with
+            member self.RetrieveSnapshot() = None
+            member self.PersistSnapshot _ = ()
+            member self.PrepareSnapshot() = None
+        }
 
         use obs1 = leader.Subscribe (setState mem1.Id check1)
 
         do! leader.Start()
 
         use! follower = RaftServer.create followercfg {
-            new IRaftSnapshotCallbacks with
-              member self.RetrieveSnapshot() = None
-              member self.PrepareSnapshot() = None
-          }
+          new IRaftSnapshotCallbacks with
+            member self.RetrieveSnapshot() = None
+            member self.PersistSnapshot _ = ()
+            member self.PrepareSnapshot() = None
+        }
 
         use obs2 = follower.Subscribe (setState mem2.Id check2)
 
@@ -351,24 +368,12 @@ module RaftIntegrationTests =
         do! waitFor "check1" check1
         do! waitFor "check2" check2
 
-        leader.AddMember mem2           // add mem2 to cluster
+        leader.AddMachine raftMem2           // add mem2 to cluster
 
         do! waitFor "added" added
         do! waitFor "configured" configured
       }
       |> noError
-  //                       _ _
-  //  _ __   ___ _ __   __| (_)_ __   __ _
-  // | '_ \ / _ \ '_ \ / _` | | '_ \ / _` |
-  // | |_) |  __/ | | | (_| | | | | | (_| |
-  // | .__/ \___|_| |_|\__,_|_|_| |_|\__, |
-  // |_|                             |___/
-
-  let test_follower_join_should_fail_on_duplicate_raftid =
-    pending "follower join should fail on duplicate raftid"
-
-  let test_all_rafts_should_share_a_common_distributed_event_log =
-    pending "all rafts should share a common distributed event log"
 
   //     _    _ _   _____         _
   //    / \  | | | |_   _|__  ___| |_ ___
@@ -378,17 +383,9 @@ module RaftIntegrationTests =
 
   let raftIntegrationTests =
     testList "Raft Integration Tests" [
-      // raft
       test_validate_correct_req_socket_tracking
       test_validate_raft_service_bind_correct_port
       test_validate_follower_joins_leader_after_startup
-
-      // db
       test_log_snapshotting_should_clean_all_logs
-
-      // cluster changes
       test_validate_add_member_works
-
-      // test_follower_join_should_fail_on_duplicate_raftid
-      // test_all_rafts_should_share_a_common_distributed_event_log
     ] |> testSequenced

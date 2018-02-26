@@ -46,9 +46,9 @@ module RaftTestUtils =
     { SendRequestVote     : RaftMember         -> VoteRequest     -> unit
       SendAppendEntries   : RaftMember         -> AppendEntries   -> unit
       SendInstallSnapshot : RaftMember         -> InstallSnapshot -> unit
-      PersistSnapshot     : RaftLogEntry       -> unit
-      PrepareSnapshot     : RaftState          -> RaftLog option
-      RetrieveSnapshot    : unit               -> RaftLogEntry option
+      PersistSnapshot     : LogEntry           -> unit
+      PrepareSnapshot     : RaftState          -> Log option
+      RetrieveSnapshot    : unit               -> LogEntry option
       ApplyLog            : StateMachine       -> unit
       MemberAdded         : RaftMember         -> unit
       MemberUpdated       : RaftMember         -> unit
@@ -59,8 +59,8 @@ module RaftTestUtils =
       LeaderChanged       : MemberId option    -> unit
       PersistVote         : RaftMember option  -> unit
       PersistTerm         : Term               -> unit
-      PersistLog          : RaftLogEntry       -> unit
-      DeleteLog           : RaftLogEntry       -> unit
+      PersistLog          : LogEntry           -> unit
+      DeleteLog           : LogEntry           -> unit
       LogMsg              : RaftMember         -> CallSite -> LogLevel -> String -> unit }
 
     interface IRaftCallbacks with
@@ -99,7 +99,7 @@ module RaftTestUtils =
         PrepareSnapshot = fun raft ->
           Raft.createSnapshot raft !data |> Some
 
-        PersistSnapshot = fun (entry: RaftLogEntry) ->
+        PersistSnapshot = fun (entry: LogEntry) ->
           if debug then
             sprintf "Perisisting Snapshot: %A" entry |> Logger.debug "PersistSnapshot"
 
@@ -161,7 +161,7 @@ module RaftTestUtils =
   let defaultServer () =
     DiscoId.Create()
     |> Member.create
-    |> Raft.create
+    |> RaftState.create
 
   let runWithCBS cbs action =
     let raft = defaultServer()
@@ -174,9 +174,8 @@ module RaftTestUtils =
 
   let defSM =
     mkTmpDir()
-    |> Project.ofFilePath
     |> mkState
-    |> Either.get
+    |> Result.get
     |> StateMachine.DataSnapshot
 
   let runWithDefaults action =
@@ -226,12 +225,12 @@ module RaftTestUtils =
   let runWithRaft r c m = runRaft r c m
 
   let expectError e = function
-    | Left (e',_) when e = e' -> ()
-    | Left (e',_) when e <> e' ->
+    | Error (e',_) when e = e' -> ()
+    | Error (e',_) when e <> e' ->
       Expecto.Tests.failtestf "Expected error: %A but got: %A" e e'
     | _ as v ->
       Expecto.Tests.failtestf "Expected error but got: %A" v
 
   let noError = function
-    | Left (e,_) -> failwithf "ERROR: %A" e
+    | Error (e,_) -> failwithf "ERROR: %A" e
     | _ -> ()

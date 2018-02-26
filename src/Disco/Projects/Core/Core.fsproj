@@ -184,6 +184,12 @@
     <Compile Include="..\..\Disco\Raft\Types.fs">
       <Link>Types.fs</Link>
     </Compile>
+    <Compile Include="..\..\Disco\Raft\RaftState.fs">
+      <Link>RaftState.fs</Link>
+    </Compile>
+    <Compile Include="..\..\Disco\Raft\RaftMonad.fs">
+      <Link>RaftMonad.fs</Link>
+    </Compile>
     <Compile Include="..\..\Disco\Raft\Raft.fs">
       <Link>Raft.fs</Link>
     </Compile>

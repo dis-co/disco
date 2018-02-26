@@ -113,9 +113,9 @@ module ApiServer =
     |> state.Server.Request (Guid.ofId client)
 
     // match result with
-    // | Right ApiResponse.OK -> ()
+    // | Ok ApiResponse.OK -> ()
 
-    // | Right (ApiResponse.NOK error) ->
+    // | Ok (ApiResponse.NOK error) ->
     //   error
     //   |> string
     //   |> Error.asClientError (tag "requestInstallSnapshot")
@@ -124,7 +124,7 @@ module ApiServer =
     //   |> Msg.SetClientStatus
     //   |> agent.Post
 
-    // | Right other ->
+    // | Ok other ->
     //   other
     //   |> sprintf "Unexpected reply from Client %A"
     //   |> Error.asClientError (tag "requestInstallSnapshot")
@@ -133,7 +133,7 @@ module ApiServer =
     //   |> Msg.SetClientStatus
     //   |> agent.Post
 
-    // | Left error ->
+    // | Error error ->
     //   error
     //   |> string
     //   |> Error.asClientError (tag "requestInstallSnapshot")
@@ -147,7 +147,7 @@ module ApiServer =
   let private processSubscriptionEvent (mem: PeerId) (agent: ApiAgent) = function
     | PubSubEvent.Request(id, bytes) ->
       match Binary.decode bytes with
-      | Right command ->
+      | Ok command ->
         match command with
         // Special case for tests:
         //
@@ -167,7 +167,7 @@ module ApiServer =
         | CallCue _ | UpdateSlices _ -> Msg.Update(Origin.Api, command) |> agent.Post
 
         | _ -> ()
-      | Left _ -> () // not sure if I should log here..
+      | Error _ -> () // not sure if I should log here..
 
   // ** handleStart
 
@@ -324,7 +324,7 @@ module ApiServer =
 
   let private handleServerRequest (state: ServerState) (req: Request) (agent: ApiAgent) =
     match req.Body |> Binary.decode with
-    | Right (Register client) ->
+    | Ok (Register client) ->
       client.Id
       |> sprintf "%O requested to be registered"
       |> Logger.info (tag "handleServerRequest")
@@ -338,7 +338,7 @@ module ApiServer =
       |> Response.fromRequest req
       |> state.Server.Respond
 
-    | Right (UnRegister client) ->
+    | Ok (UnRegister client) ->
       client.Id
       |> sprintf "%O requested to be un-registered"
       |> Logger.info (tag "handleServerRequest")
@@ -352,15 +352,15 @@ module ApiServer =
       |> Response.fromRequest req
       |> state.Server.Respond
 
-    | Right (Update sm) ->
+    | Ok (Update sm) ->
       let id = DiscoId.FromGuid req.PeerId
       (Origin.Client id, sm)
       |> Msg.Update
       |> agent.Post
 
-    | Right _ -> ()                // ignore Ping et al
+    | Ok _ -> ()                // ignore Ping et al
 
-    | Left error ->
+    | Error error ->
       error
       |> String.format "error decoding request: {0}"
       |> Logger.err (tag "handleServerRequest")
@@ -390,7 +390,7 @@ module ApiServer =
     // |  \| | | | | ' /
     // | |\  | |_| | . \
     // |_| \_|\___/|_|\_\
-    | Right (ApiResponse.NOK error) ->
+    | Ok (ApiResponse.NOK error) ->
       error
       |> sprintf "NOK in client request. reason: %O"
       |> Logger.err (tag "handleClientResponse")
@@ -400,14 +400,14 @@ module ApiServer =
       |> Msg.SetClientStatus
       |> agent.Post
 
-    | Right (ApiResponse.Registered _)
-    | Right (ApiResponse.Unregistered _) -> ()
+    | Ok (ApiResponse.Registered _)
+    | Ok (ApiResponse.Unregistered _) -> ()
     //  ____                     _        _____
     // |  _ \  ___  ___ ___   __| | ___  | ____|_ __ _ __ ___  _ __
     // | | | |/ _ \/ __/ _ \ / _` |/ _ \ |  _| | '__| '__/ _ \| '__|
     // | |_| |  __/ (_| (_) | (_| |  __/ | |___| |  | | | (_) | |
     // |____/ \___|\___\___/ \__,_|\___| |_____|_|  |_|  \___/|_|
-    | Left error ->
+    | Error error ->
       error
       |> sprintf "error returned in client request. reason: %O"
       |> Logger.err (tag "handleClientResponse")
@@ -480,10 +480,10 @@ module ApiServer =
 
   // ** start
 
-  let private start (mem: RaftMember)
+  let private start (mem: ClusterMember)
                     (store: IAgentStore<ServerState>)
                     (agent: ApiAgent) =
-    either {
+    result {
       let pubsub = PubSub.create mem
 
       let server = TcpServer.create {
@@ -493,9 +493,9 @@ module ApiServer =
       }
 
       match server.Start()  with
-      | Right () ->
+      | Ok () ->
         match pubsub.Start() with
-        | Right () ->
+        | Ok () ->
           let srv = server.Subscribe (Msg.ServerEvent >> agent.Post)
           let pbsb = pubsub.Subscribe(processSubscriptionEvent mem.Id agent)
 
@@ -510,19 +510,19 @@ module ApiServer =
           agent.Start()
           agent.Post Msg.Start
 
-        | Left error ->
+        | Error error ->
           dispose server
           dispose pubsub
-          return! Either.fail error
+          return! Result.fail error
 
-      | Left error ->
-        return! Either.fail error
+      | Error error ->
+        return! Result.fail error
     }
 
   // ** create
 
-  let create (mem: RaftMember) callbacks =
-    either {
+  let create (mem: ClusterMember) callbacks =
+    result {
       let cts = new CancellationTokenSource()
       let store = AgentStore.create ()
 

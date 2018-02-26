@@ -154,6 +154,7 @@ and UserConfig =
     logColumns: Map<string, bool>
     useRightClick: bool
   }
+
   static member Create() =
     { logTextFilter = None
       logLevelFilter = None

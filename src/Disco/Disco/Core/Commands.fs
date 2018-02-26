@@ -43,4 +43,4 @@ type Command =
   | LoadProject     of projectName:Name * site:NameAndId option
   | GetProjectSites of projectName:Name
 
-type CommandAgent = Command -> Async<Either<DiscoError,string>>
+type CommandAgent = Command -> Async<DiscoResult<string>>

@@ -68,7 +68,7 @@ type Property =
 
   static member FromFB(fb: KeyValueFB) =
     { Key = fb.Key; Value = fb.Value }
-    |> Either.succeed
+    |> Result.succeed
 
   // ** ToYaml
 
@@ -79,14 +79,14 @@ type Property =
 
   // ** FromYaml
 
-  static member FromYaml(yml: PropertyYaml) : Either<DiscoError,Property> =
+  static member FromYaml(yml: PropertyYaml) : DiscoResult<Property> =
     try
       { Key = yml.Key; Value = yml.Value }
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         ("Property.FromYaml",sprintf "Could not parse PropteryYaml: %s" exn.Message)
         |> ParseError
-        |> Either.fail
+        |> Result.fail
 
   #endif

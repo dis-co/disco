@@ -8,6 +8,7 @@
 namespace Disco.Tests
 
 open Expecto
+open System.Collections.Generic
 open Disco.Core
 open Disco.Raft
 
@@ -16,7 +17,7 @@ module StateTests =
 
   let test_apply_fstree_add_correctly =
     testCase "should apply fstree add correctly" <| fun _ ->
-      either {
+      result {
         let initial = State.Empty
         let tree = FsTreeTesting.deepTree 2
         let state = State.addFsTree tree initial
@@ -26,7 +27,7 @@ module StateTests =
 
   let test_apply_fsentry_add_correctly =
     testCase "should apply fsentry add correctly" <| fun _ ->
-      either {
+      result {
         let tree = FsTreeTesting.deepTree 2
         let initial = State.addFsTree tree State.Empty
         let directory =
@@ -51,7 +52,7 @@ module StateTests =
 
   let test_apply_fsentry_remove_correctly =
     testCase "should apply fsentry remove correctly" <| fun _ ->
-      either {
+      result {
         let tree = FsTreeTesting.deepTree 2
         let initial = State.addFsTree tree State.Empty
         let entry =
@@ -65,9 +66,22 @@ module StateTests =
       }
       |> noError
 
+  let test_apply_datasnapshot_correctly =
+    testCase "should apply datasnapshot correctly" <| fun _ ->
+      result {
+        let initial = State.Empty
+        let cue = Cue.create "Hello" Array.empty
+        let state = State.addCue cue initial
+        Expect.contains state.Cues (KeyValuePair(cue.Id, cue)) "should contain cue"
+        let state = State.update state (DataSnapshot initial)
+        Expect.equal state initial "should reset the state"
+      }
+      |> noError
+
   let stateTests =
     testList "State Tests" [
       test_apply_fstree_add_correctly
       test_apply_fsentry_add_correctly
       test_apply_fsentry_remove_correctly
+      test_apply_datasnapshot_correctly
     ]

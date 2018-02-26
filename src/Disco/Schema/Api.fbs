@@ -38,6 +38,7 @@ union ParameterFB {
      StateFB,     
      ProjectFB,
      RaftMemberFB,
+     ClusterMemberFB,
      PinGroupFB,
      PinMappingFB,
      PinWidgetFB,

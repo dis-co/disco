@@ -68,7 +68,6 @@ module TcpServer =
     inherit IDisposable
     abstract Connections: Connections
     abstract Subscriptions: Subscriptions
-    abstract BufferManager: IBufferManager
     abstract BufferedArgs: BufferedArgs
     abstract Listener: Socket
     abstract EndPoint: IPEndPoint
@@ -79,7 +78,7 @@ module TcpServer =
 
     // *** cleanUp
 
-    let cleanUp (connections: Connections) = function
+    let private cleanUp (connections: Connections) = function
       | TcpServerEvent.Disconnect id ->
         match connections.TryRemove id with
         | true, connection ->
@@ -104,17 +103,12 @@ module TcpServer =
         new SocketAsyncEventArgs()
         |> args.Add
 
-      let manager = BufferManager.create Core.MAX_CONNECTIONS Core.BUFFER_SIZE
-
       let cleaner =
         connections
         |> cleanUp
         |> flip Observable.subscribe subscriptions
 
       { new IState with
-          member state.BufferManager
-            with get () = manager
-
           member state.BufferedArgs
             with get () = args
 
@@ -271,9 +265,6 @@ module TcpServer =
       if args.SocketError <> SocketError.Success then
         do onError "onSend" state args
       else
-        args.BytesTransferred
-        |> String.format "sent {0} bytes"
-        |> Logger.debug (tag "onSend")
         do returnArgs state args
       do dispose listener
 
@@ -370,7 +361,7 @@ module TcpServer =
           with get () = options.ServerId
 
         member server.Start() =
-          either {
+          result {
             try
               do! Network.ensureAvailability options.Listen options.Port
               do state.Listener.Bind(state.EndPoint)
@@ -380,7 +371,7 @@ module TcpServer =
               return!
                 exn.Message
                 |> Error.asSocketError (tag "Start")
-                |> Either.fail
+                |> Result.fail
           }
 
         member server.Request (client: Guid) (request: Request) =

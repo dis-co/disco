@@ -1588,13 +1588,52 @@ type HostGroupFBConstructor =
 
 let HostGroupFB: HostGroupFBConstructor = failwith "JS only"
 
+// CLUSTER MEMBER
+
+type ClusterMemberFB =
+  abstract Id: int -> byte
+  abstract IdLength: int
+  abstract HostName: string
+  abstract IpAddress: string
+  abstract MulticastAddress: string
+  abstract MulticastPort: uint16
+  abstract RaftPort: uint16
+  abstract HttpPort: uint16
+  abstract WsPort: uint16
+  abstract GitPort: uint16
+  abstract ApiPort: uint16
+  abstract State: MemberStateFB
+  abstract Status: MemberStatusFB
+
+type ClusterMemberFBConstructor =
+  abstract prototype: ClusterMemberFB with get, set
+  abstract StartClusterMemberFB: builder: FlatBufferBuilder -> unit
+  abstract AddId: builder: FlatBufferBuilder * id: VectorOffset -> unit
+  abstract AddHostName: builder: FlatBufferBuilder * hostname: Offset<string> -> unit
+  abstract AddIpAddress: builder: FlatBufferBuilder * ip: Offset<string> -> unit
+  abstract AddMulticastAddress: builder: FlatBufferBuilder * addr: Offset<string> -> unit
+  abstract AddMulticastPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddRaftPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddHttpPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddWsPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddGitPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddApiPort: builder: FlatBufferBuilder * port: uint16 -> unit
+  abstract AddState: builder: FlatBufferBuilder * state: MemberStateFB -> unit
+  abstract AddStatus: builder: FlatBufferBuilder * state: MemberStatusFB -> unit
+  abstract EndClusterMemberFB: builder: FlatBufferBuilder -> Offset<ClusterMemberFB>
+  abstract GetRootAsClusterMemberFB: bytes: ByteBuffer -> ClusterMemberFB
+  abstract CreateIdVector: builder: FlatBufferBuilder * id:byte array -> VectorOffset
+  abstract Create: unit -> ClusterMemberFB
+
+let ClusterMemberFB: ClusterMemberFBConstructor = failwith "JS only"
+
 // CLUSTER CONFIG
 
 type ClusterConfigFB =
   abstract Id:            int -> byte
   abstract IdLength:      int
   abstract Name:          string
-  abstract Members:       int -> RaftMemberFB
+  abstract Members:       int -> ClusterMemberFB
   abstract MembersLength: int
   abstract Groups:        int -> HostGroupFB
   abstract GroupsLength:  int
@@ -1605,7 +1644,7 @@ type ClusterConfigFBConstructor =
   abstract AddId: builder: FlatBufferBuilder * id:VectorOffset -> unit
   abstract AddName: builder: FlatBufferBuilder * name:Offset<string> -> unit
   abstract AddMembers: builder: FlatBufferBuilder * mems:Offset<'a> -> unit
-  abstract CreateMembersVector: FlatBufferBuilder * Offset<RaftMemberFB> array -> Offset<'a>
+  abstract CreateMembersVector: FlatBufferBuilder * Offset<ClusterMemberFB> array -> Offset<'a>
   abstract AddGroups: builder: FlatBufferBuilder * mems:Offset<'a> -> unit
   abstract CreateIdVector: FlatBufferBuilder * id:byte array -> VectorOffset
   abstract CreateGroupsVector: FlatBufferBuilder * Offset<HostGroupFB> array -> Offset<'a>
@@ -2138,6 +2177,7 @@ type StateMachinePayloadFBConstructor =
   abstract PinMappingFB: StateMachinePayloadFB
   abstract PinWidgetFB: StateMachinePayloadFB
   abstract RaftMemberFB: StateMachinePayloadFB
+  abstract ClusterMemberFB: StateMachinePayloadFB
   abstract UserFB: StateMachinePayloadFB
   abstract SessionFB: StateMachinePayloadFB
   abstract LogEventFB: StateMachinePayloadFB
@@ -2166,6 +2206,7 @@ type StateMachineFB =
   abstract PinMappingFB: PinMappingFB
   abstract PinWidgetFB: PinWidgetFB
   abstract RaftMemberFB: RaftMemberFB
+  abstract ClusterMemberFB: ClusterMemberFB
   abstract UserFB: UserFB
   abstract SessionFB: SessionFB
   abstract LogEventFB: LogEventFB

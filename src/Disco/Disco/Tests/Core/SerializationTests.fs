@@ -24,9 +24,9 @@ module SerializationTests =
 
   let test_binary_machine =
     testCase "DiscoMachine binary serialization should work" <| fun _ ->
-      binaryEncDec<DiscoMachine> 
+      binaryEncDec<DiscoMachine>
       |> Prop.forAll Generators.machineArb
-      |> Check.QuickThrowOnFailure 
+      |> Check.QuickThrowOnFailure
 
   ///  _____    ___        __
   /// |  ___|__|_ _|_ __  / _| ___
@@ -279,58 +279,6 @@ module SerializationTests =
       binaryEncDec<RaftResponse>
       |> Prop.forAll Generators.raftResponseArb
       |> Check.QuickThrowOnFailure
-
-  //  ____        __ _
-  // |  _ \ __ _ / _| |_
-  // | |_) / _` | |_| __|
-  // |  _ < (_| |  _| |_
-  // |_| \_\__,_|_|  \__|
-
-  let test_save_restore_raft_value_correctly =
-    testCase "save/restore raft value correctly" <| fun _ ->
-      either {
-        let machine = MachineConfig.create "127.0.0.1" None
-
-        let self =
-          machine.MachineId
-          |> Member.create
-
-        let mem1 =
-          DiscoId.Create()
-          |> Member.create
-
-        let mem2 =
-          DiscoId.Create()
-          |> Member.create
-
-        let site =
-          { ClusterConfig.Default with
-              Name = name "Cool Cluster Yo"
-              Members = Map.ofArray [| (self.Id,self)
-                                       (mem1.Id, mem1)
-                                       (mem2.Id, mem2) |] }
-
-        let config =
-          machine
-          |> Config.create
-          |> Config.addSiteAndSetActive site
-
-        let trm = term 666
-
-        let! raft =
-          createRaft config
-          |> Either.map (Raft.setTerm trm)
-
-        saveRaft config raft
-        |> Either.mapError Error.throw
-        |> ignore
-
-        let! loaded = loadRaft config
-
-        expect "Member should be correct" self Raft.self loaded
-        expect "Term should be correct" trm Raft.currentTerm loaded
-      }
-      |> noError
 
   //  ____            _           _
   // |  _ \ _ __ ___ (_) ___  ___| |_
@@ -614,7 +562,6 @@ module SerializationTests =
       test_command_batch
       test_correct_request_serialization
       tests_parse_state_deserialization
-      test_save_restore_raft_value_correctly
       test_validate_config_change
       test_validate_user_yaml_serialization
       test_validate_user_binary_serialization

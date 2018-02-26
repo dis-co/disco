@@ -25,7 +25,7 @@ module StateShouldBeCleanedOnClientRemove =
 
   let test =
     testCase "state should be clean on client remove" <| fun _ ->
-      either {
+      result {
         use started = new WaitEvent()
         use batchDone = new WaitEvent()
         use clientRegistered = new WaitEvent()

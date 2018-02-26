@@ -117,7 +117,7 @@ type RaftConfig =
   // ** FromFB
 
   static member FromFB(fb: RaftConfigFB) =
-    either {
+    result {
       let! level = Disco.Core.LogLevel.TryParse fb.LogLevel
       return
         { RequestTimeout   = fb.RequestTimeout * 1<ms>
@@ -202,7 +202,7 @@ type ClientExecutable =
   // ** FromFB
 
   static member FromFB(fb: ClientExecutableFB) =
-    either {
+    result {
       let! id = Id.decodeId fb
       return {
         Id         = id
@@ -271,11 +271,11 @@ type ClientConfig = ClientConfig of Map<ClientId,ClientExecutable>
     // ** FromFB
 
     static member FromFB(fb: ClientConfigFB) =
-      either {
+      result {
         let! executables =
           List.fold
-            (fun (m: Either<DiscoError, Map<ClientId,ClientExecutable>>) idx ->
-              either {
+            (fun (m: DiscoResult<Map<ClientId,ClientExecutable>>) idx ->
+              result {
                 let! exes = m
                 let! exe =
                   #if FABLE_COMPILER
@@ -289,11 +289,11 @@ type ClientConfig = ClientConfig of Map<ClientId,ClientExecutable>
                   else
                     "Could not parse empty ClientExecutableFB"
                     |> Error.asParseError "ClientConfig.FromFB"
-                    |> Either.fail
+                    |> Result.fail
                   #endif
                 return Map.add exe.Id exe exes
               })
-            (Right Map.empty)
+            (Ok Map.empty)
             [ for n in 0 .. fb.ExecutablesLength - 1 -> n ]
         return ClientConfig executables
       }
@@ -387,14 +387,14 @@ type TimingConfig =
   // ** FromFB
 
   static member FromFB(fb: TimingConfigFB) =
-    either {
+    result {
       let! (_,servers) =
         let arr =
           fb.ServersLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * IpAddress array>) _ ->
-            either {
+          (fun (m: DiscoResult<int * IpAddress array>) _ ->
+            result {
               let! (idx,servers) = m
               let! server =
                 fb.Servers(idx)
@@ -402,7 +402,7 @@ type TimingConfig =
               servers.[idx] <- server
               return (idx + 1, servers)
             })
-          (Right(0, arr))
+          (Ok(0, arr))
           arr
 
       return
@@ -467,7 +467,7 @@ type AudioConfig =
   // ** FromFB
 
   static member FromFB(fb: AudioConfigFB) =
-    either {
+    result {
       return { SampleRate = fb.SampleRate }
     }
 
@@ -529,20 +529,20 @@ type HostGroup =
   // ** FromFB
 
   static member FromFB(fb: HostGroupFB) =
-    either {
+    result {
       let! (_,members) =
         let arr =
           fb.MembersLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * MemberId array>) _ ->
-            either {
+          (fun (m: DiscoResult<int * MemberId array>) _ ->
+            result {
               let! (idx, ids) = m
               let! id = DiscoId.TryParse (fb.Members(idx))
               ids.[idx] <- id
               return (idx + 1, ids)
             })
-          (Right(0, arr))
+          (Ok(0, arr))
           arr
 
       return
@@ -565,6 +565,221 @@ module HostGroup =
   let setName = Optic.set HostGroup.Name_
   let setMembers = Optic.set HostGroup.Members_
 
+// * ClusterMember
+
+type ClusterMember =
+  { Id:               MemberId
+    HostName:         Name
+    IpAddress:        IpAddress
+    MulticastAddress: IpAddress
+    MulticastPort:    Port
+    HttpPort:         Port
+    RaftPort:         Port
+    WsPort:           Port
+    GitPort:          Port
+    ApiPort:          Port
+    State:            MemberState
+    Status:           MemberStatus }
+
+  // ** optics
+
+  static member Id_ =
+    (fun (mem:ClusterMember) -> mem.Id),
+    (fun id (mem:ClusterMember) -> { mem with Id = id })
+
+  static member HostName_ =
+    (fun (mem:ClusterMember) -> mem.HostName),
+    (fun hostName (mem:ClusterMember) -> { mem with HostName = hostName })
+
+  static member IpAddress_ =
+    (fun (mem:ClusterMember) -> mem.IpAddress),
+    (fun ipAddress (mem:ClusterMember) -> { mem with IpAddress = ipAddress })
+
+  static member MulticastAddress_ =
+    (fun (mem:ClusterMember) -> mem.MulticastAddress),
+    (fun multicastAddress (mem:ClusterMember) -> { mem with MulticastAddress = multicastAddress })
+
+  static member MulticastPort_ =
+    (fun (mem:ClusterMember) -> mem.MulticastPort),
+    (fun multicastPort (mem:ClusterMember) -> { mem with MulticastPort = multicastPort })
+
+  static member RaftPort_ =
+    (fun (mem:ClusterMember) -> mem.RaftPort),
+    (fun raftPort (mem:ClusterMember) -> { mem with RaftPort = raftPort })
+
+  static member HttpPort_ =
+    (fun (mem:ClusterMember) -> mem.HttpPort),
+    (fun httpPort (mem:ClusterMember) -> { mem with HttpPort = httpPort })
+
+  static member WsPort_ =
+    (fun (mem:ClusterMember) -> mem.WsPort),
+    (fun wsPort (mem:ClusterMember) -> { mem with WsPort = wsPort })
+
+  static member GitPort_ =
+    (fun (mem:ClusterMember) -> mem.GitPort),
+    (fun gitPort (mem:ClusterMember) -> { mem with GitPort = gitPort })
+
+  static member ApiPort_ =
+    (fun (mem:ClusterMember) -> mem.ApiPort),
+    (fun apiPort (mem:ClusterMember) -> { mem with ApiPort = apiPort })
+
+  static member State_ =
+    (fun (mem:ClusterMember) -> mem.State),
+    (fun state (mem:ClusterMember) -> { mem with State = state })
+
+  static member Status_ =
+    (fun (mem:ClusterMember) -> mem.Status),
+    (fun status (mem:ClusterMember) -> { mem with Status = status })
+
+  // ** ToYaml
+
+  #if !FABLE_COMPILER && !DISCO_NODES
+
+  #endif
+
+  // ** ToOffset
+
+  member mem.ToOffset (builder: FlatBufferBuilder) =
+    let id = ClusterMemberFB.CreateIdVector(builder,mem.Id.ToByteArray())
+    let ip = string mem.IpAddress |> builder.CreateString
+    let mcastip = string mem.MulticastAddress |> builder.CreateString
+
+    let hostname =
+      let unwrapped = unwrap mem.HostName
+      if isNull unwrapped then
+        None
+      else
+        unwrapped |> builder.CreateString |> Some
+
+    let state = mem.State.ToOffset(builder)
+    let status = mem.Status.ToOffset()
+
+    ClusterMemberFB.StartClusterMemberFB(builder)
+    ClusterMemberFB.AddId(builder, id)
+
+    match hostname with
+    | Some hostname -> ClusterMemberFB.AddHostName(builder, hostname)
+    | None -> ()
+
+    ClusterMemberFB.AddMulticastAddress(builder, mcastip)
+    ClusterMemberFB.AddMulticastPort(builder, unwrap mem.MulticastPort)
+    ClusterMemberFB.AddIpAddress(builder, ip)
+    ClusterMemberFB.AddRaftPort(builder, unwrap mem.RaftPort)
+    ClusterMemberFB.AddHttpPort(builder, unwrap mem.HttpPort)
+    ClusterMemberFB.AddWsPort(builder, unwrap mem.WsPort)
+    ClusterMemberFB.AddGitPort(builder, unwrap mem.GitPort)
+    ClusterMemberFB.AddApiPort(builder, unwrap mem.ApiPort)
+    ClusterMemberFB.AddState(builder, state)
+    ClusterMemberFB.AddStatus(builder, status)
+    ClusterMemberFB.EndClusterMemberFB(builder)
+
+  // ** FromFB
+
+  static member FromFB (fb: ClusterMemberFB) : DiscoResult<ClusterMember> =
+    result {
+      let! id = Id.decodeId fb
+      let! state = MemberState.FromFB fb.State
+      let! status = MemberStatus.FromFB fb.Status
+      let! ip = IpAddress.TryParse fb.IpAddress
+      let! mcastip = IpAddress.TryParse fb.MulticastAddress
+      return {
+        Id               = id
+        State            = state
+        Status           = status
+        HostName         = name fb.HostName
+        IpAddress        = ip
+        MulticastAddress = mcastip
+        MulticastPort    = port fb.MulticastPort
+        HttpPort         = port fb.HttpPort
+        RaftPort         = port fb.RaftPort
+        WsPort           = port fb.WsPort
+        GitPort          = port fb.GitPort
+        ApiPort          = port fb.ApiPort
+      }
+    }
+
+  // ** ToBytes
+
+  member self.ToBytes () = Binary.buildBuffer self
+
+  // ** FromBytes
+
+  static member FromBytes (bytes: byte[]) =
+    Binary.createBuffer bytes
+    |> ClusterMemberFB.GetRootAsClusterMemberFB
+    |> ClusterMember.FromFB
+
+
+// * ClusterMember module
+
+module ClusterMember =
+
+  open Aether
+
+  // ** getters
+
+  let id = Optic.get ClusterMember.Id_
+  let hostName = Optic.get ClusterMember.HostName_
+  let ipAddress = Optic.get ClusterMember.IpAddress_
+  let multicastAddress = Optic.get ClusterMember.MulticastAddress_
+  let multicastPort = Optic.get ClusterMember.MulticastPort_
+  let raftPort = Optic.get ClusterMember.RaftPort_
+  let httpPort = Optic.get ClusterMember.HttpPort_
+  let wsPort = Optic.get ClusterMember.WsPort_
+  let gitPort = Optic.get ClusterMember.GitPort_
+  let apiPort = Optic.get ClusterMember.ApiPort_
+  let status = Optic.get ClusterMember.Status_
+  let state = Optic.get ClusterMember.State_
+
+  // ** setters
+
+  let setId = Optic.set ClusterMember.Id_
+  let setHostName = Optic.set ClusterMember.HostName_
+  let setIpAddress = Optic.set ClusterMember.IpAddress_
+  let setMulticastAddress = Optic.set ClusterMember.MulticastAddress_
+  let setMulticastPort = Optic.set ClusterMember.MulticastPort_
+  let setRaftPort = Optic.set ClusterMember.RaftPort_
+  let setHttpPort = Optic.set ClusterMember.HttpPort_
+  let setWsPort = Optic.set ClusterMember.WsPort_
+  let setGitPort = Optic.set ClusterMember.GitPort_
+  let setApiPort = Optic.set ClusterMember.ApiPort_
+  let setStatus = Optic.set ClusterMember.Status_
+  let setState = Optic.set ClusterMember.State_
+
+  // **  create
+
+  let create id =
+    #if FABLE_COMPILER
+    let hostname = Fable.Import.Browser.window.location.host
+    #else
+    let hostname = Network.getHostName ()
+    #endif
+    { Id               = id
+      HostName         = name hostname
+      IpAddress        = IPv4Address "127.0.0.1"
+      MulticastAddress = IpAddress.Parse Constants.DEFAULT_MCAST_ADDRESS
+      MulticastPort    = Measure.port Constants.DEFAULT_MCAST_PORT
+      HttpPort         = Measure.port Constants.DEFAULT_HTTP_PORT
+      RaftPort         = Measure.port Constants.DEFAULT_RAFT_PORT
+      WsPort           = Measure.port Constants.DEFAULT_WEB_SOCKET_PORT
+      GitPort          = Measure.port Constants.DEFAULT_GIT_PORT
+      ApiPort          = Measure.port Constants.DEFAULT_API_PORT
+      Status           = Running
+      State            = Follower }
+
+  // ** toRaftMember
+
+  let toRaftMember (mem:ClusterMember) =
+    { Id         = mem.Id
+      IpAddress  = mem.IpAddress
+      RaftPort   = mem.RaftPort
+      Status     = mem.Status
+      State      = mem.State
+      Voting     = true
+      VotedForMe = false
+      NextIndex  = 1<index>
+      MatchIndex = 0<index> }
+
 // * ClusterConfig
 
 //   ____ _           _
@@ -576,7 +791,7 @@ module HostGroup =
 type ClusterConfig =
   { Id: ClusterId
     Name: Name
-    Members: Map<MemberId,RaftMember>
+    Members: Map<MemberId,ClusterMember>
     Groups: HostGroup array }
 
   // ** optics
@@ -641,34 +856,34 @@ type ClusterConfig =
   // ** FromFB
 
   static member FromFB(fb: ClusterConfigFB) =
-    either {
+    result {
       let! (_,members) =
         let arr =
           fb.MembersLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * Map<MemberId,RaftMember>>) _ ->
-            either {
+          (fun (m: DiscoResult<int * Map<MemberId,ClusterMember>>) _ ->
+            result {
               let! (idx,members) = m
 
               let! mem =
                 #if FABLE_COMPILER
                 fb.Members(idx)
-                |> RaftMember.FromFB
+                |> ClusterMember.FromFB
                 #else
                 let memish = fb.Members(idx)
                 if memish.HasValue then
                   let value = memish.Value
-                  RaftMember.FromFB value
+                  ClusterMember.FromFB value
                 else
-                  "Could not parse empty RaftMemberFB"
+                  "Could not parse empty ClusterMemberFB"
                   |> Error.asParseError "Cluster.FromFB"
-                  |> Either.fail
+                  |> Result.fail
                 #endif
 
               return (idx + 1, Map.add mem.Id mem members)
             })
-          (Right(0, Map.empty))
+          (Ok(0, Map.empty))
           arr
 
       let! (_,groups) =
@@ -676,8 +891,8 @@ type ClusterConfig =
           fb.GroupsLength
           |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * HostGroup array>) _ ->
-            either {
+          (fun (m: DiscoResult<int * HostGroup array>) _ ->
+            result {
               let! (idx,groups) = m
 
               let! group =
@@ -692,13 +907,13 @@ type ClusterConfig =
                 else
                   "Could not parse empty HostGroupFB"
                   |> Error.asParseError "Cluster.FromFB"
-                  |> Either.fail
+                  |> Result.fail
                 #endif
 
               groups.[idx] <- group
               return (idx + 1, groups)
             })
-          (Right(0, arr))
+          (Ok(0, arr))
           arr
 
       let! id = Id.decodeId fb
@@ -747,7 +962,7 @@ type DiscoConfig =
     Clients:    ClientConfig
     Raft:       RaftConfig
     Timing:     TimingConfig
-    Sites:      ClusterConfig array }
+    Sites:      Map<SiteId,ClusterConfig> }
 
   // ** optics
 
@@ -798,7 +1013,7 @@ type DiscoConfig =
         Clients   = ClientConfig.Default
         Raft      = RaftConfig.Default
         Timing    = TimingConfig.Default
-        Sites     = [| |] }
+        Sites     = Map.empty }
 
   // ** ToOffset
 
@@ -823,7 +1038,9 @@ type DiscoConfig =
         self.ActiveSite
 
     let sites =
-      Array.map (Binary.toOffset builder) self.Sites
+      self.Sites
+      |> Map.toArray
+      |> Array.map (snd >> Binary.toOffset builder)
       |> fun sites -> ConfigFB.CreateSitesVector(builder, sites)
 
     ConfigFB.StartConfigFB(builder)
@@ -840,16 +1057,16 @@ type DiscoConfig =
   // ** FromFB
 
   static member FromFB(fb: ConfigFB) =
-    either {
+    result {
       let version = fb.Version
 
       let! site =
         try
           if fb.ActiveSiteLength = 0
-          then Either.succeed None
-          else Id.decodeActiveSite fb |> Either.map Some
+          then Result.succeed None
+          else Id.decodeActiveSite fb |> Result.map Some
         with exn ->
-          Either.succeed None
+          Result.succeed None
 
       let! machine =
         #if FABLE_COMPILER
@@ -862,7 +1079,7 @@ type DiscoConfig =
         else
           "Unable to parse empty DiscoMachineFB value"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! audio =
@@ -876,7 +1093,7 @@ type DiscoConfig =
         else
           "Could not parse empty AudioConfigFB"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! clients =
@@ -890,7 +1107,7 @@ type DiscoConfig =
         else
           "Could not parse empty ClientConfigFB"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! raft =
@@ -904,7 +1121,7 @@ type DiscoConfig =
         else
           "Could not parse empty RaftConfigFB"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! timing =
@@ -918,16 +1135,13 @@ type DiscoConfig =
         else
           "Could not parse empty TimingConfigFB"
           |> Error.asParseError "DiscoConfig.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! (_, sites) =
-        let arr =
-          fb.SitesLength
-          |> Array.zeroCreate
         Array.fold
-          (fun (m: Either<DiscoError, int * ClusterConfig array>) _ ->
-            either {
+          (fun (m: DiscoResult<int * Map<SiteId,ClusterConfig>>) _ ->
+            result {
               let! (idx, sites) = m
               let! site =
                 #if FABLE_COMPILER
@@ -941,13 +1155,12 @@ type DiscoConfig =
                 else
                   "Could not parse empty ClusterConfigFB"
                   |> Error.asParseError "DiscoConfig.FromFB"
-                  |> Either.fail
+                  |> Result.fail
                 #endif
-              sites.[idx] <- site
-              return (idx + 1, sites)
+              return (idx + 1, Map.add site.Id site sites)
             })
-            (Right(0, arr))
-            arr
+            (Ok(0, Map.empty))
+            [| 0 .. fb.SitesLength - 1 |]
 
       return {
         Machine    = machine
@@ -987,6 +1200,11 @@ module DiscoConfig =
   let setRaft = Optic.set DiscoConfig.Raft_
   let setTiming = Optic.set DiscoConfig.Timing_
   let setSites = Optic.set DiscoConfig.Sites_
+
+  // ** currentSite
+
+  let currentSite (config:DiscoConfig) =
+    activeSite config
 
 // * ProjectYaml
 
@@ -1035,12 +1253,28 @@ module ProjectYaml =
     [<DefaultValue>] val mutable Name: string
     [<DefaultValue>] val mutable Members: string array
 
+  // ** ClusterMemberYaml
+
+  type ClusterMemberYaml() =
+    [<DefaultValue>] val mutable Id:               string
+    [<DefaultValue>] val mutable HostName:         string
+    [<DefaultValue>] val mutable IpAddress:        string
+    [<DefaultValue>] val mutable MulticastAddress: string
+    [<DefaultValue>] val mutable MulticastPort:    uint16
+    [<DefaultValue>] val mutable HttpPort:         uint16
+    [<DefaultValue>] val mutable RaftPort:         uint16
+    [<DefaultValue>] val mutable WsPort:           uint16
+    [<DefaultValue>] val mutable GitPort:          uint16
+    [<DefaultValue>] val mutable ApiPort:          uint16
+    [<DefaultValue>] val mutable State:            string
+    [<DefaultValue>] val mutable Status:           string
+
   // ** SiteYaml
 
   type SiteYaml () =
     [<DefaultValue>] val mutable Id: string
     [<DefaultValue>] val mutable Name: string
-    [<DefaultValue>] val mutable Members: RaftMemberYaml array
+    [<DefaultValue>] val mutable Members: ClusterMemberYaml array
     [<DefaultValue>] val mutable Groups: GroupYaml array
 
   // ** DiscoProjectYaml
@@ -1062,22 +1296,22 @@ module ProjectYaml =
 
   // ** parseTuple
 
-  let internal parseTuple (input: string) : Either<DiscoError,int * int> =
+  let internal parseTuple (input: string) : DiscoResult<int * int> =
     input.Split [| '('; ','; ' '; ')' |]       // split the string according to the specified chars
     |> Array.filter (String.length >> ((<) 0)) // filter out elements that have zero length
     |> fun parsed ->
       try
         match parsed with
-        | [| x; y |] -> Right (int x, int y)
+        | [| x; y |] -> Ok (int x, int y)
         | _ ->
           sprintf "Cannot parse %A as (int * int) tuple" input
           |> Error.asParseError "Config.parseTuple"
-          |> Either.fail
+          |> Result.fail
       with
         | exn ->
           sprintf "Cannot parse %A as (int * int) tuple: %s" input exn.Message
           |> Error.asParseError "Config.parseTuple"
-          |> Either.fail
+          |> Result.fail
 
   // ** parseStringProp
 
@@ -1091,8 +1325,8 @@ module ProjectYaml =
   /// Parses the Audio configuration section of the passed-in configuration file.
   ///
   /// # Returns: AudioConfig
-  let internal parseAudio (config: DiscoProjectYaml) : Either<DiscoError, AudioConfig> =
-    Either.tryWith (Error.asParseError "Config.parseAudio") <| fun _ ->
+  let internal parseAudio (config: DiscoProjectYaml) : DiscoResult<AudioConfig> =
+    Result.tryWith (Error.asParseError "Config.parseAudio") <| fun _ ->
       { SampleRate = uint32 config.Audio.SampleRate }
 
   // ** saveAudio
@@ -1110,8 +1344,8 @@ module ProjectYaml =
 
   // ** parseExecutable
 
-  let internal parseExecutable (exe: ClientExecutableYaml) : Either<DiscoError, ClientExecutable> =
-    either {
+  let internal parseExecutable (exe: ClientExecutableYaml) : DiscoResult<ClientExecutable> =
+    result {
       let! id = DiscoId.TryParse exe.Id
       return {
         Id         = id
@@ -1123,16 +1357,16 @@ module ProjectYaml =
 
   // ** parseClients
 
-  let internal parseClients (file: DiscoProjectYaml) : Either<DiscoError,ClientConfig> =
-    either {
+  let internal parseClients (file: DiscoProjectYaml) : DiscoResult<ClientConfig> =
+    result {
       let! executables =
         Seq.fold
-          (fun (m: Either<DiscoError,Map<ClientId,ClientExecutable>>) exe -> either {
+          (fun (m: DiscoResult<Map<ClientId,ClientExecutable>>) exe -> result {
             let! exes = m
             let! exe = parseExecutable exe
             return Map.add exe.Id exe exes
           })
-          (Right Map.empty)
+          (Ok Map.empty)
           file.Clients
       return ClientConfig executables
     }
@@ -1164,8 +1398,8 @@ module ProjectYaml =
   /// Parses the passed-in configuration file contents and returns a `RaftConfig` value.
   ///
   /// Returns: RaftConfig
-  let internal parseRaft (config: DiscoProjectYaml) : Either<DiscoError, RaftConfig> =
-    either {
+  let internal parseRaft (config: DiscoProjectYaml) : DiscoResult<RaftConfig> =
+    result {
       let! loglevel = Disco.Core.LogLevel.TryParse config.Engine.LogLevel
 
       try
@@ -1182,7 +1416,7 @@ module ProjectYaml =
           return!
             sprintf "Could not parse Engine config: %s" exn.Message
             |> Error.asParseError "Config.parseRaft"
-            |> Either.fail
+            |> Result.fail
     }
 
   // ** saveRaft
@@ -1218,8 +1452,8 @@ module ProjectYaml =
   /// Parse TimingConfig related values into a TimingConfig value and return it.
   ///
   /// # Returns: TimingConfig
-  let internal parseTiming (config: DiscoProjectYaml) : Either<DiscoError,TimingConfig> =
-    either {
+  let internal parseTiming (config: DiscoProjectYaml) : DiscoResult<TimingConfig> =
+    result {
       let timing = config.Timing
       let arr =
         timing.Servers
@@ -1228,13 +1462,13 @@ module ProjectYaml =
 
       let! (_,servers) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * IpAddress array>) thing -> either {
+          (fun (m: DiscoResult<int * IpAddress array>) thing -> result {
             let! (idx, lst) = m
             let! server = IpAddress.TryParse thing
             lst.[idx] <- server
             return (idx + 1, lst)
           })
-          (Right(0, arr))
+          (Ok(0, arr))
           timing.Servers
 
       try
@@ -1249,16 +1483,12 @@ module ProjectYaml =
           return!
             sprintf "Could not parse Timing config: %s" exn.Message
             |> Error.asParseError "Config.parseTiming"
-            |> Either.fail
+            |> Result.fail
     }
 
   // ** saveTiming
 
-  /// ### Transfer the TimingConfig options to the passed configuration file
-  ///
-  ///
-  ///
-  /// # Returns: ConfigFile
+  /// Transfer the TimingConfig options to the passed configuration file
   let internal saveTiming (file: DiscoProjectYaml, config: DiscoConfig) =
     let timing = TimingYaml()
     timing.Framebase <- int (config.Timing.Framebase)
@@ -1269,13 +1499,54 @@ module ProjectYaml =
       servers.Add(string srv)
 
     timing.Servers <- servers.ToArray()
-
     timing.TCPPort <- int (config.Timing.TCPPort)
     timing.UDPPort <- int (config.Timing.UDPPort)
 
     file.Timing <- timing
-
     (file, config)
+
+  // ** parseMember
+
+  let internal parseMember (yaml:ClusterMemberYaml) =
+    result {
+      let! id = DiscoId.TryParse yaml.Id
+      let! ip = IpAddress.TryParse yaml.IpAddress
+      let! mcastip = IpAddress.TryParse yaml.MulticastAddress
+      let! state = MemberState.TryParse yaml.State
+      let! status = MemberStatus.TryParse yaml.Status
+      return {
+        Id               = id
+        HostName         = name yaml.HostName
+        MulticastAddress = mcastip
+        MulticastPort    = port yaml.MulticastPort
+        IpAddress        = ip
+        HttpPort         = port yaml.HttpPort
+        RaftPort         = port yaml.RaftPort
+        WsPort           = port yaml.WsPort
+        GitPort          = port yaml.GitPort
+        ApiPort          = port yaml.ApiPort
+        State            = state
+        Status           = status
+      }
+    }
+  // ** saveMember
+
+  let internal saveMember (mem:ClusterMember) =
+    let yaml = ClusterMemberYaml()
+    yaml.Id               <- string mem.Id
+    yaml.HostName         <- unwrap mem.HostName
+    yaml.IpAddress        <- string mem.IpAddress
+    yaml.MulticastAddress <- string mem.MulticastAddress
+    yaml.MulticastPort    <- unwrap mem.MulticastPort
+    yaml.HttpPort         <- unwrap mem.HttpPort
+    yaml.RaftPort         <- unwrap mem.RaftPort
+    yaml.WsPort           <- unwrap mem.WsPort
+    yaml.GitPort          <- unwrap mem.GitPort
+    yaml.ApiPort          <- unwrap mem.ApiPort
+    yaml.State            <- string mem.State
+    yaml.Status           <- string mem.Status
+    yaml
+
 
   // ** parseMembers
 
@@ -1286,17 +1557,17 @@ module ProjectYaml =
   /// ### Signature:
   /// - mems: MemberYaml collection
   ///
-  /// Returns: Either<DiscoError, RaftMember array>
-  let internal parseMembers mems : Either<DiscoError, Map<MemberId,RaftMember>> =
-    either {
+  /// Returns: DiscoResult<RaftMember array>
+  let internal parseMembers mems : DiscoResult<Map<MemberId,ClusterMember>> =
+    result {
       let! (_,mems) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * Map<MemberId,RaftMember>>) mem -> either {
+          (fun (m: DiscoResult<int * Map<MemberId,ClusterMember>>) mem -> result {
             let! (idx, mems) = m
-            let! mem = RaftMember.FromYaml mem
+            let! mem = parseMember mem
             return (idx + 1, Map.add mem.Id mem mems)
           })
-          (Right(0, Map.empty))
+          (Ok(0, Map.empty))
           mems
 
       return mems
@@ -1304,8 +1575,8 @@ module ProjectYaml =
 
   // ** parseGroup
 
-  let internal parseGroup (group: GroupYaml) : Either<DiscoError, HostGroup> =
-    either {
+  let internal parseGroup (group: GroupYaml) : DiscoResult<HostGroup> =
+    result {
       let ids = Seq.map (string >> DiscoId.Parse) group.Members |> Seq.toArray
       return {
         Name = name group.Name
@@ -1315,8 +1586,8 @@ module ProjectYaml =
 
   // ** parseGroups
 
-  let internal parseGroups groups : Either<DiscoError, HostGroup array> =
-    either {
+  let internal parseGroups groups : DiscoResult<HostGroup array> =
+    result {
       let arr =
         groups
         |> Seq.length
@@ -1324,13 +1595,13 @@ module ProjectYaml =
 
       let! (_, groups) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * HostGroup array>) group -> either {
+          (fun (m: DiscoResult<int * HostGroup array>) group -> result {
             let! (idx, groups) = m
             let! group = parseGroup group
             groups.[idx] <- group
             return (idx + 1, groups)
           })
-          (Right(0,arr))
+          (Ok(0,arr))
           groups
 
       return groups
@@ -1338,14 +1609,15 @@ module ProjectYaml =
 
   // ** parseCluster
 
+
   /// ### Parse the Cluster configuration section
   ///
   /// Parse the cluster configuration section of a given configuration file into a `Cluster` value.
   ///
   /// # Returns: Cluster
 
-  let internal parseCluster (cluster: SiteYaml) : Either<DiscoError, ClusterConfig> =
-    either {
+  let internal parseCluster (cluster: SiteYaml) : DiscoResult<ClusterConfig> =
+    result {
       let! groups = parseGroups cluster.Groups
       let! mems = parseMembers cluster.Members
       let! id = DiscoId.TryParse cluster.Id
@@ -1359,25 +1631,18 @@ module ProjectYaml =
 
   // ** parseSites
 
-  let internal parseSites (config: DiscoProjectYaml) : Either<DiscoError, ClusterConfig array> =
-    either {
-      let arr =
-        config.Sites
-        |> Seq.length
-        |> Array.zeroCreate
-
+  let internal parseSites (config: DiscoProjectYaml) =
+    result {
       let! (_, sites) =
         Seq.fold
-          (fun (m: Either<DiscoError, int * ClusterConfig array>) cfg ->
-            either {
+          (fun (m: DiscoResult<int * Map<SiteId,ClusterConfig>>) cfg ->
+            result {
               let! (idx, sites) = m
               let! site = parseCluster cfg
-              sites.[idx] <- site
-              return (idx + 1, sites)
+              return (idx + 1, Map.add site.Id site sites)
             })
-          (Right(0, arr))
+          (Ok(0, Map.empty))
           config.Sites
-
       return sites
     }
 
@@ -1395,16 +1660,16 @@ module ProjectYaml =
     | Some id -> file.ActiveSite <- string id
     | None -> file.ActiveSite <- null
 
-    for cluster in config.Sites do
+    for KeyValue(id, cluster) in config.Sites do
       let cfg = SiteYaml()
       let members = ResizeArray()
       let groups = ResizeArray()
 
-      cfg.Id <- string cluster.Id
+      cfg.Id <- string id
       cfg.Name <- unwrap cluster.Name
 
       for KeyValue(_,mem) in cluster.Members do
-        let mem = mem.ToYaml()
+        let mem = saveMember mem
         members.Add(mem)
 
       for group in cluster.Groups do
@@ -1459,12 +1724,12 @@ module ProjectYaml =
     try
       str
       |> Yaml.deserialize<DiscoProjectYaml>
-      |> Either.succeed
+      |> Result.succeed
     with
       | exn ->
         exn.Message
         |> Error.asParseError "ProjectYaml.parse"
-        |> Either.fail
+        |> Result.fail
 
 #endif
 
@@ -1489,8 +1754,8 @@ module Config =
 
   let fromFile (file: ProjectYaml.DiscoProjectYaml)
                (machine: DiscoMachine)
-               : Either<DiscoError, DiscoConfig> =
-    either {
+               : DiscoResult<DiscoConfig> =
+    result {
       let  version   = file.Version
       let! raftcfg   = ProjectYaml.parseRaft      file
       let! timing    = ProjectYaml.parseTiming    file
@@ -1500,8 +1765,8 @@ module Config =
 
       let! site =
         if isNull file.ActiveSite || file.ActiveSite = ""
-        then Right None
-        else DiscoId.TryParse file.ActiveSite |> Either.map Some
+        then Ok None
+        else DiscoId.TryParse file.ActiveSite |> Result.map Some
 
       return {
         Machine    = machine
@@ -1547,7 +1812,7 @@ module Config =
       Audio     = AudioConfig.Default
       Raft      = RaftConfig.Default
       Timing    = TimingConfig.Default
-      Sites     = [| |] }
+      Sites     = Map.empty }
 
   // ** updateMachine
 
@@ -1574,33 +1839,14 @@ module Config =
   let updateTiming (timing: TimingConfig) (config: DiscoConfig) =
     { config with Timing = timing }
 
-  // ** updateCluster
-
-  let updateCluster (cluster: ClusterConfig) (config: DiscoConfig) =
-    let sites =
-      Array.map
-        (fun (site: ClusterConfig) ->
-          if cluster.Id = site.Id
-          then cluster
-          else site)
-        config.Sites
-    { config with Sites = sites }
-
   // ** updateSite
 
   let updateSite (site: ClusterConfig) (config: DiscoConfig) =
-    let sites =
-      Array.map
-        (fun existing ->
-          if ClusterConfig.id existing = ClusterConfig.id site
-          then site
-          else existing)
-        config.Sites
-    { config with Sites = sites }
+    { config with Sites = Map.add site.Id site config.Sites }
 
   // ** updateSites
 
-  let updateSites (sites: ClusterConfig array) (config: DiscoConfig) =
+  let updateSites (sites: Map<SiteId,ClusterConfig>) (config: DiscoConfig) =
     { config with Sites = sites }
 
   // ** findMember
@@ -1608,61 +1854,61 @@ module Config =
   let findMember (config: DiscoConfig) (id: MemberId) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
+      match Map.tryFind active config.Sites with
       | Some cluster ->
         match Map.tryFind id cluster.Members with
-        | Some mem -> Either.succeed mem
+        | Some mem -> Result.succeed mem
         | _ ->
           ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
           |> Error.asProjectError "Config.findMember"
-          |> Either.fail
+          |> Result.fail
       | _ ->
         ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
         |> Error.asProjectError "Config.findMember"
-        |> Either.fail
+        |> Result.fail
     | None ->
       ErrorMessages.PROJECT_NO_ACTIVE_CONFIG
       |> Error.asProjectError "Config.findMember"
-      |> Either.fail
+      |> Result.fail
 
   // ** tryFindMember
 
   let tryFindMember (config: DiscoConfig) (id: MemberId) =
     match findMember config id with
-    | Right mem -> Some mem
+    | Ok mem -> Some mem
     | _ -> None
 
   // ** getMembers
 
-  let getMembers (config: DiscoConfig) : Either<DiscoError,Map<MemberId,RaftMember>> =
+  let getMembers (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
-      | Some site -> site.Members |> Either.succeed
+      match Map.tryFind active config.Sites with
+      | Some site -> site.Members |> Result.succeed
       | None ->
         ErrorMessages.PROJECT_MISSING_CLUSTER + ": " + (string active)
         |> Error.asProjectError "Config.getMembers"
-        |> Either.fail
+        |> Result.fail
     | None ->
       ErrorMessages.PROJECT_NO_ACTIVE_CONFIG
       |> Error.asProjectError "Config.getMembers"
-      |> Either.fail
+      |> Result.fail
 
   // ** setActiveSite
 
   let setActiveSite (id: SiteId) (config: DiscoConfig) =
-    if config.Sites |> Array.exists (fun x -> x.Id = id)
-    then Right { config with ActiveSite = Some id }
+    if Map.containsKey id config.Sites
+    then Ok { config with ActiveSite = Some id }
     else
       ErrorMessages.PROJECT_MISSING_MEMBER + ": " + (string id)
       |> Error.asProjectError "Config.setActiveSite"
-      |> Either.fail
+      |> Result.fail
 
   // ** getActiveSite
 
   let getActiveSite (config: DiscoConfig) =
     match config.ActiveSite with
-    | Some id -> Array.tryFind (fun (site: ClusterConfig) -> site.Id = id) config.Sites
+    | Some id -> Map.tryFind id config.Sites
     | None -> None
 
   // ** getActiveMember
@@ -1674,12 +1920,12 @@ module Config =
 
   // ** setMembers
 
-  let setMembers (mems: Map<MemberId,RaftMember>) (config: DiscoConfig) =
+  let setMembers (mems: Map<MemberId,ClusterMember>) (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun (clst: ClusterConfig) -> clst.Id = active) config.Sites with
+      match Map.tryFind active config.Sites with
       | Some site ->
-        updateCluster { site with Members = mems } config
+        updateSite { site with Members = mems } config
       | None -> config
     | None -> config
 
@@ -1692,7 +1938,7 @@ module Config =
   // ** validateSettings
 
   /// Cross-check the settins in a given cluster member definition with this machines settings
-  let validateSettings (mem: RaftMember) (machine:DiscoMachine): Either<DiscoError,unit> =
+  let validateSettings (mem: ClusterMember) (machine:DiscoMachine): DiscoResult<unit> =
     let errorMsg tag a b =
       sprintf "Member %s: %O is different from Machine %s: %O\n" tag a tag b
     let errors = [
@@ -1708,23 +1954,20 @@ module Config =
         yield errorMsg "WS Post" mem.WsPort machine.WsPort
     ]
     if List.isEmpty errors
-    then Either.nothing
+    then Result.nothing
     else
       errors
       |> List.fold ((+)) ""
       |> Error.asProjectError (tag "validateSettings")
-      |> Either.fail
+      |> Result.fail
 
   // ** addSitePrivate
 
   let private addSitePrivate (site: ClusterConfig) setActive (config: DiscoConfig) =
-    let i = config.Sites |> Array.tryFindIndex (fun s -> s.Id = site.Id)
-    let copy = Array.zeroCreate (config.Sites.Length + (if Option.isSome i then 0 else 1))
-    Array.iteri (fun i s -> copy.[i] <- s) config.Sites
-    copy.[match i with Some i -> i | None -> config.Sites.Length] <- site
+    let sites = Map.add site.Id site config.Sites
     if setActive
-    then { config with ActiveSite = Some site.Id; Sites = copy }
-    else { config with Sites = copy }
+    then { config with ActiveSite = Some site.Id; Sites = sites }
+    else { config with Sites = sites }
 
   // ** addSite
 
@@ -1741,19 +1984,18 @@ module Config =
   // ** removeSite
 
   let removeSite (id: SiteId) (config: DiscoConfig) =
-    let sites = Array.filter (fun (site: ClusterConfig) -> site.Id <> id) config.Sites
-    { config with Sites = sites }
+    { config with Sites = Map.remove id config.Sites }
 
   // ** siteByMember
 
   let siteByMember (memid: SiteId) (config: DiscoConfig) =
-    Array.fold
-      (fun (m: ClusterConfig option) site ->
+    Map.fold
+      (fun (m: ClusterConfig option) _ site ->
         match m with
         | Some _ -> m
         | None ->
-          if Map.containsKey memid site.Members then
-            Some site
+          if Map.containsKey memid site.Members
+          then Some site
           else None)
       None
       config.Sites
@@ -1761,17 +2003,17 @@ module Config =
   // ** findSite
 
   let findSite (id: SiteId) (config: DiscoConfig) =
-    Array.tryFind (fun (site: ClusterConfig) -> site.Id = id) config.Sites
+    Map.tryFind id config.Sites
 
   // ** addMember
 
-  let addMember (mem: RaftMember) (config: DiscoConfig) =
+  let addMember (mem: ClusterMember) (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun clst -> ClusterConfig.id clst = active) config.Sites with
+      match Map.tryFind active config.Sites with
       | Some site ->
         let mems = Map.add mem.Id mem site.Members
-        updateCluster { site with Members = mems } config
+        updateSite { site with Members = mems } config
       | None -> config
     | None -> config
 
@@ -1780,10 +2022,10 @@ module Config =
   let removeMember (id: MemberId) (config: DiscoConfig) =
     match config.ActiveSite with
     | Some active ->
-      match Array.tryFind (fun (clst:ClusterConfig) -> clst.Id = active) config.Sites with
+      match Map.tryFind active config.Sites with
       | Some site ->
         let mems = Map.remove id site.Members
-        updateCluster { site with Members = mems } config
+        updateSite { site with Members = mems } config
       | None -> config
     | None -> config
 
@@ -1923,7 +2165,7 @@ Config: %A
   // |_____\___/ \__,_|\__,_|
 
   static member Load (basepath: FilePath, machine: DiscoMachine) =
-    either {
+    result {
       let filename = PROJECT_FILENAME + ASSET_EXTENSION
 
       let normalizedPath =
@@ -1941,7 +2183,7 @@ Config: %A
         return!
           sprintf "Project Not Found: %O" normalizedPath
           |> Error.asProjectError "Project.load"
-          |> Either.fail
+          |> Result.fail
       else
         let! project = DiscoData.load normalizedPath
         return
@@ -2015,26 +2257,26 @@ Config: %A
   // ** FromFB
 
   static member FromFB(fb: ProjectFB) =
-    either {
+    result {
       let nll = sprintf "%A" null
 
       let! lastsaved =
         match fb.LastSaved with
-        | null    -> Right None
-        | value when value = nll -> Right (Some null)
-        | date -> Right (Some date)
+        | null    -> Ok None
+        | value when value = nll -> Ok (Some null)
+        | date -> Ok (Some date)
 
       let! copyright =
         match fb.Copyright with
-        | null   -> Right None
-        | value when value = nll -> Right (Some null)
-        | str -> Right (Some str)
+        | null   -> Ok None
+        | value when value = nll -> Ok (Some null)
+        | str -> Ok (Some str)
 
       let! author =
         match fb.Author with
-        | null   -> Right None
-        | value when value = nll -> Right (Some null)
-        | str -> Right (Some str)
+        | null   -> Ok None
+        | value when value = nll -> Ok (Some null)
+        | str -> Ok (Some str)
 
       let! config =
         #if FABLE_COMPILER
@@ -2047,7 +2289,7 @@ Config: %A
         else
           "Could not parse empty ConfigFB"
           |> Error.asParseError "DiscoProject.FromFB"
-          |> Either.fail
+          |> Result.fail
         #endif
 
       let! id = Id.decodeId fb
@@ -2104,7 +2346,7 @@ Config: %A
   // ** FromYaml
 
   static member FromYaml(meta: ProjectYaml.DiscoProjectYaml) =
-    either {
+    result {
       let lastSaved =
         match meta.LastSaved with
           | null | "" -> None
@@ -2149,21 +2391,15 @@ module Project =
 
   let id = Optic.get DiscoProject.Id_
   let name = Optic.get DiscoProject.Name_
+  let config = Optic.get DiscoProject.Config_
+  let path = Optic.get DiscoProject.Path_
 
   // ** setters
 
   let setId = Optic.set DiscoProject.Id_
   let setName = Optic.set DiscoProject.Name_
-
-  // ** toFilePath
-
-  let toFilePath (path: FilePath) =
-    path |> unwrap |> filepath
-
-  // ** ofFilePath
-
-  let ofFilePath (path: FilePath) =
-    path |> unwrap |> filepath
+  let setConfig = Optic.set DiscoProject.Config_
+  let setPath = Optic.set DiscoProject.Path_
 
   // ** repository
 
@@ -2173,11 +2409,9 @@ module Project =
   ///
   /// Computes the path to the passed projects' git repository from its `Path` field and checks
   /// whether it exists. If so, construct a git Repository object and return that.
-  ///
-  /// # Returns: Repository option
+
   let repository (project: DiscoProject) =
-    project.Path
-    |> Git.Repo.repository
+    Git.Repo.repository project.Path
 
   #endif
 
@@ -2186,14 +2420,14 @@ module Project =
   let localRemote (project: DiscoProject) =
     project.Config
     |> Config.getActiveMember
-    |> Option.map (Uri.gitUri project.Name)
+    |> Option.map (fun mem -> Uri.gitUri project.Name mem.IpAddress mem.GitPort)
 
   // ** currentBranch
 
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let currentBranch (project: DiscoProject) =
-    either {
+    result {
       let! repo = repository project
       return Git.Branch.current repo
     }
@@ -2205,7 +2439,7 @@ module Project =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let checkoutBranch (name: string) (project: DiscoProject) =
-    either {
+    result {
       let! repo = repository project
       return! Git.Repo.checkout name repo
     }
@@ -2228,9 +2462,9 @@ module Project =
     if File.exists path |> not then
       sprintf "Project Not Found: %O" projectName
       |> Error.asProjectError (tag "checkPath")
-      |> Either.fail
+      |> Result.fail
     else
-      Either.succeed path
+      Result.succeed path
 
   #endif
 
@@ -2259,7 +2493,7 @@ module Project =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let private writeDaemonExportFile (repo: Repository) =
-    either {
+    result {
       let path = repo.Info.Path <.> "git-daemon-export-ok"
       let! _ = DiscoData.write path (Payload "")
       return ()
@@ -2272,7 +2506,7 @@ module Project =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let private writeGitIgnoreFile (repo: Repository) =
-    either {
+    result {
       let parent = Git.Repo.parentPath repo
       let path = parent </> filepath ".gitignore"
       let! _ = DiscoData.write path (Payload GITIGNORE)
@@ -2286,7 +2520,7 @@ module Project =
   #if !FABLE_COMPILER && !DISCO_NODES
 
   let private createAssetDir (repo: Repository) (dir: FilePath) =
-    either {
+    result {
       let parent = Git.Repo.parentPath repo
       let target = parent </> dir
       do! FileSystem.mkDir target
@@ -2316,14 +2550,14 @@ module Project =
                          (committer: Signature)
                          (msg : string)
                          (project: DiscoProject) :
-                         Either<DiscoError,(Commit * DiscoProject)> =
-    either {
+                         DiscoResult<Commit * DiscoProject> =
+    result {
       let! repo = repository project
       let abspath =
         if Path.isPathRooted filepath then
           filepath
         else
-          toFilePath project.Path </> filepath
+          project.Path </> filepath
       do! Git.Repo.stage repo abspath
       let! commit = Git.Repo.commit repo msg committer
       return commit, project
@@ -2340,9 +2574,9 @@ module Project =
                (committer: Signature)
                (msg : string)
                (project: DiscoProject) :
-               Either<DiscoError,(Commit * DiscoProject)> =
+               DiscoResult<Commit * DiscoProject> =
 
-    either {
+    result {
       let info = File.info path
       do! info.Directory.FullName |> filepath |> FileSystem.mkDir
       let! _ = DiscoData.write path (Payload contents)
@@ -2359,8 +2593,8 @@ module Project =
                  (committer: Signature)
                  (msg : string)
                  (project: DiscoProject) :
-                 Either<DiscoError,(Commit * DiscoProject)> =
-    either {
+                 DiscoResult<Commit * DiscoProject> =
+    result {
       let! _ = DiscoData.remove path
       return! commitPath path committer msg project
     }
@@ -2381,7 +2615,7 @@ module Project =
   /// - committer: User the thing to save. Must implement certain methods/getters
   /// - project: Project to save file into
   ///
-  /// Returns: Either<DiscoError,Commit * Project>
+  /// Returns: DiscoResult<Commit * Project>
   let inline saveAsset (thing: ^t) (committer: User) (project: DiscoProject) =
     let payload = thing |> Yaml.encode
     let filepath = project.Path </> Asset.path thing
@@ -2405,7 +2639,7 @@ module Project =
   /// - msg: User committing the change
   /// - project: DiscoProject to work on
   ///
-  /// Returns: Either<DiscoError, FileInfo * Commit * Project>
+  /// Returns: DiscoResult<FileInfo * Commit * Project>
   let inline deleteAsset (thing: ^t) (committer: User) (project: DiscoProject) =
     let filepath = project.Path </> Asset.path thing
     let signature = committer.Signature
@@ -2438,15 +2672,15 @@ module Project =
   /// exists, otherwise creating it.
   ///
   /// # Returns: Repository
-  let private initRepo (project: DiscoProject) : Either<DiscoError,unit> =
-    either {
+  let private initRepo (project: DiscoProject) : DiscoResult<unit> =
+    result {
       let! repo = project.Path |> Git.Repo.init
       do! writeDaemonExportFile repo
       do! Git.Repo.setReceivePackConfig repo
       do! writeGitIgnoreFile repo
       do! List.fold
-            (fun m dir -> Either.bind (fun () -> createAssetDir repo (filepath dir)) m)
-            Either.nothing
+            (fun m dir -> Result.bind (fun () -> createAssetDir repo (filepath dir)) m)
+            Result.nothing
             Constants.GLOBAL_ASSET_DIRS
       let relPath = Asset.path User.Admin
       let absPath = project.Path </> relPath
@@ -2471,7 +2705,7 @@ module Project =
   ///
   /// # Returns: DiscoProject
   let create (path: FilePath) (projectName: string) (machine: DiscoMachine) =
-    either {
+    result {
       let project =
         { Id        = DiscoId.Create()
           Name      = Measure.name projectName
@@ -2483,43 +2717,29 @@ module Project =
           Config    = Config.create machine  }
 
       do! initRepo project
-      let! _ = DiscoData.saveWithCommit (toFilePath path) User.Admin.Signature project
+      let! _ = DiscoData.saveWithCommit path User.Admin.Signature project
       return project
     }
 
   #endif
-
-  // ** config
-
-  let config (project: DiscoProject) : DiscoConfig = project.Config
-
-  // ** updatePath
-
-  let updatePath (path: FilePath) (project: DiscoProject) : DiscoProject =
-    { project with Path = path }
-
-  // ** updateConfig
-
-  let updateConfig (config: DiscoConfig) (project: DiscoProject) : DiscoProject =
-    { project with Config = config }
 
   // ** updateDataDir
 
   let updateDataDir (raftDir: FilePath) (project: DiscoProject) : DiscoProject =
     { project.Config.Raft with DataDir = raftDir }
     |> flip Config.updateEngine project.Config
-    |> flip updateConfig project
+    |> flip setConfig project
 
   // ** addMember
 
-  let addMember (mem: RaftMember) (project: DiscoProject) : DiscoProject =
+  let addMember (mem: ClusterMember) (project: DiscoProject) : DiscoProject =
     project.Config
     |> Config.addMember mem
-    |> flip updateConfig project
+    |> flip setConfig project
 
   // ** updateMember
 
-  let updateMember (mem: RaftMember) (project: DiscoProject) : DiscoProject =
+  let updateMember (mem: ClusterMember) (project: DiscoProject) : DiscoProject =
     addMember mem project
 
   // ** removeMember
@@ -2527,7 +2747,7 @@ module Project =
   let removeMember (mem: MemberId) (project: DiscoProject) : DiscoProject =
     project.Config
     |> Config.removeMember mem
-    |> flip updateConfig project
+    |> flip setConfig project
 
   // ** findMember
 
@@ -2541,13 +2761,13 @@ module Project =
 
   // ** addMembers
 
-  let addMembers (mems: RaftMember list) (project: DiscoProject) : DiscoProject =
+  let addMembers (mems: ClusterMember list) (project: DiscoProject) : DiscoProject =
     List.fold
-      (fun config (mem: RaftMember) ->
+      (fun config (mem: ClusterMember) ->
         Config.addMember mem config)
       project.Config
       mems
-    |> flip updateConfig project
+    |> flip setConfig project
 
   // ** updateMachine
 
@@ -2560,16 +2780,16 @@ module Project =
 
   /// Using the current active site configuration, update git remotes to reflect the configured
   /// members' details. This allows the service to use `git push` to those peers.
-  let updateRemotes (project: DiscoProject) = either {
+  let updateRemotes (project: DiscoProject) = result {
       let! repo = repository project
 
       // delete all current remotes
       let current = Git.Config.remotes repo
       do! Map.fold
-            (fun kontinue name _ -> either {
+            (fun kontinue name _ -> result {
               do! kontinue
               do! Git.Config.delRemote repo name })
-            (Right ())
+            (Ok ())
             current
 
       let! mem = Config.selfMember project.Config
@@ -2578,18 +2798,45 @@ module Project =
       do! match Config.getActiveSite project.Config with
           | Some cluster ->
             Map.fold
-              (fun kontinue id peer -> either {
+              (fun kontinue id peer -> result {
                   do! kontinue
                   if id <> mem.Id then
-                    let url = Uri.gitUri project.Name peer
+                    let url = Uri.gitUri project.Name peer.IpAddress peer.GitPort
                     let name = string peer.Id
                     do! Git.Config.addRemote repo name url
-                        |> Either.iterError (string >> Logger.err (tag "updateRemotes"))
-                        |> Either.succeed
+                        |> Result.iterError (string >> Logger.err (tag "updateRemotes"))
+                        |> Result.succeed
                 })
-              (Right ())
+              (Ok ())
               cluster.Members
-          | None -> Either.nothing
+          | None -> Result.nothing
     }
 
   #endif
+
+// * Machine module
+
+module Machine =
+
+  // ** toClusterMember
+
+  let toClusterMember (machine: DiscoMachine) =
+    { Id = machine.MachineId
+      HostName = machine.HostName
+      IpAddress = machine.BindAddress
+      MulticastAddress = machine.MulticastAddress
+      MulticastPort = machine.MulticastPort
+      HttpPort = machine.WebPort
+      RaftPort = machine.RaftPort
+      WsPort = machine.WsPort
+      GitPort = machine.GitPort
+      ApiPort = machine.ApiPort
+      State = MemberState.Follower
+      Status = MemberStatus.Running }
+
+  // ** toRaftMember
+
+  let toRaftMember (machine: DiscoMachine) =
+    { Member.create machine.MachineId with
+        IpAddress = machine.BindAddress
+        RaftPort = machine.RaftPort }

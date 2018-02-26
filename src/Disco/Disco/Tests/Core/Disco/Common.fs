@@ -34,7 +34,7 @@ module Common =
         WorkSpace = tmpPath() </> Path.getRandomFileName() }
 
   let mkProject (machine: DiscoMachine) (site: ClusterConfig) =
-    either {
+    result {
       let name = Path.GetRandomFileName()
       let path = machine.WorkSpace </> filepath name
 
@@ -46,11 +46,11 @@ module Common =
         |> Config.addSiteAndSetActive site
         |> Config.setLogLevel (LogLevel.Debug)
 
-      let! project = Project.create (Project.ofFilePath path) name machine
+      let! project = Project.create path name machine
 
       let updated =
         { project with
-            Path = Project.ofFilePath path
+            Path = path
             Author = Some(author1)
             Config = cfg }
 
@@ -60,14 +60,18 @@ module Common =
     }
 
   let mkMember (machine: DiscoMachine) =
-    { Member.create machine.MachineId with
-        RaftPort = machine.RaftPort
-        ApiPort = machine.ApiPort
-        GitPort = machine.GitPort
-        WsPort = machine.WsPort }
+    Machine.toClusterMember machine
+
+  let mkSite (members: ClusterMember list) =
+    { ClusterConfig.Default with
+        Name = name "Cool Cluster Yo"
+        Members =
+          members
+          |> List.map (fun mem -> mem.Id, mem)
+          |> Map.ofList }
 
   let mkCluster (num: int) =
-    either {
+    result {
       let baseport = 4000us
 
       let machines =
@@ -77,23 +81,20 @@ module Common =
 
       let members = List.map mkMember machines
 
-      let site =
-        { ClusterConfig.Default with
-            Name = name "Cool Cluster Yo"
-            Members = members |> List.map (fun mem -> mem.Id,mem) |> Map.ofList }
+      let site = mkSite members
 
       let project =
         List.fold
           (fun (i, project') machine ->
             if i = 0 then
               match mkProject machine site with
-              | Right project -> (i + 1, project)
-              | Left error -> failwithf "unable to create project: %O" error
+              | Ok project -> (i + 1, project)
+              | Error error -> failwithf "unable to create project: %O" error
             else
-              let path = Project.toFilePath project'.Path
+              let path = project'.Path
               match copyDir path (machine.WorkSpace </> (project'.Name |> unwrap |> filepath)) with
-              | Right () -> (i + 1, project')
-              | Left error -> failwithf "error copying project: %O" error)
+              | Ok () -> (i + 1, project')
+              | Error error -> failwithf "error copying project: %O" error)
           (0, Unchecked.defaultof<DiscoProject>)
           machines
         |> snd

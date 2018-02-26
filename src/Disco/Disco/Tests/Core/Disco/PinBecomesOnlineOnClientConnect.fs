@@ -25,7 +25,7 @@ module PinBecomesOnlineOnClientConnect =
 
   let test =
     testCase "pin becomes online on client connect" <| fun _ ->
-      either {
+      result {
         use started = new WaitEvent()
         use appendDone = new WaitEvent()
         use clientRegistered = new WaitEvent()

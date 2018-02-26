@@ -65,7 +65,7 @@ type UserYaml() =
     yaml
 
   member yaml.ToUser() =
-    either {
+    result {
       let! id = DiscoId.TryParse yaml.Id
       return {
         Id        = id
@@ -247,8 +247,8 @@ type User =
 
   // ** FromFB
 
-  static member FromFB(fb: UserFB) : Either<DiscoError, User> =
-    either {
+  static member FromFB(fb: UserFB) : DiscoResult< User> =
+    result {
       let! id = Id.decodeId fb
       return {
         Id        = id
@@ -265,7 +265,7 @@ type User =
 
   // ** FromBytes
 
-  static member FromBytes (bytes: byte[]) : Either<DiscoError, User> =
+  static member FromBytes (bytes: byte[]) : DiscoResult< User> =
     UserFB.GetRootAsUserFB(Binary.createBuffer bytes)
     |> User.FromFB
 
@@ -297,12 +297,12 @@ type User =
 
   #if !FABLE_COMPILER && !DISCO_NODES
 
-  static member Load(path: FilePath) : Either<DiscoError, User> =
+  static member Load(path: FilePath) : DiscoResult< User> =
     DiscoData.load path
 
   // ** LoadAll
 
-  static member LoadAll(basePath: FilePath) : Either<DiscoError, User array> =
+  static member LoadAll(basePath: FilePath) : DiscoResult< User array> =
     basePath </> filepath USER_DIR
     |> DiscoData.loadAll
 

@@ -43,10 +43,6 @@ type MemberNode() =
   val mutable OutId: ISpread<string>
 
   [<DefaultValue>]
-  [<Output("HostName")>]
-  val mutable OutHostName: ISpread<string>
-
-  [<DefaultValue>]
   [<Output("IpAddress")>]
   val mutable OutIpAddress: ISpread<string>
 
@@ -55,16 +51,8 @@ type MemberNode() =
   val mutable OutRaftPort: ISpread<int>
 
   [<DefaultValue>]
-  [<Output("WebSocket Port")>]
-  val mutable OutWsPort: ISpread<int>
-
-  [<DefaultValue>]
-  [<Output("Git Port")>]
-  val mutable OutGitPort: ISpread<int>
-
-  [<DefaultValue>]
-  [<Output("API Port")>]
-  val mutable OutApiPort: ISpread<int>
+  [<Output("State")>]
+  val mutable OutState: ISpread<string>
 
   [<DefaultValue>]
   [<Output("Status")>]
@@ -78,25 +66,17 @@ type MemberNode() =
     member self.Evaluate (spreadMax: int) : unit =
       if self.InUpdate.[0] then
         self.OutId.SliceCount        <- self.InMember.SliceCount
-        self.OutHostName.SliceCount  <- self.InMember.SliceCount
         self.OutIpAddress.SliceCount <- self.InMember.SliceCount
+        self.OutState.SliceCount     <- self.InMember.SliceCount
         self.OutStatus.SliceCount    <- self.InMember.SliceCount
         self.OutRaftPort.SliceCount  <- self.InMember.SliceCount
-        self.OutWsPort.SliceCount    <- self.InMember.SliceCount
-        self.OutGitPort.SliceCount   <- self.InMember.SliceCount
-        self.OutApiPort.SliceCount   <- self.InMember.SliceCount
-
         for n in 0 .. (spreadMax - 1) do
           if not (Util.isNullReference self.InMember.[n]) then
             let mem = self.InMember.[n]
             self.OutId.[n]        <- string mem.Id
-            self.OutHostName.[n]  <- unwrap mem.HostName
             self.OutIpAddress.[n] <- string mem.IpAddress
             self.OutStatus.[n]    <- string mem.Status
+            self.OutState.[n]     <- string mem.State
             self.OutRaftPort.[n]  <- int mem.RaftPort
-            self.OutWsPort.[n]    <- int mem.WsPort
-            self.OutGitPort.[n]   <- int mem.GitPort
-            self.OutApiPort.[n]   <- int mem.ApiPort
-
       if self.InUpdate.IsChanged then
         self.OutUpdate.[0] <- self.InUpdate.[0]

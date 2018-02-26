@@ -367,11 +367,11 @@ module Time =
 
   let parse (str: string) =
     match DateTime.TryParse(str) with
-    | (true, date) -> Either.succeed date
+    | (true, date) -> Result.succeed date
     | _ ->
       sprintf "Could not parse date string: %s" str
       |> Error.asParseError "Time.parse"
-      |> Either.fail
+      |> Result.fail
 
 // * Process
 
@@ -530,6 +530,10 @@ module Functional =
   // ** cons
 
   let cons (xs: 'a list) (x: 'a) = x::xs
+
+  // ** ($)
+
+  let ($) = (<|)                         /// $ rules!
 
 // * Tuple
 

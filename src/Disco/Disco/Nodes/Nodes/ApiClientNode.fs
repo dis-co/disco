@@ -112,8 +112,8 @@ module Api =
   let private serverInfo (state: PluginState) =
     let ip =
       match IpAddress.TryParse state.InServerIp.[0] with
-      | Right ip ->  ip
-      | Left error ->
+      | Ok ip ->  ip
+      | Error error ->
         Logger.err "serverInfo" error.Message
         IPv4Address "127.0.0.1"
 
@@ -146,7 +146,7 @@ module Api =
     let client = ApiClient.create server myself
 
     match client.Start() with
-    | Right () ->
+    | Ok () ->
       let apiobs = client.Subscribe(enqueueEvent state)
       Logger.info "startClient" "successfully started ApiClient"
       { state with
@@ -154,7 +154,7 @@ module Api =
           Status = ServiceStatus.Starting
           ApiClient = client
           Disposables = [ apiobs ] }
-    | Left error ->
+    | Error error ->
       Logger.err "startClient" error.Message
       { state with
           Initialized = true
@@ -452,10 +452,6 @@ type ApiClientNode() =
   [<DefaultValue>]
   [<Output("Connected", IsSingle = true, DefaultValue = 0.0)>]
   val mutable OutConnected: ISpread<bool>
-
-  [<DefaultValue>]
-  [<Output("Count", IsSingle = true)>]
-  val mutable OutCount: ISpread<int>
 
   [<DefaultValue>]
   [<Output("Update", IsSingle = true, IsBang = true)>]
